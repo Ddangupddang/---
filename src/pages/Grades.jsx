@@ -150,7 +150,7 @@ function Grades() {
                     <td className="px-4 py-3 text-gray-400 hidden md:table-cell text-xs">{g?.part ?? '—'}</td>
                     <td className="px-4 py-3">
                       {g ? (
-                        <span className={`font-bold ${g.score >= 80 ? 'text-green-600' : g.score >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
+                        <span className={`font-bold ${(g.score / g.total) * 100 >= 80 ? 'text-green-600' : (g.score / g.total) * 100 >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
                           {g.score}점
                         </span>
                       ) : <span className="text-gray-300">미입력</span>}
@@ -175,7 +175,7 @@ function Grades() {
             <form onSubmit={handleAdd} className="flex flex-col gap-3">
               <select required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none">
                 <option value="">학생 선택</option>
-                {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {classStudents.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               <input required placeholder="과목 (예: 독서)" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none" />
               <input placeholder="파트 (예: 현대문학)" value={form.part} onChange={(e) => setForm({ ...form, part: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none" />
