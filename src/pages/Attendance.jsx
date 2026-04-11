@@ -15,11 +15,10 @@ const statusConfig = {
 
 const nextStatus = { none: 'present', present: 'absent', absent: 'late', late: 'none' }
 
-function AdminTeacherAttendance({ user }) {
+function AdminTeacherAttendance({ user, records, setRecords }) {
   const today = new Date().toISOString().slice(0, 10)
   const [selectedDate, setSelectedDate] = useState(today)
   const [selectedClass, setSelectedClass] = useState(classes[0]?.id ?? null)
-  const [records, setRecords] = useState(initialAttendance)
 
   const myClasses = user.role === 'admin' ? classes : classes.filter((c) => c.teacherId === user.id)
   const classStudents = students.filter((s) => s.classId === selectedClass)
@@ -109,9 +108,9 @@ function AdminTeacherAttendance({ user }) {
   )
 }
 
-function StudentAttendance({ user }) {
+function StudentAttendance({ user, records }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
-  const myRecords = initialAttendance.filter(
+  const myRecords = records.filter(
     (r) => r.studentId === user.studentId && r.date.startsWith(selectedMonth)
   )
 
@@ -167,11 +166,12 @@ function StudentAttendance({ user }) {
 
 function Attendance() {
   const { user } = useAuth()
+  const [records, setRecords] = useState(initialAttendance)
   return (
     <Layout>
       {user?.role === 'student'
-        ? <StudentAttendance user={user} />
-        : <AdminTeacherAttendance user={user} />
+        ? <StudentAttendance user={user} records={records} />
+        : <AdminTeacherAttendance user={user} records={records} setRecords={setRecords} />
       }
     </Layout>
   )

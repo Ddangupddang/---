@@ -18,8 +18,9 @@ export function AuthProvider({ children }) {
       (u) => u.username === username && u.password === password
     )
     if (found) {
-      setUser(found)
-      localStorage.setItem('soomoonjae_user', JSON.stringify(found))
+      const { password: _pw, ...safeUser } = found
+      localStorage.setItem('soomoonjae_user', JSON.stringify(safeUser))
+      setUser(safeUser)
       return true
     }
     return false
