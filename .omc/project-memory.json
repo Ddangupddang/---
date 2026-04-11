@@ -1,0 +1,210 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1775883080696,
+  "projectRoot": "/Users/choiwonyong/Documents/수문재-학생관리",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "react",
+        "version": "19.2.4",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.4",
+        "category": "frontend"
+      },
+      {
+        "name": "vite",
+        "version": "8.0.4",
+        "category": "build"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build",
+      "lint": "eslint .",
+      "preview": "vite preview"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "public",
+      "src"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "public": {
+      "path": "public",
+      "purpose": "Public files",
+      "fileCount": 2,
+      "lastAccessed": 1775883080676,
+      "keyFiles": [
+        "favicon.svg",
+        "icons.svg"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 4,
+      "lastAccessed": 1775883080676,
+      "keyFiles": [
+        "App.css",
+        "App.jsx",
+        "index.css",
+        "main.jsx"
+      ]
+    },
+    "src/assets": {
+      "path": "src/assets",
+      "purpose": "Static assets",
+      "fileCount": 3,
+      "lastAccessed": 1775883080680,
+      "keyFiles": [
+        "hero.png",
+        "react.svg",
+        "vite.svg"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "docs/superpowers/plans/2026-04-11-phase1-implementation.md",
+      "accessCount": 6,
+      "lastAccessed": 1775885218396,
+      "type": "file"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-04-11-phase1-design.md",
+      "accessCount": 4,
+      "lastAccessed": 1775884603745,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 2,
+      "lastAccessed": 1775883130886,
+      "type": "directory"
+    },
+    {
+      "path": "vite.config.js",
+      "accessCount": 2,
+      "lastAccessed": 1775885432807,
+      "type": "file"
+    },
+    {
+      "path": "src/index.css",
+      "accessCount": 2,
+      "lastAccessed": 1775885448470,
+      "type": "file"
+    },
+    {
+      "path": "index.html",
+      "accessCount": 2,
+      "lastAccessed": 1775885453544,
+      "type": "file"
+    },
+    {
+      "path": "src/App.jsx",
+      "accessCount": 1,
+      "lastAccessed": 1775883124647,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 1,
+      "lastAccessed": 1775883125362,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/layout.html",
+      "accessCount": 1,
+      "lastAccessed": 1775883284677,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/waiting.html",
+      "accessCount": 1,
+      "lastAccessed": 1775883370230,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/login.html",
+      "accessCount": 1,
+      "lastAccessed": 1775883838471,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/navigation.html",
+      "accessCount": 1,
+      "lastAccessed": 1775883903614,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/navigation-v2.html",
+      "accessCount": 1,
+      "lastAccessed": 1775884089648,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/waiting-2.html",
+      "accessCount": 1,
+      "lastAccessed": 1775884150551,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/dashboard.html",
+      "accessCount": 1,
+      "lastAccessed": 1775884417549,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/waiting-3.html",
+      "accessCount": 1,
+      "lastAccessed": 1775884476762,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/35300-1775883230/content/summary.html",
+      "accessCount": 1,
+      "lastAccessed": 1775884759698,
+      "type": "file"
+    },
+    {
+      "path": "src/test/setup.js",
+      "accessCount": 1,
+      "lastAccessed": 1775885437414,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

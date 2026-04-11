@@ -1,0 +1,125 @@
+<h2>대시보드 레이아웃</h2>
+<p class="subtitle">역할별로 대시보드에 표시되는 내용입니다. 어떤 방식이 좋을까요?</p>
+
+<div class="cards">
+
+  <!-- Option A: 통계 카드 중심 -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#F4F3EE;padding:12px;border-radius:8px;">
+
+      <!-- PC Layout mockup -->
+      <div style="display:flex;height:200px;gap:6px;font-size:10px;">
+        <!-- Sidebar -->
+        <div style="width:80px;background:#2B2B2B;border-radius:6px;padding:8px 6px;display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:9px;color:#5B8FD4;font-weight:700;margin-bottom:4px;">수문재</div>
+          <div style="font-size:8px;padding:3px 4px;background:rgba(91,143,212,0.3);border-radius:3px;color:#fff;">📊 대시보드</div>
+          <div style="font-size:8px;padding:3px 4px;color:rgba(255,255,255,0.5);">👥 학생관리</div>
+          <div style="font-size:8px;padding:3px 4px;color:rgba(255,255,255,0.5);">✅ 출결관리</div>
+          <div style="font-size:8px;padding:3px 4px;color:rgba(255,255,255,0.5);">📝 성적관리</div>
+        </div>
+        <!-- Main -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+          <!-- Header -->
+          <div style="height:22px;background:#fff;border-radius:4px;display:flex;align-items:center;padding:0 8px;justify-content:space-between;">
+            <span style="font-size:9px;font-weight:700;color:#2B2B2B;">대시보드</span>
+            <div style="width:14px;height:14px;background:#5B8FD4;border-radius:50%;"></div>
+          </div>
+          <!-- 통계 카드 4개 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            <div style="background:#fff;border-radius:4px;padding:6px;border-left:3px solid #5B8FD4;">
+              <div style="font-size:8px;color:#999;">전체 학생</div>
+              <div style="font-size:14px;font-weight:700;color:#2B2B2B;">42명</div>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:6px;border-left:3px solid #27ae60;">
+              <div style="font-size:8px;color:#999;">오늘 출석</div>
+              <div style="font-size:14px;font-weight:700;color:#2B2B2B;">38명</div>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:6px;border-left:3px solid #C0392B;">
+              <div style="font-size:8px;color:#999;">결석</div>
+              <div style="font-size:14px;font-weight:700;color:#C0392B;">4명</div>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:6px;border-left:3px solid #f39c12;">
+              <div style="font-size:8px;color:#999;">평균 성적</div>
+              <div style="font-size:14px;font-weight:700;color:#2B2B2B;">78점</div>
+            </div>
+          </div>
+          <!-- 최근 출결 목록 -->
+          <div style="flex:1;background:#fff;border-radius:4px;padding:6px;">
+            <div style="font-size:8px;font-weight:600;color:#2B2B2B;margin-bottom:4px;">오늘 출결 현황</div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div style="display:flex;justify-content:space-between;font-size:7px;"><span>홍길동</span><span style="color:#27ae60;">출석</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:7px;"><span>김철수</span><span style="color:#C0392B;">결석</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:7px;"><span>이영희</span><span style="color:#f39c12;">지각</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — 통계 카드 + 오늘 출결 목록</h3>
+      <p>상단에 핵심 숫자(전체학생, 출석, 결석, 평균성적) 카드 4개, 하단에 오늘 출결 현황 목록. 관리자/교사에게 가장 필요한 정보를 한눈에.</p>
+    </div>
+  </div>
+
+  <!-- Option B: 반별 현황 중심 -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#F4F3EE;padding:12px;border-radius:8px;">
+      <div style="display:flex;height:200px;gap:6px;font-size:10px;">
+        <!-- Sidebar -->
+        <div style="width:80px;background:#2B2B2B;border-radius:6px;padding:8px 6px;display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:9px;color:#5B8FD4;font-weight:700;margin-bottom:4px;">수문재</div>
+          <div style="font-size:8px;padding:3px 4px;background:rgba(91,143,212,0.3);border-radius:3px;color:#fff;">📊 대시보드</div>
+          <div style="font-size:8px;padding:3px 4px;color:rgba(255,255,255,0.5);">👥 학생관리</div>
+          <div style="font-size:8px;padding:3px 4px;color:rgba(255,255,255,0.5);">✅ 출결관리</div>
+        </div>
+        <!-- Main -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+          <div style="height:22px;background:#fff;border-radius:4px;display:flex;align-items:center;padding:0 8px;justify-content:space-between;">
+            <span style="font-size:9px;font-weight:700;color:#2B2B2B;">대시보드</span>
+            <div style="width:14px;height:14px;background:#5B8FD4;border-radius:50%;"></div>
+          </div>
+          <!-- 반별 카드 -->
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+            <div style="background:#fff;border-radius:4px;padding:6px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:9px;font-weight:600;color:#2B2B2B;">수능국어A반</div>
+                <div style="font-size:7px;color:#999;">학생 15명</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <div style="text-align:center;"><div style="font-size:10px;font-weight:700;color:#27ae60;">13</div><div style="font-size:7px;color:#999;">출석</div></div>
+                <div style="text-align:center;"><div style="font-size:10px;font-weight:700;color:#C0392B;">2</div><div style="font-size:7px;color:#999;">결석</div></div>
+              </div>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:6px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:9px;font-weight:600;color:#2B2B2B;">내신국어B반</div>
+                <div style="font-size:7px;color:#999;">학생 12명</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <div style="text-align:center;"><div style="font-size:10px;font-weight:700;color:#27ae60;">12</div><div style="font-size:7px;color:#999;">출석</div></div>
+                <div style="text-align:center;"><div style="font-size:10px;font-weight:700;color:#C0392B;">0</div><div style="font-size:7px;color:#999;">결석</div></div>
+              </div>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:6px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:9px;font-weight:600;color:#2B2B2B;">수능국어C반</div>
+                <div style="font-size:7px;color:#999;">학생 18명</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <div style="text-align:center;"><div style="font-size:10px;font-weight:700;color:#27ae60;">16</div><div style="font-size:7px;color:#999;">출석</div></div>
+                <div style="text-align:center;"><div style="font-size:10px;font-weight:700;color:#f39c12;">2</div><div style="font-size:7px;color:#999;">지각</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — 반별 출결 현황 카드</h3>
+      <p>반마다 카드 하나씩, 학생 수 + 오늘 출석/결석 현황. 여러 반을 관리하는 관리자가 반별 상황을 빠르게 파악하기 좋음.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:12px;">※ 학생 대시보드(홈)는 별도로 — 내 출결 요약 + 최근 성적 카드로 구성됩니다.</p>

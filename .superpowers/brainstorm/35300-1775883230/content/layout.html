@@ -1,0 +1,129 @@
+<h2>앱 전체 레이아웃 구조</h2>
+<p class="subtitle">사이드바와 헤더의 배치 방식을 선택해주세요. (PC 화면 기준)</p>
+
+<div class="cards">
+
+  <!-- Option A: 고정 사이드바 + 상단 헤더 -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f8f8;padding:12px;border-radius:8px;">
+      <div style="display:flex;height:160px;gap:6px;font-size:11px;">
+        <!-- Sidebar -->
+        <div style="width:52px;background:#2B2B2B;border-radius:6px;display:flex;flex-direction:column;align-items:center;padding:8px 4px;gap:8px;color:#fff;">
+          <div style="width:28px;height:28px;background:#5B8FD4;border-radius:6px;"></div>
+          <div style="width:24px;height:3px;background:rgba(255,255,255,0.4);border-radius:2px;"></div>
+          <div style="width:24px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+          <div style="width:24px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+          <div style="width:24px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+          <div style="width:24px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+        </div>
+        <!-- Main area -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <!-- Header -->
+          <div style="height:28px;background:#fff;border-radius:6px;border:1px solid #e5e5e5;display:flex;align-items:center;padding:0 10px;justify-content:space-between;">
+            <div style="font-size:10px;color:#2B2B2B;font-weight:600;">대시보드</div>
+            <div style="width:18px;height:18px;background:#5B8FD4;border-radius:50%;"></div>
+          </div>
+          <!-- Content -->
+          <div style="flex:1;background:#F4F3EE;border-radius:6px;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            <div style="background:#fff;border-radius:4px;"></div>
+            <div style="background:#fff;border-radius:4px;"></div>
+            <div style="background:#fff;border-radius:4px;"></div>
+            <div style="background:#fff;border-radius:4px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — 아이콘 사이드바 + 상단 헤더</h3>
+      <p>좌측에 얇은 아이콘 사이드바, 우측 상단에 페이지 제목 + 사용자 정보. 화면 공간 최대 활용. 관리자/교사용 PC에 적합.</p>
+    </div>
+  </div>
+
+  <!-- Option B: 넓은 사이드바 (메뉴 텍스트 포함) -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f8f8;padding:12px;border-radius:8px;">
+      <div style="display:flex;height:160px;gap:6px;font-size:11px;">
+        <!-- Wide Sidebar -->
+        <div style="width:90px;background:#2B2B2B;border-radius:6px;display:flex;flex-direction:column;padding:8px 6px;gap:6px;color:#fff;">
+          <div style="font-size:9px;font-weight:700;color:#5B8FD4;padding:2px 4px;">수문재</div>
+          <div style="height:1px;background:rgba(255,255,255,0.1);"></div>
+          <div style="font-size:9px;padding:3px 4px;background:rgba(91,143,212,0.3);border-radius:3px;">📊 대시보드</div>
+          <div style="font-size:9px;padding:3px 4px;color:rgba(255,255,255,0.6);">👥 학생관리</div>
+          <div style="font-size:9px;padding:3px 4px;color:rgba(255,255,255,0.6);">✅ 출결관리</div>
+          <div style="font-size:9px;padding:3px 4px;color:rgba(255,255,255,0.6);">📝 성적관리</div>
+        </div>
+        <!-- Main area -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <!-- Header -->
+          <div style="height:28px;background:#fff;border-radius:6px;border:1px solid #e5e5e5;display:flex;align-items:center;padding:0 10px;justify-content:space-between;">
+            <div style="font-size:10px;color:#2B2B2B;font-weight:600;">대시보드</div>
+            <div style="width:18px;height:18px;background:#5B8FD4;border-radius:50%;"></div>
+          </div>
+          <!-- Content -->
+          <div style="flex:1;background:#F4F3EE;border-radius:6px;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            <div style="background:#fff;border-radius:4px;"></div>
+            <div style="background:#fff;border-radius:4px;"></div>
+            <div style="background:#fff;border-radius:4px;"></div>
+            <div style="background:#fff;border-radius:4px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — 넓은 사이드바 (텍스트 메뉴)</h3>
+      <p>좌측에 메뉴 이름이 표시되는 넓은 사이드바. 처음 쓰는 사람도 메뉴를 바로 알아볼 수 있음. 개발 초보자가 사용하기에 직관적.</p>
+    </div>
+  </div>
+
+  <!-- Option C: 모바일은 하단 탭, PC는 사이드바 -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f8f8;padding:12px;border-radius:8px;">
+      <div style="display:flex;height:160px;gap:10px;align-items:center;">
+        <!-- Mobile mockup -->
+        <div style="width:60px;height:130px;background:#fff;border:2px solid #2B2B2B;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;background:#F4F3EE;padding:4px;display:flex;flex-direction:column;gap:3px;">
+            <div style="height:12px;background:#2B2B2B;border-radius:3px;display:flex;align-items:center;padding:0 4px;">
+              <span style="font-size:8px;color:#fff;font-weight:600;">대시보드</span>
+            </div>
+            <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+              <div style="background:#fff;border-radius:2px;"></div>
+              <div style="background:#fff;border-radius:2px;"></div>
+              <div style="background:#fff;border-radius:2px;"></div>
+              <div style="background:#fff;border-radius:2px;"></div>
+            </div>
+          </div>
+          <!-- Bottom tab bar -->
+          <div style="height:24px;background:#2B2B2B;display:flex;justify-content:space-around;align-items:center;padding:0 4px;">
+            <div style="font-size:8px;color:#5B8FD4;">🏠</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.5);">✅</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.5);">📝</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.5);">👤</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#666;">모바일<br/>(학생)</div>
+        <!-- PC mockup -->
+        <div style="flex:1;height:130px;display:flex;gap:4px;">
+          <div style="width:70px;background:#2B2B2B;border-radius:6px;padding:6px 4px;display:flex;flex-direction:column;gap:4px;">
+            <div style="font-size:8px;color:#5B8FD4;font-weight:700;">수문재</div>
+            <div style="font-size:8px;padding:2px 3px;background:rgba(91,143,212,0.3);border-radius:2px;color:#fff;">📊 대시보드</div>
+            <div style="font-size:8px;padding:2px 3px;color:rgba(255,255,255,0.5);">👥 학생</div>
+            <div style="font-size:8px;padding:2px 3px;color:rgba(255,255,255,0.5);">✅ 출결</div>
+          </div>
+          <div style="flex:1;background:#F4F3EE;border-radius:6px;padding:4px;display:flex;flex-direction:column;gap:3px;">
+            <div style="height:14px;background:#fff;border-radius:3px;"></div>
+            <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+              <div style="background:#fff;border-radius:2px;"></div>
+              <div style="background:#fff;border-radius:2px;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#666;">PC<br/>(관리자/<br/>교사)</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — 반응형 (모바일 하단탭 / PC 사이드바)</h3>
+      <p>PC는 넓은 사이드바, 모바일은 하단 탭 바. 학생은 모바일 전용이므로 최적화. 역할별로 다른 레이아웃 제공. 가장 많은 앱이 사용하는 방식.</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>수문재 학생관리 — 설계 요약</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', -apple-system, sans-serif;
+      background: #F4F3EE;
+      color: #2B2B2B;
+      padding: 32px 24px;
+    }
+    .page-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #2B2B2B;
+      margin-bottom: 4px;
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 32px;
+    }
+    .section {
+      margin-bottom: 28px;
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #5B8FD4;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .decision-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .decision-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .decision-body h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .decision-body p {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.5;
+    }
+    .badge {
+      display: inline-block;
+      background: #2B2B2B;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* 레이아웃 미리보기 */
+    .layout-preview {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .device-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #888;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    /* 메뉴 미리보기 */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    .menu-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .menu-card-header {
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .menu-card-body {
+      padding: 10px 14px;
+    }
+    .menu-item {
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      color: #2B2B2B;
+      margin-bottom: 2px;
+    }
+    .menu-item.active {
+      background: #F4F3EE;
+      font-weight: 600;
+    }
+    .menu-item.disabled {
+      color: #bbb;
+      font-style: italic;
+    }
+
+    /* 대시보드 미리보기 */
+    .dashboard-preview {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .class-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .class-card {
+      background: #F4F3EE;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .class-card-name { font-size: 13px; font-weight: 600; }
+    .class-card-count { font-size: 11px; color: #888; margin-top: 2px; }
+    .class-stats { display: flex; gap: 16px; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 16px; font-weight: 700; }
+    .stat-label { font-size: 10px; color: #888; }
+
+    .divider {
+      height: 1px;
+      background: #e8e5df;
+      margin: 4px 0 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-title">수문재 학생관리 시스템</div>
+  <div class="page-subtitle">1단계 설계 결정 요약 · 2026-04-11</div>
+
+  <!-- 레이아웃 -->
+  <div class="section">
+    <div class="section-label">레이아웃</div>
+    <div class="layout-preview">
+      <!-- PC -->
+      <div>
+        <div style="display:flex;height:140px;gap:5px;width:240px;">
+          <div style="width:75px;background:#2B2B2B;border-radius:8px;padding:8px 6px;display:flex;flex-direction:column;gap:4px;">
+            <div style="font-size:9px;color:#5B8FD4;font-weight:700;margin-bottom:2px;">수문재</div>
+            <div style="font-size:8px;padding:3px 4px;background:rgba(91,143,212,0.3);border-radius:3px;color:#fff;">📊 대시보드</div>
+            <div style="font-size:8px;padding:3px 4px;color:rgba(255,255,255,0.5);">👥 학생관리</div>
+            <div style="font-size:8px;padding:3px 4px;color:rgba(255,255,255,0.5);">✅ 출결관리</div>
+            <div style="font-size:8px;padding:3px 4px;color:rgba(255,255,255,0.5);">📝 성적관리</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+            <div style="height:24px;background:#fff;border-radius:5px;display:flex;align-items:center;padding:0 8px;justify-content:space-between;">
+              <span style="font-size:9px;font-weight:700;">대시보드</span>
+              <div style="width:16px;height:16px;background:#5B8FD4;border-radius:50%;"></div>
+            </div>
+            <div style="flex:1;background:#F4F3EE;border-radius:5px;padding:6px;display:flex;flex-direction:column;gap:3px;">
+              <div style="background:#fff;border-radius:4px;padding:5px 8px;font-size:8px;font-weight:600;">수능국어A반 · 15명 출석13 결석2</div>
+              <div style="background:#fff;border-radius:4px;padding:5px 8px;font-size:8px;font-weight:600;">내신국어B반 · 12명 출석12 결석0</div>
+            </div>
+          </div>
+        </div>
+        <div class="device-label">PC (관리자/교사)</div>
+      </div>
+
+      <!-- Mobile -->
+      <div>
+        <div style="width:80px;height:140px;background:#fff;border:2px solid #2B2B2B;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="height:20px;background:#2B2B2B;display:flex;align-items:center;padding:0 6px;">
+            <span style="font-size:7px;color:#fff;font-weight:700;">수문재</span>
+          </div>
+          <div style="flex:1;padding:5px;background:#F4F3EE;display:flex;flex-direction:column;gap:3px;">
+            <div style="background:#fff;border-radius:3px;padding:3px 5px;font-size:6px;">이번달 출석 22일</div>
+            <div style="background:#fff;border-radius:3px;padding:3px 5px;font-size:6px;">최근 성적 85점</div>
+          </div>
+          <div style="height:24px;background:#2B2B2B;display:flex;justify-content:space-around;align-items:center;padding:0 4px;">
+            <span style="font-size:9px;color:#5B8FD4;">🏠</span>
+            <span style="font-size:9px;color:rgba(255,255,255,0.4);">✅</span>
+            <span style="font-size:9px;color:rgba(255,255,255,0.4);">📊</span>
+          </div>
+        </div>
+        <div class="device-label">모바일 (학생)</div>
+      </div>
+
+      <!-- Summary -->
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px;">결정 내용</div>
+        <div style="font-size:11px;color:#555;line-height:1.8;">
+          ✅ PC: 좌측 사이드바 + 상단 헤더<br>
+          ✅ 모바일: 상단 헤더 + 하단 탭 바<br>
+          ✅ 학생은 모바일 전용<br>
+          ✅ 관리자/교사는 PC + 모바일
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로그인 -->
+  <div class="section">
+    <div class="section-label">로그인</div>
+    <div class="decision-card">
+      <div class="decision-icon" style="background:#F4F3EE;">🔑</div>
+      <div class="decision-body">
+        <h3>심플 로그인 (역할 자동 감지) <span class="badge">선택됨</span></h3>
+        <p>아이디 + 비밀번호만 입력. 로그인 후 서버(Mock)에서 역할 확인 → 대시보드로 자동 이동.<br>
+        테스트 계정: admin/1234 · teacher1/1234 · student1/1234</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 메뉴 -->
+  <div class="section">
+    <div class="section-label">역할별 메뉴</div>
+    <div class="menu-grid">
+      <div class="menu-card">
+        <div class="menu-card-header" style="background:#2B2B2B;">⚙️ 관리자</div>
+        <div class="menu-card-body">
+          <div class="menu-item active">📊 대시보드</div>
+          <div class="menu-item">👥 학생 관리</div>
+          <div class="menu-item">🏫 반 관리</div>
+          <div class="menu-item">✅ 출결 관리</div>
+          <div class="menu-item">📝 성적 관리</div>
+          <div class="menu-item disabled">🎬 영상 관리</div>
+          <div class="menu-item disabled">📋 테스트</div>
+          <div class="menu-item disabled">💬 Q&A</div>
+          <div class="menu-item disabled">📢 공지사항</div>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="menu-card-header" style="background:#5B8FD4;">👨‍🏫 교사</div>
+        <div class="menu-card-body">
+          <div class="menu-item active">📊 대시보드</div>
+          <div class="menu-item">👥 학생 관리</div>
+          <div class="menu-item">🏫 반 관리</div>
+          <div class="menu-item">✅ 출결 관리</div>
+          <div class="menu-item">📝 성적 관리</div>
+          <div class="menu-item disabled">🎬 영상 관리</div>
+          <div class="menu-item disabled">📋 테스트</div>
+          <div class="menu-item disabled">💬 Q&A</div>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="menu-card-header" style="background:#C0392B;">👤 학생</div>
+        <div class="menu-card-body">
+          <div class="menu-item active">🏠 홈</div>
+          <div class="menu-item">✅ 내 출결</div>
+          <div class="menu-item">📊 내 성적</div>
+          <div class="menu-item disabled">🎬 강의 영상</div>
+          <div class="menu-item disabled">📋 테스트</div>
+          <div class="menu-item disabled">💬 Q&A</div>
+          <div class="menu-item disabled">📢 공지</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#888;margin-top:8px;padding-left:4px;">회색 기울임 항목은 비활성 (2·3단계)</div>
+  </div>
+
+  <!-- 대시보드 -->
+  <div class="section">
+    <div class="section-label">대시보드 구성</div>
+    <div class="dashboard-preview">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px;">관리자 / 교사 대시보드 <span class="badge">선택됨</span></div>
+          <div style="font-size:11px;color:#666;margin-bottom:10px;">반별 출결 현황 카드</div>
+          <div class="class-cards">
+            <div class="class-card">
+              <div>
+                <div class="class-card-name">수능국어A반</div>
+                <div class="class-card-count">학생 15명</div>
+              </div>
+              <div class="class-stats">
+                <div class="stat"><div class="stat-num" style="color:#27ae60;">13</div><div class="stat-label">출석</div></div>
+                <div class="stat"><div class="stat-num" style="color:#C0392B;">2</div><div class="stat-label">결석</div></div>
+                <div class="stat"><div class="stat-num" style="color:#f39c12;">0</div><div class="stat-label">지각</div></div>
+              </div>
+            </div>
+            <div class="class-card">
+              <div>
+                <div class="class-card-name">내신국어B반</div>
+                <div class="class-card-count">학생 12명</div>
+              </div>
+              <div class="class-stats">
+                <div class="stat"><div class="stat-num" style="color:#27ae60;">12</div><div class="stat-label">출석</div></div>
+                <div class="stat"><div class="stat-num" style="color:#C0392B;">0</div><div class="stat-label">결석</div></div>
+                <div class="stat"><div class="stat-num" style="color:#f39c12;">0</div><div class="stat-label">지각</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px;">학생 대시보드</div>
+          <div style="font-size:11px;color:#666;margin-bottom:10px;">내 출결 요약 + 최근 성적</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="background:#F4F3EE;border-radius:8px;padding:12px;display:flex;justify-content:space-around;">
+              <div class="stat"><div class="stat-num" style="color:#27ae60;">22</div><div class="stat-label">출석</div></div>
+              <div class="stat"><div class="stat-num" style="color:#C0392B;">1</div><div class="stat-label">결석</div></div>
+              <div class="stat"><div class="stat-num" style="color:#f39c12;">0</div><div class="stat-label">지각</div></div>
+            </div>
+            <div style="background:#F4F3EE;border-radius:8px;padding:12px;">
+              <div style="font-size:11px;color:#666;margin-bottom:4px;">최근 성적</div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;">
+                <span>독서 (04/07)</span>
+                <span style="font-weight:700;">85점</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 기술 스택 -->
+  <div class="section">
+    <div class="section-label">기술 스택 & 아키텍처</div>
+    <div class="decision-card">
+      <div class="decision-icon" style="background:#F4F3EE;">⚙️</div>
+      <div class="decision-body">
+        <h3>페이지 중심 구조 (방식 1) + Mock 데이터</h3>
+        <p>React 19 + Vite · Tailwind CSS · React Router DOM · xlsx 라이브러리<br>
+        데이터: Mock (Supabase 연결은 이후 단계) · 반관리는 Students.jsx 안 탭으로 처리</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,72 @@
+<h2>로그인 페이지 스타일</h2>
+<p class="subtitle">관리자/교사/학생이 모두 같은 로그인 페이지를 사용합니다. 어떤 방식이 좋을까요?</p>
+
+<div class="cards">
+
+  <!-- Option A: 심플 로그인 (자동 역할 감지) -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#F4F3EE;padding:16px;border-radius:8px;display:flex;justify-content:center;">
+      <div style="width:200px;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08);padding:20px;display:flex;flex-direction:column;gap:12px;align-items:center;">
+        <div style="width:48px;height:48px;background:#2B2B2B;border-radius:12px;display:flex;align-items:center;justify-content:center;">
+          <div style="width:24px;height:24px;background:#5B8FD4;border-radius:6px;"></div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:#2B2B2B;">수문재국어전문학원</div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:6px;">
+          <div style="width:100%;height:32px;background:#F4F3EE;border-radius:6px;border:1px solid #e5e5e5;display:flex;align-items:center;padding:0 10px;">
+            <span style="font-size:10px;color:#999;">아이디 입력</span>
+          </div>
+          <div style="width:100%;height:32px;background:#F4F3EE;border-radius:6px;border:1px solid #e5e5e5;display:flex;align-items:center;padding:0 10px;">
+            <span style="font-size:10px;color:#999;">비밀번호 입력</span>
+          </div>
+        </div>
+        <div style="width:100%;height:32px;background:#2B2B2B;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:11px;color:#fff;font-weight:600;">로그인</span>
+        </div>
+        <div style="font-size:9px;color:#999;">로그인하면 역할에 맞는 화면으로 자동 이동</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — 심플 로그인 (역할 자동 감지)</h3>
+      <p>아이디/비밀번호만 입력. 로그인 후 서버에서 역할을 확인해 각 화면으로 자동 이동. 가장 깔끔하고 일반적인 방식.</p>
+    </div>
+  </div>
+
+  <!-- Option B: 역할 먼저 선택 후 로그인 -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#F4F3EE;padding:16px;border-radius:8px;display:flex;justify-content:center;">
+      <div style="width:200px;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08);padding:20px;display:flex;flex-direction:column;gap:12px;align-items:center;">
+        <div style="font-size:12px;font-weight:700;color:#2B2B2B;">로그인</div>
+        <div style="width:100%;display:flex;gap:6px;">
+          <div style="flex:1;height:42px;background:#2B2B2B;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+            <span style="font-size:14px;">👤</span>
+            <span style="font-size:8px;color:#fff;">학생</span>
+          </div>
+          <div style="flex:1;height:42px;background:#F4F3EE;border:1px solid #e5e5e5;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+            <span style="font-size:14px;">👨‍🏫</span>
+            <span style="font-size:8px;color:#666;">교사</span>
+          </div>
+          <div style="flex:1;height:42px;background:#F4F3EE;border:1px solid #e5e5e5;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+            <span style="font-size:14px;">⚙️</span>
+            <span style="font-size:8px;color:#666;">관리자</span>
+          </div>
+        </div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:6px;">
+          <div style="width:100%;height:28px;background:#F4F3EE;border-radius:6px;border:1px solid #e5e5e5;display:flex;align-items:center;padding:0 8px;">
+            <span style="font-size:10px;color:#999;">아이디</span>
+          </div>
+          <div style="width:100%;height:28px;background:#F4F3EE;border-radius:6px;border:1px solid #e5e5e5;display:flex;align-items:center;padding:0 8px;">
+            <span style="font-size:10px;color:#999;">비밀번호</span>
+          </div>
+        </div>
+        <div style="width:100%;height:28px;background:#2B2B2B;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:10px;color:#fff;font-weight:600;">로그인</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — 역할 선택 후 로그인</h3>
+      <p>먼저 학생/교사/관리자 중 선택, 그 다음 아이디/비밀번호 입력. 역할이 명확히 보여 직관적. 학원 앱에 어울리는 방식.</p>
+    </div>
+  </div>
+
+</div>
