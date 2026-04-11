@@ -1,2 +1,84 @@
 // src/pages/Login.jsx
-export default function Login() { return <div>로그인</div> }
+import { useState } from 'react'
+import { useNavigate, Navigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+
+function Login() {
+  const { user, login } = useAuth()
+  const navigate = useNavigate()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+
+  // 이미 로그인된 경우 대시보드로 이동
+  if (user) return <Navigate to="/dashboard" replace />
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    setError('')
+    const success = login(username.trim(), password)
+    if (success) {
+      navigate('/dashboard', { replace: true })
+    } else {
+      setError('아이디 또는 비밀번호가 올바르지 않습니다.')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F4F3EE] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-md p-8">
+        {/* 로고 영역 */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-[#2B2B2B] rounded-2xl mb-3">
+            <span className="text-[#5B8FD4] text-xl font-black">수</span>
+          </div>
+          <h1 className="text-lg font-extrabold text-[#2B2B2B]">수문재국어전문학원</h1>
+          <p className="text-sm text-gray-400 mt-1">학생 관리 시스템</p>
+        </div>
+
+        {/* 로그인 폼 */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <input
+            type="text"
+            placeholder="아이디"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full h-12 px-4 bg-[#F4F3EE] rounded-xl border border-transparent focus:border-[#5B8FD4] focus:outline-none text-sm"
+            autoComplete="username"
+          />
+          <input
+            type="password"
+            placeholder="비밀번호"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full h-12 px-4 bg-[#F4F3EE] rounded-xl border border-transparent focus:border-[#5B8FD4] focus:outline-none text-sm"
+            autoComplete="current-password"
+          />
+
+          {error && (
+            <p className="text-sm text-[#C0392B] text-center">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            className="w-full h-12 bg-[#2B2B2B] text-white text-sm font-semibold rounded-xl hover:bg-[#3d3d3d] active:scale-95 transition-all mt-1"
+          >
+            로그인
+          </button>
+        </form>
+
+        {/* 테스트 계정 안내 */}
+        <div className="mt-6 p-3 bg-[#F4F3EE] rounded-xl">
+          <p className="text-xs text-gray-500 font-semibold mb-1">테스트 계정</p>
+          <div className="text-xs text-gray-400 leading-relaxed">
+            관리자: admin / 1234<br />
+            교사: teacher1 / 1234<br />
+            학생: student1 / 1234
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default Login
