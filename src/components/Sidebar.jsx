@@ -4,27 +4,31 @@ import { useAuth } from '../context/AuthContext'
 
 const navConfig = {
   admin: [
-    { label: '대시보드', path: '/dashboard',  icon: '📊' },
-    { label: '학생 관리', path: '/students',   icon: '👥' },
-    { label: '반 관리',   path: '/students?tab=classes', icon: '🏫' },
-    { label: '출결 관리', path: '/attendance', icon: '✅' },
-    { label: '성적 관리', path: '/grades',     icon: '📝' },
-    { label: '영상 관리', path: '/videos',     icon: '🎬' },
-    { label: '테스트', path: '/tests', icon: '📋' },
+    { label: '대시보드',  path: '/dashboard',            icon: '📊' },
+    { label: '학생 관리', path: '/students',              icon: '👥' },
+    { label: '반 관리',   path: '/students?tab=classes',  icon: '🏫' },
+    { label: '출결 관리', path: '/attendance',            icon: '✅' },
+    { label: '성적 관리', path: '/grades',                icon: '📝' },
+    { label: '영상 관리', path: '/videos',                icon: '🎬' },
+    { label: '테스트',    path: '/tests',                 icon: '📋' },
+    { label: 'Q&A',       path: '/qna',                   icon: '💬' },
+    { label: '공지사항',  path: '/notices',               icon: '📢' },
+    { label: '진도 리포트', path: '/reports',             icon: '📄' },
   ],
   teacher: [
-    { label: '대시보드', path: '/dashboard',  icon: '📊' },
-    { label: '학생 관리', path: '/students',   icon: '👥' },
-    { label: '반 관리',   path: '/students?tab=classes', icon: '🏫' },
-    { label: '출결 관리', path: '/attendance', icon: '✅' },
-    { label: '성적 관리', path: '/grades',     icon: '📝' },
-    { label: '영상 관리', path: '/videos',     icon: '🎬' },
-    { label: '테스트', path: '/tests', icon: '📋' },
+    { label: '대시보드',  path: '/dashboard',            icon: '📊' },
+    { label: '학생 관리', path: '/students',              icon: '👥' },
+    { label: '반 관리',   path: '/students?tab=classes',  icon: '🏫' },
+    { label: '출결 관리', path: '/attendance',            icon: '✅' },
+    { label: '성적 관리', path: '/grades',                icon: '📝' },
+    { label: '영상 관리', path: '/videos',                icon: '🎬' },
+    { label: '테스트',    path: '/tests',                 icon: '📋' },
+    { label: 'Q&A',       path: '/qna',                   icon: '💬' },
+    { label: '공지사항',  path: '/notices',               icon: '📢' },
+    { label: '진도 리포트', path: '/reports',             icon: '📄' },
   ],
   student: [],
 }
-
-const disabledItems = ['💬 Q&A', '📢 공지사항', '📄 진도리포트']
 
 function Sidebar() {
   const { user, logout } = useAuth()
@@ -55,16 +59,6 @@ function Sidebar() {
           </NavLink>
         ))}
 
-        <div className="mt-4 border-t border-white/10 pt-3">
-          {disabledItems.map((label) => (
-            <div
-              key={label}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-white/25 cursor-not-allowed italic"
-            >
-              {label}
-            </div>
-          ))}
-        </div>
       </nav>
 
       <div className="border-t border-white/10 pt-3 mt-3">

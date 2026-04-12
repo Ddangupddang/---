@@ -9,6 +9,9 @@ import Attendance from './pages/Attendance'
 import Grades from './pages/Grades'
 import Videos from './pages/Videos'
 import Tests from './pages/Tests'
+import QnA from './pages/QnA'
+import Notices from './pages/Notices'
+import Reports from './pages/Reports'
 
 function App() {
   return (
@@ -77,6 +80,36 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
                 <Tests />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Q&A (전체 역할) */}
+          <Route
+            path="/qna"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
+                <QnA />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 공지사항 (전체 역할) */}
+          <Route
+            path="/notices"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
+                <Notices />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 진도 리포트 (관리자, 교사만) */}
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                <Reports />
               </ProtectedRoute>
             }
           />
