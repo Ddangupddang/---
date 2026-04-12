@@ -2,10 +2,11 @@
 import { NavLink } from 'react-router-dom'
 
 const tabs = [
-  { label: '홈',   path: '/dashboard',  icon: '🏠' },
-  { label: '출결', path: '/attendance', icon: '✅' },
-  { label: '성적', path: '/grades',     icon: '📊' },
-  { label: '영상', path: '/videos',     icon: '🎬' },
+  { label: '홈',    path: '/dashboard',  icon: '🏠' },
+  { label: '출결',  path: '/attendance', icon: '✅' },
+  { label: '성적',  path: '/grades',     icon: '📊' },
+  { label: '영상',  path: '/videos',     icon: '🎬' },
+  { label: '테스트', path: '/tests',     icon: '📋' },
 ]
 
 function BottomNav() {

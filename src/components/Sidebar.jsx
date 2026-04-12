@@ -10,6 +10,7 @@ const navConfig = {
     { label: '출결 관리', path: '/attendance', icon: '✅' },
     { label: '성적 관리', path: '/grades',     icon: '📝' },
     { label: '영상 관리', path: '/videos',     icon: '🎬' },
+    { label: '테스트', path: '/tests', icon: '📋' },
   ],
   teacher: [
     { label: '대시보드', path: '/dashboard',  icon: '📊' },
@@ -18,11 +19,12 @@ const navConfig = {
     { label: '출결 관리', path: '/attendance', icon: '✅' },
     { label: '성적 관리', path: '/grades',     icon: '📝' },
     { label: '영상 관리', path: '/videos',     icon: '🎬' },
+    { label: '테스트', path: '/tests', icon: '📋' },
   ],
   student: [],
 }
 
-const disabledItems = ['📋 테스트', '💬 Q&A', '📢 공지사항', '📄 진도리포트']
+const disabledItems = ['💬 Q&A', '📢 공지사항', '📄 진도리포트']
 
 function Sidebar() {
   const { user, logout } = useAuth()

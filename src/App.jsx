@@ -8,6 +8,7 @@ import Students from './pages/Students'
 import Attendance from './pages/Attendance'
 import Grades from './pages/Grades'
 import Videos from './pages/Videos'
+import Tests from './pages/Tests'
 
 function App() {
   return (
@@ -66,6 +67,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
                 <Videos />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 테스트 (전체 역할) */}
+          <Route
+            path="/tests"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
+                <Tests />
               </ProtectedRoute>
             }
           />
