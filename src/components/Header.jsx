@@ -7,6 +7,8 @@ const pageTitles = {
   '/students':   '학생 관리',
   '/attendance': '출결 관리',
   '/grades':     '성적 관리',
+  '/videos':     '영상 관리',
+  '/tests':      '테스트',
 }
 
 function Header() {
@@ -20,9 +22,10 @@ function Header() {
 
       <div className="flex items-center gap-3">
         <span className="text-sm text-gray-500">{user?.name}</span>
+        {/* 학생은 항상 표시, 관리자/교사는 모바일에서만 표시 (PC는 사이드바에 로그아웃 있음) */}
         <button
           onClick={logout}
-          className="md:hidden text-xs text-gray-400 hover:text-gray-600"
+          className={`text-xs text-gray-400 hover:text-gray-600 ${user?.role !== 'student' ? 'md:hidden' : ''}`}
         >
           로그아웃
         </button>
