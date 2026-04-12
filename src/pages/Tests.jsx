@@ -1,5 +1,5 @@
 // src/pages/Tests.jsx
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { tests as initialTests } from '../data/tests'
 import { submissions as initialSubmissions } from '../data/submissions'
@@ -212,7 +212,160 @@ export default function Tests() {
     )
   }
 
+  // ────────── take 뷰 (학생 응시) ──────────
+  if (view === 'take') {
+    return (
+      <TakeView
+        test={selectedTest}
+        user={user}
+        onSubmit={(answers) => {
+          const hasSA = selectedTest.questions.some((q) => q.type === 'sa')
+          const mcScores = selectedTest.questions
+            .filter((q) => q.type === 'mc')
+            .map((q) => {
+              const ans = answers.find((a) => a.questionId === q.id)
+              return { questionId: q.id, score: ans?.answer === q.answer ? q.points : 0 }
+            })
+
+          const newSub = {
+            id: submissions.length + 1,
+            testId: selectedTest.id,
+            studentId: user.studentId,
+            submittedAt: new Date().toISOString(),
+            answers,
+            scores: hasSA ? [] : mcScores,
+          }
+          setSubmissions([...submissions, newSub])
+          setView('list')
+        }}
+        onBack={() => setView('list')}
+      />
+    )
+  }
+
   return null
+}
+
+// ────────── TakeView 컴포넌트 ──────────
+function TakeView({ test, user, onSubmit, onBack }) {
+  const [answers, setAnswers] = useState(
+    test.questions.map((q) => ({ questionId: q.id, answer: '' }))
+  )
+  const [timeLeft, setTimeLeft] = useState(null)
+  const submitted = useRef(false)
+
+  function calcTimeLeft() {
+    if (!test.startedAt || !test.timeLimit) return null
+    const endTime = new Date(test.startedAt).getTime() + test.timeLimit * 60 * 1000
+    return Math.max(0, Math.floor((endTime - Date.now()) / 1000))
+  }
+
+  function handleSubmit() {
+    if (submitted.current) return
+    submitted.current = true
+    onSubmit(answers)
+  }
+
+  useEffect(() => {
+    if (!test.startedAt || !test.timeLimit) return
+    setTimeLeft(calcTimeLeft())
+    const interval = setInterval(() => {
+      const left = calcTimeLeft()
+      setTimeLeft(left)
+      if (left <= 0) {
+        clearInterval(interval)
+        handleSubmit()
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  function formatTime(sec) {
+    if (sec === null) return ''
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+
+  function setAnswer(questionId, answer) {
+    setAnswers(answers.map((a) => (a.questionId === questionId ? { ...a, answer } : a)))
+  }
+
+  return (
+    <div>
+      {/* 헤더 */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700 mb-1 block">
+            ← 목록
+          </button>
+          <h1 className="text-xl font-bold text-[#2B2B2B]">{test.title}</h1>
+        </div>
+        {timeLeft !== null && (
+          <div
+            className={`text-xl font-mono font-bold px-4 py-2 rounded-xl ${
+              timeLeft <= 60 ? 'bg-red-100 text-[#C0392B]' : 'bg-gray-100 text-[#2B2B2B]'
+            }`}
+          >
+            {formatTime(timeLeft)}
+          </div>
+        )}
+      </div>
+
+      {/* 문항 */}
+      <div className="flex flex-col gap-4 mb-8">
+        {test.questions.map((q, idx) => {
+          const myAnswer = answers.find((a) => a.questionId === q.id)?.answer ?? ''
+          return (
+            <div key={q.id} className="bg-white rounded-xl p-4 shadow-sm">
+              <div className="flex justify-between items-center mb-3">
+                <span className="font-semibold text-[#2B2B2B]">
+                  {idx + 1}번{q.content ? ` — ${q.content}` : ''}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {q.points}점 · {q.type === 'mc' ? '객관식' : '주관식'}
+                </span>
+              </div>
+
+              {q.type === 'mc' ? (
+                <div className="flex gap-2 flex-wrap">
+                  {q.choices.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setAnswer(q.id, c)}
+                      className={`w-10 h-10 rounded-full text-base font-medium transition-colors ${
+                        myAnswer === c
+                          ? 'bg-[#2B2B2B] text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <textarea
+                  value={myAnswer}
+                  onChange={(e) => setAnswer(q.id, e.target.value)}
+                  placeholder="답안을 입력하세요"
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4] resize-none"
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* 제출 버튼 */}
+      <button
+        onClick={handleSubmit}
+        className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium"
+      >
+        제출하기
+      </button>
+    </div>
+  )
 }
 
 // ────────── CreateView 컴포넌트 ──────────
