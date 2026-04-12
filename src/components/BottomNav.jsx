@@ -2,14 +2,15 @@
 import { NavLink } from 'react-router-dom'
 
 const tabs = [
-  { label: '홈',  path: '/dashboard',  icon: '🏠' },
+  { label: '홈',   path: '/dashboard',  icon: '🏠' },
   { label: '출결', path: '/attendance', icon: '✅' },
   { label: '성적', path: '/grades',     icon: '📊' },
+  { label: '영상', path: '/videos',     icon: '🎬' },
 ]
 
 function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-[#2B2B2B] flex items-center justify-around z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-[#2B2B2B] flex items-center justify-around z-50">
       {tabs.map((tab) => (
         <NavLink
           key={tab.path}
