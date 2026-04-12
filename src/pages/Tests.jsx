@@ -19,6 +19,7 @@ export default function Tests() {
   const [submissions, setSubmissions] = useState(initialSubmissions)
   const [view, setView]               = useState('list')
   const [selectedTest, setSelectedTest]             = useState(null)
+  const [selectedSubmission, setSelectedSubmission] = useState(null)
   const [filterClassId, setFilterClassId]           = useState('all')
 
   // 학생은 본인 반만, 교사/관리자는 전체
@@ -202,12 +203,62 @@ export default function Tests() {
     )
   }
 
-  // submissions 뷰 — 다음 Task에서 추가 예정
+  // ────────── submissions 뷰 ──────────
   if (view === 'submissions') {
+    const testSubs = submissions.filter((s) => s.testId === selectedTest.id)
+    const totalPoints = selectedTest.questions.reduce((sum, q) => sum + q.points, 0)
+
     return (
       <div>
-        <button onClick={() => setView('list')} className="text-sm text-gray-500 mb-4">← 목록</button>
-        <h2 className="text-base font-semibold">제출 목록</h2>
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => setView('list')} className="text-sm text-gray-500 hover:text-gray-700">
+            ← 목록
+          </button>
+          <h1 className="text-xl font-bold text-[#2B2B2B]">{selectedTest.title}</h1>
+        </div>
+        <h2 className="text-base font-semibold text-gray-700 mb-4">제출 목록</h2>
+
+        {testSubs.length === 0 ? (
+          <p className="text-center text-gray-400 py-12">제출한 학생이 없습니다.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {testSubs.map((sub) => {
+              const student = students.find((s) => s.id === sub.studentId)
+              const isGraded = sub.scores.length > 0
+              const totalScore = sub.scores.reduce((sum, s) => sum + s.score, 0)
+
+              return (
+                <div
+                  key={sub.id}
+                  onClick={() => {
+                    setSelectedSubmission(sub)
+                    setView('grade')
+                  }}
+                  className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow flex justify-between items-center"
+                >
+                  <div>
+                    <p className="font-medium text-[#2B2B2B]">{student?.name ?? '알 수 없음'}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {sub.submittedAt.slice(0, 16).replace('T', ' ')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {isGraded ? (
+                      <>
+                        <p className="font-bold text-[#2B2B2B]">{totalScore}점</p>
+                        <p className="text-xs text-gray-400">/ {totalPoints}점</p>
+                      </>
+                    ) : (
+                      <span className="text-xs bg-[#C0392B] text-white px-2 py-0.5 rounded-full">
+                        미채점
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     )
   }
@@ -239,6 +290,24 @@ export default function Tests() {
           setView('list')
         }}
         onBack={() => setView('list')}
+      />
+    )
+  }
+
+  // ────────── grade 뷰 ──────────
+  if (view === 'grade') {
+    return (
+      <GradeView
+        test={selectedTest}
+        submission={selectedSubmission}
+        students={students}
+        onSave={(updatedScores) => {
+          setSubmissions(submissions.map((s) =>
+            s.id === selectedSubmission.id ? { ...s, scores: updatedScores } : s
+          ))
+          setView('submissions')
+        }}
+        onBack={() => setView('submissions')}
       />
     )
   }
@@ -565,6 +634,104 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
           저장
         </button>
       </form>
+    </div>
+  )
+}
+
+// ────────── GradeView 컴포넌트 ──────────
+function GradeView({ test, submission, students, onSave, onBack }) {
+  const student = students.find((s) => s.id === submission.studentId)
+  const totalPoints = test.questions.reduce((sum, q) => sum + q.points, 0)
+
+  const [localScores, setLocalScores] = useState(() =>
+    test.questions.map((q) => {
+      const existing = submission.scores.find((s) => s.questionId === q.id)
+      if (existing) return existing
+      if (q.type === 'mc') {
+        const ans = submission.answers.find((a) => a.questionId === q.id)
+        return { questionId: q.id, score: ans?.answer === q.answer ? q.points : 0 }
+      }
+      return { questionId: q.id, score: 0 }
+    })
+  )
+
+  const totalScore = localScores.reduce((sum, s) => sum + s.score, 0)
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-2">
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700">
+          ← 제출 목록
+        </button>
+      </div>
+      <h1 className="text-xl font-bold text-[#2B2B2B] mb-1">채점</h1>
+      <p className="text-sm text-gray-500 mb-6">
+        {student?.name} · {test.title}
+      </p>
+
+      <div className="flex flex-col gap-4 mb-6">
+        {test.questions.map((q, idx) => {
+          const ans = submission.answers.find((a) => a.questionId === q.id)?.answer ?? ''
+          const scoreEntry = localScores.find((s) => s.questionId === q.id)
+          const isCorrect = q.type === 'mc' && ans === q.answer
+
+          return (
+            <div key={q.id} className="bg-white rounded-xl p-4 shadow-sm">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold text-[#2B2B2B]">
+                  {idx + 1}번{q.content ? ` — ${q.content}` : ''}
+                </span>
+                <span className="text-xs text-gray-400">{q.points}점</span>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-2">
+                제출 답안:{' '}
+                <span className="font-medium text-[#2B2B2B]">{ans || '(미입력)'}</span>
+              </p>
+
+              {q.type === 'mc' ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">정답: {q.answer}</span>
+                  <span className={`text-xs font-bold ${isCorrect ? 'text-green-600' : 'text-[#C0392B]'}`}>
+                    {isCorrect ? `✓ ${q.points}점` : '✗ 0점'}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">점수 입력:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={q.points}
+                    value={scoreEntry?.score ?? 0}
+                    onChange={(e) =>
+                      setLocalScores(localScores.map((s) =>
+                        s.questionId === q.id
+                          ? { ...s, score: Math.min(q.points, Math.max(0, Number(e.target.value))) }
+                          : s
+                      ))
+                    }
+                    className="w-16 border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#5B8FD4]"
+                  />
+                  <span className="text-xs text-gray-500">/ {q.points}점</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="flex justify-between items-center bg-white rounded-xl p-4 shadow-sm mb-4">
+        <span className="font-semibold text-gray-700">총점</span>
+        <span className="text-xl font-bold text-[#2B2B2B]">{totalScore} / {totalPoints}점</span>
+      </div>
+
+      <button
+        onClick={() => onSave(localScores)}
+        className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium"
+      >
+        채점 저장
+      </button>
     </div>
   )
 }
