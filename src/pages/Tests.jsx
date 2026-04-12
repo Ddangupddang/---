@@ -312,6 +312,69 @@ export default function Tests() {
     )
   }
 
+  // ────────── result 뷰 (학생 결과 확인) ──────────
+  if (view === 'result') {
+    const mySub = submissions.find(
+      (s) => s.testId === selectedTest.id && s.studentId === user.studentId
+    )
+    const totalPoints = selectedTest.questions.reduce((sum, q) => sum + q.points, 0)
+    const totalScore = mySub?.scores.reduce((sum, s) => sum + s.score, 0) ?? 0
+
+    return (
+      <div>
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => setView('list')} className="text-sm text-gray-500 hover:text-gray-700">
+            ← 목록
+          </button>
+          <h1 className="text-xl font-bold text-[#2B2B2B]">{selectedTest.title} — 결과</h1>
+        </div>
+
+        {/* 총점 카드 */}
+        <div className="bg-[#2B2B2B] text-white rounded-2xl p-6 text-center mb-6">
+          <p className="text-sm text-white/60 mb-1">총점</p>
+          <p className="text-4xl font-bold">{totalScore}점</p>
+          <p className="text-sm text-white/60 mt-1">/ {totalPoints}점</p>
+        </div>
+
+        {/* 문항별 정오표 */}
+        <div className="flex flex-col gap-3">
+          {selectedTest.questions.map((q, idx) => {
+            const ans = mySub?.answers.find((a) => a.questionId === q.id)?.answer ?? ''
+            const scoreEntry = mySub?.scores.find((s) => s.questionId === q.id)
+            const score = scoreEntry?.score ?? null
+            const isCorrect = q.type === 'mc' ? ans === q.answer : null
+
+            return (
+              <div key={q.id} className="bg-white rounded-xl p-4 shadow-sm">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-semibold text-[#2B2B2B]">{idx + 1}번</span>
+                  <span className={`text-sm font-bold ${
+                    score === null ? 'text-gray-400'
+                    : score === q.points ? 'text-green-600'
+                    : score > 0 ? 'text-[#5B8FD4]'
+                    : 'text-[#C0392B]'
+                  }`}>
+                    {score === null ? '채점 대기' : `${score} / ${q.points}점`}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500">
+                  내 답:{' '}
+                  <span className="text-[#2B2B2B] font-medium">{ans || '(미입력)'}</span>
+                </p>
+                {q.type === 'mc' && (
+                  <p className="text-sm text-gray-500">
+                    정답: <span className="text-green-600 font-medium">{q.answer}</span>
+                    <span className="ml-2">{isCorrect ? '✓' : '✗'}</span>
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   return null
 }
 
