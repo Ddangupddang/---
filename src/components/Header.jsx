@@ -24,17 +24,7 @@ function Header() {
     <header className="flex items-center justify-between h-14 px-4 bg-white border-b border-gray-100">
       {/* 학생(모바일): 수문재 로고 표시 / 교사·관리자: 페이지 제목 */}
       {isStudent ? (
-        <div className="flex items-center gap-2">
-          {/* 이미지 로고: public/logo.png 파일 추가 후 아래 주석 해제
-          <img src="/logo.png" alt="수문재 로고" className="h-7" />
-          */}
-          <div>
-            <div className="text-[#5B8FD4] font-extrabold text-lg leading-tight tracking-tight">
-              수문재
-            </div>
-            <div className="text-gray-400 text-[10px] leading-none -mt-0.5">국어전문학원</div>
-          </div>
-        </div>
+        <img src="/logo.png" alt="수문재 로고" className="h-8 object-contain" />
       ) : (
         <h1 className="text-base font-bold text-[#2B2B2B]">{title}</h1>
       )}
