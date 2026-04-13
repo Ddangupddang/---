@@ -29,11 +29,12 @@ function Login() {
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-md p-8">
         {/* 로고 영역 */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-[#2B2B2B] rounded-2xl mb-3">
-            <span className="text-[#5B8FD4] text-xl font-black">수</span>
-          </div>
-          <h1 className="text-lg font-extrabold text-[#2B2B2B]">수문재국어전문학원</h1>
-          <p className="text-sm text-gray-400 mt-1">학생 관리 시스템</p>
+          <img
+            src="/logo-vertical.png"
+            alt="수문재국어 로고"
+            className="w-44 mx-auto mb-4 object-contain"
+          />
+          <p className="text-sm text-gray-400">학생 관리 시스템</p>
         </div>
 
         {/* 로그인 폼 */}
