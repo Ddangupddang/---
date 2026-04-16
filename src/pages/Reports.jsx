@@ -3,19 +3,22 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { reports as initialReports } from '../data/reports'
-import { classes } from '../data/classes'
-import { students } from '../data/students'
+import { useData } from '../context/DataContext'
 import { users } from '../data/users'
+import Layout from '../components/Layout'
 
 export default function Reports() {
   const { user } = useAuth()
+  const { classes, students } = useData()
 
   // 학생은 이 페이지에 접근 불가
   if (user.role === 'student') {
     return (
+      <Layout>
       <div className="text-center py-20 text-gray-400">
         <p className="text-lg">접근 권한이 없습니다.</p>
       </div>
+      </Layout>
     )
   }
 
@@ -37,6 +40,7 @@ export default function Reports() {
   // ────────── list 뷰 ──────────
   if (view === 'list') {
     return (
+      <Layout>
       <div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-bold text-[#2B2B2B]">진도 리포트</h1>
@@ -120,12 +124,14 @@ export default function Reports() {
           </div>
         )}
       </div>
+      </Layout>
     )
   }
 
   // ────────── detail 뷰 ──────────
   if (view === 'detail') {
     return (
+      <Layout>
       <DetailView
         report={selected}
         onUpdate={(updatedReport) => {
@@ -135,12 +141,14 @@ export default function Reports() {
         onBack={() => setView('list')}
         classStudents={classStudents}
       />
+      </Layout>
     )
   }
 
   // ────────── create 뷰 ──────────
   if (view === 'create') {
     return (
+      <Layout>
       <CreateView
         user={user}
         onSubmit={(newReport) => {
@@ -150,6 +158,7 @@ export default function Reports() {
         onCancel={() => setView('list')}
         classStudents={classStudents}
       />
+      </Layout>
     )
   }
 
@@ -158,6 +167,7 @@ export default function Reports() {
 
 // ────────── DetailView 컴포넌트 ──────────
 function DetailView({ report, onUpdate, onBack, classStudents }) {
+  const { classes } = useData()
   const cls        = classes.find((c) => c.id === report.classId)
   const author     = users.find((u) => u.id === report.createdBy)
   const studs      = classStudents(report.classId)
@@ -247,6 +257,7 @@ function DetailView({ report, onUpdate, onBack, classStudents }) {
 
 // ────────── CreateView 컴포넌트 ──────────
 function CreateView({ user, onSubmit, onCancel, classStudents }) {
+  const { classes } = useData()
   const [classId,  setClassId]  = useState(String(classes[0]?.id ?? ''))
   const [date,     setDate]     = useState(new Date().toISOString().slice(0, 10))
   const [subject,  setSubject]  = useState('')

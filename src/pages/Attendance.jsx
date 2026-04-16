@@ -2,9 +2,7 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
-import { students } from '../data/students'
-import { classes } from '../data/classes'
-import { attendance as initialAttendance } from '../data/attendance'
+import { useData } from '../context/DataContext'
 
 const statusConfig = {
   present: { label: '출석', color: 'bg-green-100 text-green-700' },
@@ -15,33 +13,27 @@ const statusConfig = {
 
 const nextStatus = { none: 'present', present: 'absent', absent: 'late', late: 'none' }
 
-function AdminTeacherAttendance({ user, records, setRecords }) {
+function AdminTeacherAttendance({ user, records, upsertAttendance, deleteAttendance }) {
+  const { classes, students } = useData()
   const today = new Date().toISOString().slice(0, 10)
   const [selectedDate, setSelectedDate] = useState(today)
-  const [selectedClass, setSelectedClass] = useState(classes[0]?.id ?? null)
+  const [selectedClass, setSelectedClass] = useState(null)
 
   const myClasses = user.role === 'admin' ? classes : classes.filter((c) => c.teacherId === user.id)
-  const classStudents = students.filter((s) => s.classId === selectedClass)
+  const activeClass = selectedClass ?? myClasses[0]?.id ?? null
+  const classStudents = students.filter((s) => s.classId === activeClass)
 
   const getStatus = (studentId) =>
     records.find((r) => r.studentId === studentId && r.date === selectedDate)?.status ?? 'none'
 
-  const toggleStatus = (studentId) => {
+  const toggleStatus = async (studentId) => {
     const current = getStatus(studentId)
     const next = nextStatus[current]
-    setRecords((prev) => {
-      const existing = prev.find((r) => r.studentId === studentId && r.date === selectedDate)
-      if (next === 'none') {
-        return prev.filter((r) => !(r.studentId === studentId && r.date === selectedDate))
-      }
-      if (existing) {
-        return prev.map((r) =>
-          r.studentId === studentId && r.date === selectedDate ? { ...r, status: next } : r
-        )
-      }
-      const newId = Math.max(...prev.map((r) => r.id), 0) + 1
-      return [...prev, { id: newId, studentId, date: selectedDate, status: next }]
-    })
+    if (next === 'none') {
+      await deleteAttendance(studentId, selectedDate)
+    } else {
+      await upsertAttendance(studentId, selectedDate, next)
+    }
   }
 
   const presentCount = classStudents.filter((s) => getStatus(s.id) === 'present').length
@@ -62,7 +54,7 @@ function AdminTeacherAttendance({ user, records, setRecords }) {
           <button
             key={cls.id}
             onClick={() => setSelectedClass(cls.id)}
-            className={`px-3 py-1 rounded-full text-xs font-medium ${selectedClass === cls.id ? 'bg-[#2B2B2B] text-white' : 'bg-white text-gray-500 border border-gray-200'}`}
+            className={`px-3 py-1 rounded-full text-xs font-medium ${activeClass === cls.id ? 'bg-[#2B2B2B] text-white' : 'bg-white text-gray-500 border border-gray-200'}`}
           >
             {cls.name}
           </button>
@@ -166,12 +158,12 @@ function StudentAttendance({ user, records }) {
 
 function Attendance() {
   const { user } = useAuth()
-  const [records, setRecords] = useState(initialAttendance)
+  const { attendance, upsertAttendance, deleteAttendance } = useData()
   return (
     <Layout>
       {user?.role === 'student'
-        ? <StudentAttendance user={user} records={records} />
-        : <AdminTeacherAttendance user={user} records={records} setRecords={setRecords} />
+        ? <StudentAttendance user={user} records={attendance} />
+        : <AdminTeacherAttendance user={user} records={attendance} upsertAttendance={upsertAttendance} deleteAttendance={deleteAttendance} />
       }
     </Layout>
   )

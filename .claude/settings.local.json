@@ -7,7 +7,20 @@
       "Bash(git commit:*)",
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "Bash(npx vitest:*)",
+      "Bash(node -e \"const jsdom = require\\('jsdom'\\); const d = new jsdom.JSDOM\\(''\\); console.log\\(typeof d.window.localStorage\\)\")",
+      "Bash(node --trace-warnings -e \"require\\('jsdom'\\)\")",
+      "Bash(node:*)",
+      "Bash(npm test:*)",
+      "Bash(tee /tmp/test_output.txt)",
+      "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(bash:*)",
+      "Bash(/Users/choiwonyong/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/scripts/start-server.sh:*)",
+      "mcp__plugin_oh-my-claudecode_t__project_memory_read",
+      "Bash(git push:*)",
+      "Bash(ls /Users/choiwonyong/Documents/수문재-학생관리/.env*)"
     ]
   }
 }

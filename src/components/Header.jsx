@@ -1,5 +1,5 @@
 // src/components/Header.jsx
-import { useLocation } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const pageTitles = {
@@ -24,7 +24,9 @@ function Header() {
     <header className="flex items-center justify-between h-14 px-4 bg-white border-b border-gray-100">
       {/* 학생(모바일): 수문재 로고 표시 / 교사·관리자: 페이지 제목 */}
       {isStudent ? (
-        <img src="/logo.png" alt="수문재 로고" className="h-8 object-contain" />
+        <Link to="/dashboard">
+          <img src="/logo.png" alt="수문재 로고" className="h-8 object-contain hover:opacity-80 transition-opacity" />
+        </Link>
       ) : (
         <h1 className="text-base font-bold text-[#2B2B2B]">{title}</h1>
       )}

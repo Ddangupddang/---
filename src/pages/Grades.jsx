@@ -2,10 +2,7 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
-import { students } from '../data/students'
-import { classes } from '../data/classes'
-import { grades as initialGrades } from '../data/grades'
-
+import { useData } from '../context/DataContext'
 // ────────── SVG 꺾은선 그래프 ──────────
 // data: [{ label: 'MM-DD', value: 점수, max: 만점 }]
 function LineChart({ data, color = '#5B8FD4', height = 140 }) {
@@ -107,9 +104,9 @@ function LineChart({ data, color = '#5B8FD4', height = 140 }) {
 // ────────── Grades 페이지 ──────────
 function Grades() {
   const { user } = useAuth()
-  const [gradeList,     setGradeList]     = useState(initialGrades)
+  const { classes, students, grades: gradeList, addGrade } = useData()
   const [activeType,    setActiveType]    = useState('weekly')
-  const [selectedClass, setSelectedClass] = useState(classes[0]?.id ?? null)
+  const [selectedClass, setSelectedClass] = useState(null)
   const [showForm,      setShowForm]      = useState(false)
   const [form, setForm] = useState({
     studentId: '', subject: '', part: '', score: '', total: '100',
@@ -117,26 +114,25 @@ function Grades() {
   })
 
   const isStudent     = user?.role === 'student'
-  const classStudents = students.filter((s) => s.classId === selectedClass)
+  const activeClass   = selectedClass ?? classes[0]?.id ?? null
+  const classStudents = students.filter((s) => s.classId === activeClass)
 
   const typeTabs = [
     { key: 'weekly', label: '주간 테스트' },
     { key: 'exam',   label: '내신 시험' },
   ]
 
-  function handleAdd(e) {
+  async function handleAdd(e) {
     e.preventDefault()
-    const newId = Math.max(...gradeList.map((g) => g.id), 0) + 1
-    setGradeList((prev) => [
-      ...prev,
-      {
-        id: newId, type: activeType,
-        ...form,
-        studentId: Number(form.studentId),
-        score:     Number(form.score),
-        total:     Number(form.total),
-      },
-    ])
+    await addGrade({
+      type:      activeType,
+      studentId: Number(form.studentId),
+      subject:   form.subject,
+      part:      form.part,
+      score:     Number(form.score),
+      total:     Number(form.total),
+      date:      form.date,
+    })
     setShowForm(false)
     setForm({ studentId: '', subject: '', part: '', score: '', total: '100', date: new Date().toISOString().slice(0, 10) })
   }
@@ -309,7 +305,7 @@ function Grades() {
                 key={cls.id}
                 onClick={() => setSelectedClass(cls.id)}
                 className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  selectedClass === cls.id
+                  activeClass === cls.id
                     ? 'bg-[#2B2B2B] text-white'
                     : 'bg-white text-gray-500 border border-gray-200'
                 }`}
@@ -329,7 +325,7 @@ function Grades() {
         {/* 반 평균 추이 그래프 */}
         <div className="bg-white rounded-xl shadow-sm p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">
-            {classes.find((c) => c.id === selectedClass)?.name} 평균 추이
+            {classes.find((c) => c.id === activeClass)?.name} 평균 추이
           </h2>
           {avgChartData.length < 2 ? (
             <p className="text-sm text-gray-400 text-center py-6">

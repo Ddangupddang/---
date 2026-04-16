@@ -1,0 +1,82 @@
+<h2>영상 목록 레이아웃</h2>
+<p class="subtitle">교사/관리자 화면 기준 — 학생은 모바일 전용이라 카드 1열 고정</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>그리드 카드형</h3>
+      <p>YouTube처럼 썸네일이 크게 보이는 카드 격자 배열. 시각적으로 직관적이고 영상 탐색이 빠름. PC에서 3열, 모바일에서 1열.</p>
+      <div style="margin-top:12px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+        <div style="background:#e2e8f0; border-radius:6px; padding:8px; font-size:11px;">
+          <div style="background:#94a3b8; height:48px; border-radius:4px; margin-bottom:6px;"></div>
+          <div style="font-weight:600; font-size:10px; color:#2B2B2B;">1강. 화법과 작문 기초</div>
+          <div style="color:#64748b; font-size:10px;">수능국어A반 · 23:14</div>
+        </div>
+        <div style="background:#e2e8f0; border-radius:6px; padding:8px; font-size:11px;">
+          <div style="background:#94a3b8; height:48px; border-radius:4px; margin-bottom:6px;"></div>
+          <div style="font-weight:600; font-size:10px; color:#2B2B2B;">2강. 독서 비문학 전략</div>
+          <div style="color:#64748b; font-size:10px;">수능국어A반 · 31:05</div>
+        </div>
+        <div style="background:#e2e8f0; border-radius:6px; padding:8px; font-size:11px;">
+          <div style="background:#94a3b8; height:48px; border-radius:4px; margin-bottom:6px;"></div>
+          <div style="font-weight:600; font-size:10px; color:#2B2B2B;">3강. 문학 현대시 분석</div>
+          <div style="color:#64748b; font-size:10px;">내신국어B반 · 18:40</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>리스트형</h3>
+      <p>가로로 긴 행 형태. 제목·반·날짜·댓글수 등 정보가 한눈에 보임. 교사가 영상 목록을 관리할 때 효율적. 성적/출결 페이지와 스타일 일관성 유지.</p>
+      <div style="margin-top:12px; font-size:11px; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:48px 1fr 80px 60px 50px; gap:8px; padding:8px 10px; background:#f8fafc; font-weight:600; color:#64748b; font-size:10px;">
+          <div></div><div>제목</div><div>반</div><div>날짜</div><div>댓글</div>
+        </div>
+        <div style="display:grid; grid-template-columns:48px 1fr 80px 60px 50px; gap:8px; padding:8px 10px; border-top:1px solid #f1f5f9; align-items:center;">
+          <div style="background:#94a3b8; height:32px; border-radius:4px;"></div>
+          <div style="font-weight:600; font-size:10px;">1강. 화법과 작문 기초</div>
+          <div style="font-size:10px; color:#64748b;">수능국어A</div>
+          <div style="font-size:10px; color:#64748b;">04.10</div>
+          <div style="font-size:10px; color:#5B8FD4;">3</div>
+        </div>
+        <div style="display:grid; grid-template-columns:48px 1fr 80px 60px 50px; gap:8px; padding:8px 10px; border-top:1px solid #f1f5f9; align-items:center;">
+          <div style="background:#94a3b8; height:32px; border-radius:4px;"></div>
+          <div style="font-weight:600; font-size:10px;">2강. 독서 비문학 전략</div>
+          <div style="font-size:10px; color:#64748b;">수능국어A</div>
+          <div style="font-size:10px; color:#64748b;">04.08</div>
+          <div style="font-size:10px; color:#5B8FD4;">1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>반 탭 + 그리드 혼합</h3>
+      <p>상단에 반 탭(수능A반 / 내신B반)을 두고, 탭 안에 그리드 카드 배열. 반 전환이 직관적이고 영상도 시각적으로 잘 보임. A와 B의 장점 결합.</p>
+      <div style="margin-top:12px;">
+        <div style="display:flex; gap:6px; margin-bottom:8px;">
+          <div style="background:#2B2B2B; color:white; padding:4px 10px; border-radius:20px; font-size:10px; font-weight:600;">수능국어A반</div>
+          <div style="background:#f1f5f9; color:#64748b; padding:4px 10px; border-radius:20px; font-size:10px;">내신국어B반</div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;">
+          <div style="background:#e2e8f0; border-radius:6px; padding:8px;">
+            <div style="background:#94a3b8; height:44px; border-radius:4px; margin-bottom:6px;"></div>
+            <div style="font-weight:600; font-size:10px; color:#2B2B2B;">1강. 화법과 작문 기초</div>
+            <div style="color:#64748b; font-size:10px;">23:14 · 댓글 3</div>
+          </div>
+          <div style="background:#e2e8f0; border-radius:6px; padding:8px;">
+            <div style="background:#94a3b8; height:44px; border-radius:4px; margin-bottom:6px;"></div>
+            <div style="font-weight:600; font-size:10px; color:#2B2B2B;">2강. 독서 비문학 전략</div>
+            <div style="color:#64748b; font-size:10px;">31:05 · 댓글 1</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

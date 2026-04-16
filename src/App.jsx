@@ -1,6 +1,7 @@
 // src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { DataProvider } from './context/DataContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -16,6 +17,7 @@ import Reports from './pages/Reports'
 function App() {
   return (
     <AuthProvider>
+      <DataProvider>
       <BrowserRouter>
         <Routes>
           {/* 루트: 로그인 페이지로 이동 */}
@@ -118,6 +120,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
+      </DataProvider>
     </AuthProvider>
   )
 }

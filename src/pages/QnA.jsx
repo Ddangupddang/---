@@ -3,11 +3,12 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { qnaQuestions as initialQna } from '../data/qna'
 import { tests } from '../data/tests'
-import { students } from '../data/students'
-import { classes } from '../data/classes'
+import { useData } from '../context/DataContext'
+import Layout from '../components/Layout'
 
 export default function QnA() {
   const { user } = useAuth()
+  const { classes, students } = useData()
   const [questions, setQuestions] = useState(initialQna)
   const [view, setView]                       = useState('list') // list | detail | ask
   const [selectedQuestion, setSelectedQuestion] = useState(null)
@@ -47,6 +48,7 @@ export default function QnA() {
   // ────────── list 뷰 ──────────
   if (view === 'list') {
     return (
+      <Layout>
       <div>
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -142,6 +144,7 @@ export default function QnA() {
           </div>
         )}
       </div>
+      </Layout>
     )
   }
 
@@ -153,6 +156,7 @@ export default function QnA() {
     const qIdx      = qInfo ? test.questions.indexOf(qInfo) : -1
 
     return (
+      <Layout>
       <DetailView
         question={q}
         test={test}
@@ -171,6 +175,7 @@ export default function QnA() {
         }}
         onBack={() => setView('list')}
       />
+      </Layout>
     )
   }
 
@@ -178,6 +183,7 @@ export default function QnA() {
   if (view === 'ask') {
     if (user.role !== 'student') { setView('list'); return null }
     return (
+      <Layout>
       <AskView
         tests={accessibleTests}
         onSubmit={(newQ) => {
@@ -197,6 +203,7 @@ export default function QnA() {
         }}
         onBack={() => setView('list')}
       />
+      </Layout>
     )
   }
 

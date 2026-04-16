@@ -3,8 +3,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { tests as initialTests } from '../data/tests'
 import { submissions as initialSubmissions } from '../data/submissions'
-import { classes } from '../data/classes'
-import { students } from '../data/students'
+import Layout from '../components/Layout'
+import { useData } from '../context/DataContext'
 
 // 상태 배지 색상
 const statusBadge = {
@@ -15,6 +15,7 @@ const statusBadge = {
 
 export default function Tests() {
   const { user } = useAuth()
+  const { classes, students } = useData()
   const [tests, setTests]             = useState(initialTests)
   const [submissions, setSubmissions] = useState(initialSubmissions)
   const [view, setView]               = useState('list')
@@ -48,6 +49,7 @@ export default function Tests() {
   // ────────── list 뷰 ──────────
   if (view === 'list') {
     return (
+      <Layout>
       <div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-bold text-[#2B2B2B]">테스트</h1>
@@ -185,6 +187,7 @@ export default function Tests() {
           </div>
         )}
       </div>
+      </Layout>
     )
   }
 
@@ -192,6 +195,7 @@ export default function Tests() {
   if (view === 'create') {
     if (user.role === 'student') { setView('list'); return null }
     return (
+      <Layout>
       <CreateView
         classes={accessibleClasses}
         user={user}
@@ -201,6 +205,7 @@ export default function Tests() {
         }}
         onCancel={() => setView('list')}
       />
+      </Layout>
     )
   }
 
@@ -211,6 +216,7 @@ export default function Tests() {
     const totalPoints = selectedTest.questions.reduce((sum, q) => sum + q.points, 0)
 
     return (
+      <Layout>
       <div>
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView('list')} className="text-sm text-gray-500 hover:text-gray-700">
@@ -262,6 +268,7 @@ export default function Tests() {
           </div>
         )}
       </div>
+      </Layout>
     )
   }
 
@@ -301,6 +308,7 @@ export default function Tests() {
   if (view === 'grade') {
     if (user.role === 'student') { setView('list'); return null }
     return (
+      <Layout>
       <GradeView
         test={selectedTest}
         submission={selectedSubmission}
@@ -313,6 +321,7 @@ export default function Tests() {
         }}
         onBack={() => setView('submissions')}
       />
+      </Layout>
     )
   }
 
@@ -320,12 +329,14 @@ export default function Tests() {
   if (view === 'result') {
     if (!selectedTest) { setView('list'); return null }
     return (
+      <Layout>
       <ResultView
         test={selectedTest}
         user={user}
         submissions={submissions}
         onBack={() => setView('list')}
       />
+      </Layout>
     )
   }
 
@@ -639,7 +650,8 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
                   type="number"
                   value={q.points}
                   onChange={(e) => updateQuestion(idx, 'points', Number(e.target.value))}
-                  min="1"
+                  min="0.1"
+                  step="0.1"
                   className="w-16 border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#5B8FD4]"
                 />
                 <span className="text-xs text-gray-500">점</span>

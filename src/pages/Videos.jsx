@@ -3,15 +3,16 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { videos as initialVideos } from '../data/videos'
 import { comments as initialComments } from '../data/comments'
-import { classes } from '../data/classes'
-import { students } from '../data/students'
+import { useData } from '../context/DataContext'
 import VideoCard from '../components/VideoCard'
 import VideoPlayer from '../components/VideoPlayer'
 import VideoForm from '../components/VideoForm'
 import { extractVideoId, getThumbnailUrl } from '../utils/youtube'
+import Layout from '../components/Layout'
 
 export default function Videos() {
   const { user } = useAuth()
+  const { classes, students } = useData()
   const [videos, setVideos] = useState(initialVideos)
   const [comments, setComments] = useState(initialComments)
   const [selectedVideo, setSelectedVideo] = useState(null)
@@ -82,6 +83,7 @@ export default function Videos() {
   }
 
   return (
+    <Layout>
     <div>
       {/* 헤더 */}
       <div className="flex justify-between items-center mb-6">
@@ -159,5 +161,6 @@ export default function Videos() {
         </div>
       )}
     </div>
+    </Layout>
   )
 }

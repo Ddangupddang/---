@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cat /Users/choiwonyong/Documents/수문재-학생관리/vercel.json 2>/dev/null; ls /Users/choiwonyong/Documents/수문재-학생관리/.vercel/ 2>/dev/null\",\"description\":\"Check Vercel config files\"}",
+  "error": "Exit code 1\n{\n  \"rewrites\": [\n    { \"source\": \"/(.*)\", \"destination\": \"/index.html\" }\n  ]\n}",
+  "timestamp": "2026-04-15T07:17:58.709Z",
+  "retry_count": 1
+}

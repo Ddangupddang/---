@@ -2,8 +2,7 @@
 import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
-import { classes } from '../data/classes'
-import { students } from '../data/students'
+import { useData } from '../context/DataContext'
 import { attendance } from '../data/attendance'
 import { grades } from '../data/grades'
 import { tests } from '../data/tests'
@@ -16,6 +15,7 @@ const today = new Date().toISOString().slice(0, 10)
 // ────────── 관리자/교사 대시보드 ──────────
 function AdminTeacherDashboard({ user }) {
   const navigate = useNavigate()
+  const { classes, students } = useData()
 
   const myClasses = user.role === 'admin'
     ? classes
@@ -33,6 +33,9 @@ function AdminTeacherDashboard({ user }) {
     const test = tests.find((t) => t.id === q.testId)
     return !q.answer && (user.role === 'admin' || myClassIds.includes(test?.classId))
   }).length
+
+  // 요약 통계
+  const totalStudents = students.filter((s) => myClassIds.includes(s.classId)).length
 
   // 최근 공지사항 2개
   const recentNotices = [...notices]
@@ -60,29 +63,43 @@ function AdminTeacherDashboard({ user }) {
   return (
     <div className="flex flex-col gap-5">
 
-      {/* 미처리 알림 배지 */}
-      {(ungradedCount > 0 || unansweredQna > 0) && (
-        <div className="flex gap-3">
-          {ungradedCount > 0 && (
-            <button
-              onClick={() => navigate('/tests')}
-              className="flex-1 bg-[#C0392B]/10 border border-[#C0392B]/20 rounded-xl p-3 text-left hover:bg-[#C0392B]/15 transition-colors"
-            >
-              <p className="text-xl font-bold text-[#C0392B]">{ungradedCount}</p>
-              <p className="text-xs text-[#C0392B]/80">미채점 답안</p>
-            </button>
-          )}
-          {unansweredQna > 0 && (
-            <button
-              onClick={() => navigate('/qna')}
-              className="flex-1 bg-[#f39c12]/10 border border-[#f39c12]/20 rounded-xl p-3 text-left hover:bg-[#f39c12]/15 transition-colors"
-            >
-              <p className="text-xl font-bold text-[#f39c12]">{unansweredQna}</p>
-              <p className="text-xs text-[#f39c12]/80">미답변 Q&A</p>
-            </button>
-          )}
+      {/* 요약 통계 그리드 — 항상 표시 */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-[#2B2B2B]">{totalStudents}</p>
+          <p className="text-xs text-gray-400 mt-0.5">전체 학생</p>
         </div>
-      )}
+        <button
+          onClick={() => navigate('/tests')}
+          className={`rounded-xl p-4 shadow-sm text-center transition-colors ${
+            ungradedCount > 0
+              ? 'bg-[#C0392B]/10 hover:bg-[#C0392B]/15'
+              : 'bg-white hover:bg-gray-50'
+          }`}
+        >
+          <p className={`text-2xl font-bold ${ungradedCount > 0 ? 'text-[#C0392B]' : 'text-[#2B2B2B]'}`}>
+            {ungradedCount}
+          </p>
+          <p className={`text-xs mt-0.5 ${ungradedCount > 0 ? 'text-[#C0392B]/70' : 'text-gray-400'}`}>
+            미채점
+          </p>
+        </button>
+        <button
+          onClick={() => navigate('/qna')}
+          className={`rounded-xl p-4 shadow-sm text-center transition-colors ${
+            unansweredQna > 0
+              ? 'bg-[#f39c12]/10 hover:bg-[#f39c12]/15'
+              : 'bg-white hover:bg-gray-50'
+          }`}
+        >
+          <p className={`text-2xl font-bold ${unansweredQna > 0 ? 'text-[#f39c12]' : 'text-[#2B2B2B]'}`}>
+            {unansweredQna}
+          </p>
+          <p className={`text-xs mt-0.5 ${unansweredQna > 0 ? 'text-[#f39c12]/70' : 'text-gray-400'}`}>
+            미답변 Q&A
+          </p>
+        </button>
+      </div>
 
       {/* 오늘 출결 현황 */}
       <section>

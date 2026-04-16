@@ -2,11 +2,13 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { notices as initialNotices } from '../data/notices'
-import { classes } from '../data/classes'
+import { useData } from '../context/DataContext'
 import { users } from '../data/users'
+import Layout from '../components/Layout'
 
 export default function Notices() {
   const { user } = useAuth()
+  const { classes } = useData()
   const [notices, setNotices]   = useState(initialNotices)
   const [view, setView]         = useState('list') // list | detail | create
   const [selected, setSelected] = useState(null)
@@ -25,6 +27,7 @@ export default function Notices() {
   // ────────── list 뷰 ──────────
   if (view === 'list') {
     return (
+      <Layout>
       <div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-bold text-[#2B2B2B]">공지사항</h1>
@@ -80,6 +83,7 @@ export default function Notices() {
           </div>
         )}
       </div>
+      </Layout>
     )
   }
 
@@ -96,6 +100,7 @@ export default function Notices() {
           .join(', ')
 
     return (
+      <Layout>
       <div>
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView('list')} className="text-sm text-gray-500 hover:text-gray-700">
@@ -123,6 +128,7 @@ export default function Notices() {
           <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{n.content}</p>
         </div>
       </div>
+      </Layout>
     )
   }
 
@@ -130,6 +136,7 @@ export default function Notices() {
   if (view === 'create') {
     if (!isTeacherOrAdmin) { setView('list'); return null }
     return (
+      <Layout>
       <CreateView
         user={user}
         onSubmit={(newNotice) => {
@@ -138,6 +145,7 @@ export default function Notices() {
         }}
         onCancel={() => setView('list')}
       />
+      </Layout>
     )
   }
 
@@ -146,6 +154,7 @@ export default function Notices() {
 
 // ────────── CreateView 컴포넌트 ──────────
 function CreateView({ user, onSubmit, onCancel }) {
+  const { classes } = useData()
   const [title,          setTitle]          = useState('')
   const [content,        setContent]        = useState('')
   const [selectedClasses, setSelectedClasses] = useState(classes.map((c) => c.id)) // 기본: 전체

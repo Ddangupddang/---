@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1775883080696,
+  "lastScanned": 1776235232595,
   "projectRoot": "/Users/choiwonyong/Documents/수문재-학생관리",
   "techStack": {
     "languages": [
@@ -28,6 +28,11 @@
         "name": "vite",
         "version": "8.0.4",
         "category": "build"
+      },
+      {
+        "name": "vitest",
+        "version": "4.1.4",
+        "category": "testing"
       }
     ],
     "packageManager": "npm",
@@ -49,12 +54,13 @@
     "namingStyle": null,
     "importStyle": null,
     "testPattern": null,
-    "fileOrganization": null
+    "fileOrganization": "type-based"
   },
   "structure": {
     "isMonorepo": false,
     "workspaces": [],
     "mainDirectories": [
+      "docs",
       "public",
       "src"
     ],
@@ -62,12 +68,35 @@
   },
   "customNotes": [],
   "directoryMap": {
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 8,
+      "lastAccessed": 1776235232542,
+      "keyFiles": [
+        "TalkMedia_i_39e158d1ca28.png.png",
+        "TalkMedia_i_758c35b340bd.png.png",
+        "TalkMedia_i_d882f5d91c2d.png.png",
+        "favicon.svg",
+        "icons.svg"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 0,
+      "lastAccessed": 1776235232544,
+      "keyFiles": []
+    },
     "public": {
       "path": "public",
       "purpose": "Public files",
-      "fileCount": 2,
-      "lastAccessed": 1775883080676,
+      "fileCount": 7,
+      "lastAccessed": 1776235232544,
       "keyFiles": [
+        "TalkMedia_i_39e158d1ca28.png.png",
+        "TalkMedia_i_758c35b340bd.png.png",
+        "TalkMedia_i_d882f5d91c2d.png.png",
         "favicon.svg",
         "icons.svg"
       ]
@@ -76,7 +105,7 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 4,
-      "lastAccessed": 1775883080676,
+      "lastAccessed": 1776235232544,
       "keyFiles": [
         "App.css",
         "App.jsx",
@@ -84,65 +113,256 @@
         "main.jsx"
       ]
     },
+    "dist/assets": {
+      "path": "dist/assets",
+      "purpose": "Static assets",
+      "fileCount": 2,
+      "lastAccessed": 1776235232545,
+      "keyFiles": [
+        "index-C0lf4r-0.js",
+        "index-CQjiB9Lc.css"
+      ]
+    },
     "src/assets": {
       "path": "src/assets",
       "purpose": "Static assets",
       "fileCount": 3,
-      "lastAccessed": 1775883080680,
+      "lastAccessed": 1776235232545,
       "keyFiles": [
         "hero.png",
         "react.svg",
         "vite.svg"
       ]
+    },
+    "src/components": {
+      "path": "src/components",
+      "purpose": "UI components",
+      "fileCount": 14,
+      "lastAccessed": 1776235232545,
+      "keyFiles": [
+        "BottomNav.jsx",
+        "CommentSection.jsx",
+        "CommentSection.test.jsx"
+      ]
+    },
+    "src/data": {
+      "path": "src/data",
+      "purpose": "Data files",
+      "fileCount": 12,
+      "lastAccessed": 1776235232546,
+      "keyFiles": [
+        "attendance.js",
+        "classes.js",
+        "comments.js"
+      ]
+    },
+    "src/lib": {
+      "path": "src/lib",
+      "purpose": "Library code",
+      "fileCount": 1,
+      "lastAccessed": 1776235232546,
+      "keyFiles": [
+        "supabase.js"
+      ]
     }
   },
   "hotPaths": [
     {
-      "path": "docs/superpowers/plans/2026-04-11-phase1-implementation.md",
-      "accessCount": 6,
-      "lastAccessed": 1775885218396,
+      "path": "src/pages/Students.jsx",
+      "accessCount": 28,
+      "lastAccessed": 1776234643696,
       "type": "file"
     },
     {
-      "path": "docs/superpowers/specs/2026-04-11-phase1-design.md",
-      "accessCount": 4,
-      "lastAccessed": 1775884603745,
+      "path": "src/components/Sidebar.jsx",
+      "accessCount": 26,
+      "lastAccessed": 1776121962074,
       "type": "file"
     },
     {
-      "path": "",
-      "accessCount": 2,
-      "lastAccessed": 1775883130886,
-      "type": "directory"
-    },
-    {
-      "path": "vite.config.js",
-      "accessCount": 2,
-      "lastAccessed": 1775885432807,
-      "type": "file"
-    },
-    {
-      "path": "src/index.css",
-      "accessCount": 2,
-      "lastAccessed": 1775885448470,
-      "type": "file"
-    },
-    {
-      "path": "index.html",
-      "accessCount": 2,
-      "lastAccessed": 1775885453544,
+      "path": "src/pages/Grades.jsx",
+      "accessCount": 25,
+      "lastAccessed": 1776235302409,
       "type": "file"
     },
     {
       "path": "src/App.jsx",
-      "accessCount": 1,
-      "lastAccessed": 1775883124647,
+      "accessCount": 23,
+      "lastAccessed": 1776159862304,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/Attendance.jsx",
+      "accessCount": 20,
+      "lastAccessed": 1776235267543,
+      "type": "file"
+    },
+    {
+      "path": "src/components/BottomNav.jsx",
+      "accessCount": 17,
+      "lastAccessed": 1776121962123,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 16,
+      "lastAccessed": 1776121966994,
+      "type": "directory"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-04-11-phase1-implementation.md",
+      "accessCount": 14,
+      "lastAccessed": 1775981114522,
+      "type": "file"
+    },
+    {
+      "path": "src/components/Header.jsx",
+      "accessCount": 14,
+      "lastAccessed": 1776121976068,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/Dashboard.jsx",
+      "accessCount": 14,
+      "lastAccessed": 1776159914174,
+      "type": "file"
+    },
+    {
+      "path": "src/context/AuthContext.jsx",
+      "accessCount": 12,
+      "lastAccessed": 1776237267515,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/Login.jsx",
+      "accessCount": 9,
+      "lastAccessed": 1776089526138,
       "type": "file"
     },
     {
       "path": "package.json",
-      "accessCount": 1,
-      "lastAccessed": 1775883125362,
+      "accessCount": 9,
+      "lastAccessed": 1776122051979,
+      "type": "file"
+    },
+    {
+      "path": "src/data/students.js",
+      "accessCount": 9,
+      "lastAccessed": 1776159706033,
+      "type": "file"
+    },
+    {
+      "path": "vite.config.js",
+      "accessCount": 8,
+      "lastAccessed": 1775964756453,
+      "type": "file"
+    },
+    {
+      "path": "src/data/users.js",
+      "accessCount": 8,
+      "lastAccessed": 1776122131288,
+      "type": "file"
+    },
+    {
+      "path": "src/data/classes.js",
+      "accessCount": 8,
+      "lastAccessed": 1776159705882,
+      "type": "file"
+    },
+    {
+      "path": "src/test/setup.js",
+      "accessCount": 7,
+      "lastAccessed": 1775964756401,
+      "type": "file"
+    },
+    {
+      "path": "src/components/Layout.jsx",
+      "accessCount": 7,
+      "lastAccessed": 1776089524762,
+      "type": "file"
+    },
+    {
+      "path": "src/data/grades.js",
+      "accessCount": 7,
+      "lastAccessed": 1776235034294,
+      "type": "file"
+    },
+    {
+      "path": "src/main.jsx",
+      "accessCount": 6,
+      "lastAccessed": 1775946596914,
+      "type": "file"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-04-12-video-management.md",
+      "accessCount": 6,
+      "lastAccessed": 1775973632399,
+      "type": "file"
+    },
+    {
+      "path": "src/data/attendance.js",
+      "accessCount": 6,
+      "lastAccessed": 1776235034116,
+      "type": "file"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-04-11-phase1-design.md",
+      "accessCount": 5,
+      "lastAccessed": 1775963352272,
+      "type": "file"
+    },
+    {
+      "path": "src/components/ProtectedRoute.jsx",
+      "accessCount": 5,
+      "lastAccessed": 1776090229973,
+      "type": "file"
+    },
+    {
+      "path": "index.html",
+      "accessCount": 4,
+      "lastAccessed": 1775885519533,
+      "type": "file"
+    },
+    {
+      "path": "src/index.css",
+      "accessCount": 4,
+      "lastAccessed": 1775885547433,
+      "type": "file"
+    },
+    {
+      "path": "src/constants/colors.js",
+      "accessCount": 4,
+      "lastAccessed": 1775946577022,
+      "type": "file"
+    },
+    {
+      "path": "src/context/AuthContext.test.jsx",
+      "accessCount": 3,
+      "lastAccessed": 1775945130196,
+      "type": "file"
+    },
+    {
+      "path": "src/components/ProtectedRoute.test.jsx",
+      "accessCount": 3,
+      "lastAccessed": 1775964760734,
+      "type": "file"
+    },
+    {
+      "path": "src/App.css",
+      "accessCount": 2,
+      "lastAccessed": 1775946543787,
+      "type": "file"
+    },
+    {
+      "path": "src/data/videos.js",
+      "accessCount": 2,
+      "lastAccessed": 1775965740820,
+      "type": "file"
+    },
+    {
+      "path": "src/data/comments.js",
+      "accessCount": 2,
+      "lastAccessed": 1775965741200,
       "type": "file"
     },
     {
@@ -200,9 +420,51 @@
       "type": "file"
     },
     {
-      "path": "src/test/setup.js",
+      "path": "eslint.config.js",
       "accessCount": 1,
-      "lastAccessed": 1775885437414,
+      "lastAccessed": 1775885552873,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/52158-1775962840/content/phase2-scope.html",
+      "accessCount": 1,
+      "lastAccessed": 1775962861527,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/53512-1775963578/content/video-list-layout.html",
+      "accessCount": 1,
+      "lastAccessed": 1775963912504,
+      "type": "file"
+    },
+    {
+      "path": ".superpowers/brainstorm/53512-1775963578/content/video-player-layout.html",
+      "accessCount": 1,
+      "lastAccessed": 1775964051064,
+      "type": "file"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-04-12-video-management-design.md",
+      "accessCount": 1,
+      "lastAccessed": 1775964641804,
+      "type": "file"
+    },
+    {
+      "path": "src/utils/youtube.js",
+      "accessCount": 1,
+      "lastAccessed": 1775973657807,
+      "type": "file"
+    },
+    {
+      "path": "src/utils/youtube.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1775973661129,
+      "type": "file"
+    },
+    {
+      "path": "src/components/VideoCard.jsx",
+      "accessCount": 1,
+      "lastAccessed": 1775973667161,
       "type": "file"
     }
   ],
