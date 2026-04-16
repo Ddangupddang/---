@@ -20,13 +20,14 @@ export function AuthProvider({ children }) {
     if (error || !data) return null
 
     return {
-      id:        authUser.id,
-      email:     authUser.email,
-      username:  data.username,
-      name:      data.name,
-      role:      data.role,
-      classId:   data.class_id   ?? null,
-      studentId: data.student_id ?? null,
+      id:              authUser.id,
+      email:           authUser.email,
+      username:        data.username,
+      name:            data.name,
+      role:            data.role,
+      classId:         data.class_id       ?? null,
+      studentId:       data.student_id     ?? null,
+      passwordChanged: data.password_changed ?? true,
     }
   }
 
@@ -69,6 +70,25 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // 비밀번호 변경: 현재 비밀번호 재인증 → 새 비밀번호로 업데이트 → password_changed = true
+  const changePassword = async (currentPassword, newPassword) => {
+    // 현재 비밀번호 재인증 (검증용)
+    const email = `${user.username}@soomoonjae.com`
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: currentPassword })
+    if (authErr) return { error: '현재 비밀번호가 올바르지 않습니다.' }
+
+    // 새 비밀번호로 변경
+    const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword })
+    if (updateErr) return { error: '비밀번호 변경에 실패했습니다.' }
+
+    // profiles 테이블 password_changed = true 업데이트
+    await supabase.from('profiles').update({ password_changed: true }).eq('id', user.id)
+
+    // 로컬 user 상태 갱신
+    setUser((prev) => ({ ...prev, passwordChanged: true }))
+    return { error: null }
+  }
+
   // 세션 확인 중에는 빈 화면 (깜빡임 방지)
   if (loading) {
     return (
@@ -82,7 +102,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, changePassword }}>
       {children}
     </AuthContext.Provider>
   )

@@ -3,7 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   Users, School, ClipboardCheck, BarChart2,
-  Video, ClipboardList, MessageCircle, Bell, TrendingUp, LogOut,
+  Video, ClipboardList, MessageCircle, Bell, TrendingUp, LogOut, KeyRound,
 } from 'lucide-react'
 
 // 섹션 그룹핑된 네비게이션 설정 (대시보드는 로고 클릭으로 이동)
@@ -78,6 +78,17 @@ function Sidebar() {
       {/* 하단 사용자 정보 */}
       <div className="border-t border-white/10 pt-3 mt-3">
         <div className="px-3 py-1 text-white/40 text-xs mb-1">{user?.name}</div>
+        <NavLink
+          to="/change-password"
+          className={({ isActive }) =>
+            `w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors ${
+              isActive ? 'text-white bg-white/10' : 'text-white/40 hover:text-white hover:bg-white/8'
+            }`
+          }
+        >
+          <KeyRound size={15} strokeWidth={1.8} />
+          비밀번호 변경
+        </NavLink>
         <button
           onClick={logout}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-white/40 hover:text-white hover:bg-white/8 rounded-lg transition-colors"

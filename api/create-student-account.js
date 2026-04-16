@@ -64,14 +64,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: msg })
   }
 
-  // profiles 행 생성
+  // profiles 행 생성 (password_changed = false → 첫 로그인 시 변경 유도)
   const { error: profileErr } = await admin.from('profiles').insert({
-    id:         newUser.user.id,
+    id:               newUser.user.id,
     username,
     name,
-    role:       'student',
-    class_id:   classId  || null,
-    student_id: studentId || null,
+    role:             'student',
+    class_id:         classId   || null,
+    student_id:       studentId || null,
+    password_changed: false,
   })
 
   if (profileErr) {
