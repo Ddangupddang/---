@@ -1,6 +1,7 @@
 // src/context/AuthContext.jsx
 // Supabase Auth 기반 인증 컨텍스트
 import { createContext, useContext, useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
 export const AuthContext = createContext(null)
@@ -70,18 +71,24 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  // 비밀번호 변경: 현재 비밀번호 재인증 → 새 비밀번호로 업데이트 → password_changed = true
+  // 비밀번호 변경: 임시 클라이언트로 현재 비밀번호 검증 → 새 비밀번호 업데이트
   const changePassword = async (currentPassword, newPassword) => {
-    // 현재 비밀번호 재인증 (검증용)
     const email = `${user.username}@soomoonjae.com`
-    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: currentPassword })
+
+    // 임시 클라이언트로 현재 비밀번호 검증 (메인 세션/onAuthStateChange 영향 없음)
+    const tmpClient = createClient(
+      import.meta.env.VITE_SUPABASE_URL,
+      import.meta.env.VITE_SUPABASE_ANON_KEY,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    )
+    const { error: authErr } = await tmpClient.auth.signInWithPassword({ email, password: currentPassword })
     if (authErr) return { error: '현재 비밀번호가 올바르지 않습니다.' }
 
-    // 새 비밀번호로 변경
+    // 메인 클라이언트로 새 비밀번호 변경
     const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword })
     if (updateErr) return { error: '비밀번호 변경에 실패했습니다.' }
 
-    // profiles 테이블 password_changed = true 업데이트
+    // profiles 테이블 password_changed = true
     await supabase.from('profiles').update({ password_changed: true }).eq('id', user.id)
 
     // 로컬 user 상태 갱신
