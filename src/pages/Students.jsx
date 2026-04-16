@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
+import { supabase } from '../lib/supabase'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -26,6 +27,52 @@ function Students() {
   const activeTab = searchParams.get('tab') === 'classes' ? 'classes' : 'students'
   const [selectedClass, setSelectedClass] = useState(null)
   const isAdmin = user?.role === 'admin'
+
+  // 계정 생성 모달
+  const [accountModal, setAccountModal] = useState(null) // null | student 객체
+  const [accountForm, setAccountForm]   = useState({ username: '', password: '' })
+  const [accountMsg,  setAccountMsg]    = useState({ type: '', text: '' }) // type: 'error'|'success'
+  const [accountLoading, setAccountLoading] = useState(false)
+
+  const openAccountModal = (student) => {
+    setAccountModal(student)
+    setAccountForm({ username: '', password: '' })
+    setAccountMsg({ type: '', text: '' })
+  }
+
+  const handleCreateAccount = async (e) => {
+    e.preventDefault()
+    if (!accountForm.username.trim() || !accountForm.password.trim()) return
+    setAccountLoading(true)
+    setAccountMsg({ type: '', text: '' })
+
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+
+    const res = await fetch('/api/create-student-account', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username:  accountForm.username.trim(),
+        password:  accountForm.password.trim(),
+        name:      accountModal.name,
+        classId:   accountModal.classId,
+        studentId: accountModal.id,
+      }),
+    })
+
+    const data = await res.json()
+    setAccountLoading(false)
+
+    if (res.ok) {
+      setAccountMsg({ type: 'success', text: `${accountModal.name} 계정이 생성됐습니다. (아이디: ${accountForm.username})` })
+    } else {
+      setAccountMsg({ type: 'error', text: data.error ?? '계정 생성에 실패했습니다.' })
+    }
+  }
 
   const displayStudents = selectedClass
     ? studentList.filter((s) => s.classId === selectedClass)
@@ -223,6 +270,7 @@ function Students() {
                   <th className="text-left px-4 py-3 font-medium">반</th>
                   <th className="text-left px-4 py-3 font-medium hidden md:table-cell">연락처</th>
                   <th className="text-left px-4 py-3 font-medium hidden md:table-cell">등록일</th>
+                  {isAdmin && <th className="px-4 py-3 text-center font-medium">계정</th>}
                   {isAdmin && <th className="px-4 py-3"></th>}
                 </tr>
               </thead>
@@ -237,6 +285,7 @@ function Students() {
                         getClassName={getClassName}
                         onEdit={() => handleEdit(student)}
                         onDelete={() => handleDelete(student.id)}
+                        onCreateAccount={() => openAccountModal(student)}
                       />
                     ))}
                   </tbody>
@@ -297,6 +346,82 @@ function Students() {
                 <button type="submit" className="flex-1 h-11 bg-[#2B2B2B] text-white rounded-lg text-sm font-semibold hover:bg-[#3d3d3d]">저장</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 계정 생성 모달 */}
+      {accountModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <h2 className="font-bold text-[#2B2B2B] mb-1">계정 생성</h2>
+            <p className="text-sm text-gray-400 mb-4">{accountModal.name} 학생의 로그인 계정을 만듭니다.</p>
+
+            {accountMsg.text && (
+              <div className={`text-sm px-3 py-2 rounded-lg mb-3 ${
+                accountMsg.type === 'success'
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-red-50 text-[#C0392B]'
+              }`}>
+                {accountMsg.text}
+              </div>
+            )}
+
+            {accountMsg.type !== 'success' && (
+              <form onSubmit={handleCreateAccount} className="flex flex-col gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">아이디</label>
+                  <div className="flex items-center bg-[#F4F3EE] rounded-lg px-3 h-11">
+                    <input
+                      required
+                      placeholder="예: hong2025"
+                      value={accountForm.username}
+                      onChange={(e) => setAccountForm({ ...accountForm, username: e.target.value.replace(/\s/g, '') })}
+                      className="flex-1 bg-transparent text-sm focus:outline-none"
+                    />
+                    <span className="text-xs text-gray-400">@soomoonjae.com</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">초기 비밀번호</label>
+                  <input
+                    required
+                    type="password"
+                    placeholder="6자 이상"
+                    minLength={6}
+                    value={accountForm.password}
+                    onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })}
+                    className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+                  />
+                </div>
+                <p className="text-xs text-gray-400">* 학생이 처음 로그인 후 비밀번호를 변경하도록 안내하세요.</p>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setAccountModal(null)}
+                    className="flex-1 h-11 border border-gray-200 rounded-lg text-sm text-gray-500 hover:bg-gray-50"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={accountLoading}
+                    className="flex-1 h-11 bg-[#2B2B2B] text-white rounded-lg text-sm font-semibold disabled:opacity-40"
+                  >
+                    {accountLoading ? '생성 중...' : '계정 생성'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {accountMsg.type === 'success' && (
+              <button
+                onClick={() => setAccountModal(null)}
+                className="w-full h-11 bg-[#2B2B2B] text-white rounded-lg text-sm font-semibold"
+              >
+                확인
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -366,7 +491,7 @@ function SortableClassCard({ cls, count, isAdmin, onEdit, onDelete, onClick }) {
 }
 
 // ── 드래그 가능한 학생 행 ──────────────────────────────
-function SortableStudentRow({ student, isAdmin, getClassName, onEdit, onDelete }) {
+function SortableStudentRow({ student, isAdmin, getClassName, onEdit, onDelete, onCreateAccount }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: student.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, position: 'relative', zIndex: isDragging ? 1 : 0 }
 
@@ -383,6 +508,13 @@ function SortableStudentRow({ student, isAdmin, getClassName, onEdit, onDelete }
       <td className="px-4 py-3 text-gray-500">{getClassName(student.classId)}</td>
       <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{student.phone}</td>
       <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{student.joinDate}</td>
+      {isAdmin && (
+        <td className="px-4 py-3 text-center">
+          <button onClick={onCreateAccount} className="text-xs text-[#5B8FD4] hover:underline">
+            계정 생성
+          </button>
+        </td>
+      )}
       {isAdmin && (
         <td className="px-4 py-3">
           <div className="flex gap-2 justify-end">
