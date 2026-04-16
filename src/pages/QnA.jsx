@@ -1,16 +1,14 @@
 // src/pages/QnA.jsx
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { qnaQuestions as initialQna } from '../data/qna'
 import { tests } from '../data/tests'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
 
 export default function QnA() {
   const { user } = useAuth()
-  const { classes, students } = useData()
-  const [questions, setQuestions] = useState(initialQna)
-  const [view, setView]                       = useState('list') // list | detail | ask
+  const { qnaList, students, addQuestion, answerQuestion } = useData()
+  const [view, setView]                         = useState('list') // list | detail | ask
   const [selectedQuestion, setSelectedQuestion] = useState(null)
   const [filterTestId, setFilterTestId]         = useState('all')
 
@@ -23,7 +21,7 @@ export default function QnA() {
       : tests
 
   // 질문 목록 필터링
-  const filteredQuestions = questions.filter((q) => {
+  const filteredQuestions = qnaList.filter((q) => {
     const testMatch   = filterTestId === 'all' || q.testId === Number(filterTestId)
     const accessMatch =
       user.role !== 'student' || accessibleTests.some((t) => t.id === q.testId)
@@ -31,7 +29,7 @@ export default function QnA() {
   })
 
   // 미답변 건수 (교사용 배지)
-  const unansweredCount = questions.filter(
+  const unansweredCount = qnaList.filter(
     (q) =>
       !q.answer &&
       (user.role !== 'student' || accessibleTests.some((t) => t.id === q.testId))
@@ -136,7 +134,7 @@ export default function QnA() {
                   </div>
                   <p className="text-sm text-[#2B2B2B] font-medium line-clamp-2">{q.content}</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {displayName(q.studentId)} · {q.createdAt.slice(0, 10)}
+                    {displayName(q.studentId)} · {q.createdAt?.slice(0, 10)}
                   </p>
                 </div>
               )
@@ -150,10 +148,10 @@ export default function QnA() {
 
   // ────────── detail 뷰 ──────────
   if (view === 'detail') {
-    const q         = selectedQuestion
-    const test      = tests.find((t) => t.id === q.testId)
-    const qInfo     = q.questionId ? test?.questions.find((tq) => tq.id === q.questionId) : null
-    const qIdx      = qInfo ? test.questions.indexOf(qInfo) : -1
+    const q     = selectedQuestion
+    const test  = tests.find((t) => t.id === q.testId)
+    const qInfo = q.questionId ? test?.questions.find((tq) => tq.id === q.questionId) : null
+    const qIdx  = qInfo ? test.questions.indexOf(qInfo) : -1
 
     return (
       <Layout>
@@ -163,14 +161,8 @@ export default function QnA() {
         questionIndex={qIdx}
         displayName={displayName}
         isTeacherOrAdmin={isTeacherOrAdmin}
-        onAnswer={(answer) => {
-          setQuestions(
-            questions.map((item) =>
-              item.id === q.id
-                ? { ...item, answer, answeredAt: new Date().toISOString(), answeredBy: user.id }
-                : item
-            )
-          )
+        onAnswer={async (answer) => {
+          await answerQuestion(q.id, answer, user.id)
           setView('list')
         }}
         onBack={() => setView('list')}
@@ -186,19 +178,8 @@ export default function QnA() {
       <Layout>
       <AskView
         tests={accessibleTests}
-        onSubmit={(newQ) => {
-          setQuestions([
-            {
-              ...newQ,
-              id: questions.length + 1,
-              studentId: user.studentId,
-              createdAt: new Date().toISOString(),
-              answer: null,
-              answeredAt: null,
-              answeredBy: null,
-            },
-            ...questions,
-          ])
+        onSubmit={async (newQ) => {
+          await addQuestion({ ...newQ, studentId: user.studentId })
           setView('list')
         }}
         onBack={() => setView('list')}
@@ -213,6 +194,14 @@ export default function QnA() {
 // ────────── DetailView 컴포넌트 ──────────
 function DetailView({ question, test, questionIndex, displayName, isTeacherOrAdmin, onAnswer, onBack }) {
   const [answerText, setAnswerText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleAnswer() {
+    if (!answerText.trim() || submitting) return
+    setSubmitting(true)
+    await onAnswer(answerText.trim())
+    setSubmitting(false)
+  }
 
   return (
     <div>
@@ -235,7 +224,7 @@ function DetailView({ question, test, questionIndex, displayName, isTeacherOrAdm
         </div>
         <p className="text-[#2B2B2B] leading-relaxed mb-3">{question.content}</p>
         <p className="text-xs text-gray-400">
-          {displayName(question.studentId)} · {question.createdAt.slice(0, 16).replace('T', ' ')}
+          {displayName(question.studentId)} · {question.createdAt?.slice(0, 16).replace('T', ' ')}
         </p>
       </div>
 
@@ -259,11 +248,11 @@ function DetailView({ question, test, questionIndex, displayName, isTeacherOrAdm
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4] resize-none mb-3"
           />
           <button
-            onClick={() => answerText.trim() && onAnswer(answerText.trim())}
-            disabled={!answerText.trim()}
+            onClick={handleAnswer}
+            disabled={!answerText.trim() || submitting}
             className="w-full py-2.5 bg-[#2B2B2B] text-white rounded-lg text-sm font-medium disabled:opacity-40"
           >
-            답변 등록
+            {submitting ? '등록 중...' : '답변 등록'}
           </button>
         </div>
       ) : (
@@ -281,17 +270,20 @@ function AskView({ tests, onSubmit, onBack }) {
   const [testId,     setTestId]     = useState(String(tests[0]?.id ?? ''))
   const [questionId, setQuestionId] = useState('')
   const [content,    setContent]    = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const selectedTest = tests.find((t) => t.id === Number(testId))
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (!content.trim() || !testId) return
-    onSubmit({
+    if (!content.trim() || !testId || submitting) return
+    setSubmitting(true)
+    await onSubmit({
       testId:     Number(testId),
       questionId: questionId ? Number(questionId) : null,
       content:    content.trim(),
     })
+    setSubmitting(false)
   }
 
   return (
@@ -365,10 +357,10 @@ function AskView({ tests, onSubmit, onBack }) {
 
           <button
             type="submit"
-            disabled={!content.trim()}
+            disabled={!content.trim() || submitting}
             className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40"
           >
-            질문 등록
+            {submitting ? '등록 중...' : '질문 등록'}
           </button>
         </form>
       )}

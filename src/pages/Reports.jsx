@@ -2,14 +2,13 @@
 // 진도 리포트 — 교사/관리자만 접근 가능
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { reports as initialReports } from '../data/reports'
 import { useData } from '../context/DataContext'
 import { users } from '../data/users'
 import Layout from '../components/Layout'
 
 export default function Reports() {
   const { user } = useAuth()
-  const { classes, students } = useData()
+  const { classes, students, reports, addReport, updateReportChecks } = useData()
 
   // 학생은 이 페이지에 접근 불가
   if (user.role === 'student') {
@@ -22,7 +21,6 @@ export default function Reports() {
     )
   }
 
-  const [reports, setReports]   = useState(initialReports)
   const [view, setView]         = useState('list')  // list | detail | create
   const [selected, setSelected] = useState(null)
   const [filterClassId, setFilterClassId] = useState('all')
@@ -85,10 +83,10 @@ export default function Reports() {
         ) : (
           <div className="flex flex-col gap-3">
             {filteredReports.map((r) => {
-              const cls        = classes.find((c) => c.id === r.classId)
+              const cls           = classes.find((c) => c.id === r.classId)
               const totalStudents = classStudents(r.classId).length
-              const doneCount  = r.studentChecks.filter((sc) => sc.done).length
-              const author     = users.find((u) => u.id === r.createdBy)
+              const doneCount     = r.studentChecks.filter((sc) => sc.done).length
+              const author        = users.find((u) => u.id === r.createdBy)
 
               return (
                 <div
@@ -134,9 +132,10 @@ export default function Reports() {
       <Layout>
       <DetailView
         report={selected}
-        onUpdate={(updatedReport) => {
-          setReports(reports.map((r) => (r.id === selected.id ? updatedReport : r)))
-          setSelected(updatedReport)
+        onUpdateChecks={async (studentChecks) => {
+          await updateReportChecks(selected.id, studentChecks)
+          // selected 상태도 최신화
+          setSelected((prev) => ({ ...prev, studentChecks }))
         }}
         onBack={() => setView('list')}
         classStudents={classStudents}
@@ -151,8 +150,8 @@ export default function Reports() {
       <Layout>
       <CreateView
         user={user}
-        onSubmit={(newReport) => {
-          setReports([{ ...newReport, id: reports.length + 1 }, ...reports])
+        onSubmit={async (newReport) => {
+          await addReport(newReport)
           setView('list')
         }}
         onCancel={() => setView('list')}
@@ -166,19 +165,19 @@ export default function Reports() {
 }
 
 // ────────── DetailView 컴포넌트 ──────────
-function DetailView({ report, onUpdate, onBack, classStudents }) {
+function DetailView({ report, onUpdateChecks, onBack, classStudents }) {
   const { classes } = useData()
-  const cls        = classes.find((c) => c.id === report.classId)
-  const author     = users.find((u) => u.id === report.createdBy)
-  const studs      = classStudents(report.classId)
+  const cls    = classes.find((c) => c.id === report.classId)
+  const author = users.find((u) => u.id === report.createdBy)
+  const studs  = classStudents(report.classId)
   const [checks, setChecks] = useState(report.studentChecks)
 
-  function toggleCheck(studentId) {
+  async function toggleCheck(studentId) {
     const updated = checks.map((sc) =>
       sc.studentId === studentId ? { ...sc, done: !sc.done } : sc
     )
     setChecks(updated)
-    onUpdate({ ...report, studentChecks: updated })
+    await onUpdateChecks(updated)
   }
 
   const doneCount = checks.filter((sc) => sc.done).length
@@ -263,6 +262,7 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
   const [subject,  setSubject]  = useState('')
   const [content,  setContent]  = useState('')
   const [homework, setHomework] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const studs = classStudents(Number(classId))
   const [checks, setChecks] = useState({})
@@ -277,16 +277,17 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
     setChecks({})
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (!subject.trim() || !content.trim()) return
+    if (!subject.trim() || !content.trim() || submitting) return
+    setSubmitting(true)
 
     const studentChecks = classStudents(Number(classId)).map((s) => ({
       studentId: s.id,
       done: checks[s.id] ?? false,
     }))
 
-    onSubmit({
+    await onSubmit({
       classId:       Number(classId),
       date,
       subject:       subject.trim(),
@@ -295,6 +296,7 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
       studentChecks,
       createdBy:     user.id,
     })
+    setSubmitting(false)
   }
 
   return (
@@ -405,10 +407,10 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
 
         <button
           type="submit"
-          disabled={!subject.trim() || !content.trim()}
+          disabled={!subject.trim() || !content.trim() || submitting}
           className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40"
         >
-          리포트 저장
+          {submitting ? '저장 중...' : '리포트 저장'}
         </button>
       </form>
     </div>

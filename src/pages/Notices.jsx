@@ -1,15 +1,13 @@
 // src/pages/Notices.jsx
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { notices as initialNotices } from '../data/notices'
 import { useData } from '../context/DataContext'
 import { users } from '../data/users'
 import Layout from '../components/Layout'
 
 export default function Notices() {
   const { user } = useAuth()
-  const { classes } = useData()
-  const [notices, setNotices]   = useState(initialNotices)
+  const { classes, notices, addNotice } = useData()
   const [view, setView]         = useState('list') // list | detail | create
   const [selected, setSelected] = useState(null)
 
@@ -71,7 +69,7 @@ export default function Notices() {
                   </div>
                   <p className="text-sm text-gray-500 line-clamp-2 mb-2">{n.content}</p>
                   <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span>{n.createdAt.slice(0, 10)}</span>
+                    <span>{n.createdAt?.slice(0, 10)}</span>
                     <span>·</span>
                     <span>{author?.name}</span>
                     <span>·</span>
@@ -119,7 +117,7 @@ export default function Notices() {
             )}
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400 mb-4 pb-4 border-b border-gray-100">
-            <span>{n.createdAt.slice(0, 10)}</span>
+            <span>{n.createdAt?.slice(0, 10)}</span>
             <span>·</span>
             <span>{author?.name}</span>
             <span>·</span>
@@ -139,8 +137,8 @@ export default function Notices() {
       <Layout>
       <CreateView
         user={user}
-        onSubmit={(newNotice) => {
-          setNotices([{ ...newNotice, id: notices.length + 1 }, ...notices])
+        onSubmit={async (newNotice) => {
+          await addNotice(newNotice)
           setView('list')
         }}
         onCancel={() => setView('list')}
@@ -155,12 +153,13 @@ export default function Notices() {
 // ────────── CreateView 컴포넌트 ──────────
 function CreateView({ user, onSubmit, onCancel }) {
   const { classes } = useData()
-  const [title,          setTitle]          = useState('')
-  const [content,        setContent]        = useState('')
+  const [title,           setTitle]          = useState('')
+  const [content,         setContent]        = useState('')
   const [selectedClasses, setSelectedClasses] = useState(classes.map((c) => c.id)) // 기본: 전체
-  const [sendKakao,      setSendKakao]      = useState(false)
-  const [kakaoSending,   setKakaoSending]   = useState(false)
-  const [kakaoSent,      setKakaoSent]      = useState(false)
+  const [sendKakao,       setSendKakao]      = useState(false)
+  const [kakaoSending,    setKakaoSending]   = useState(false)
+  const [kakaoSent,       setKakaoSent]      = useState(false)
+  const [submitting,      setSubmitting]     = useState(false)
 
   function toggleClass(id) {
     setSelectedClasses((prev) =>
@@ -178,17 +177,18 @@ function CreateView({ user, onSubmit, onCancel }) {
     }, 1500)
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (!title.trim() || !content.trim() || selectedClasses.length === 0) return
-    onSubmit({
+    if (!title.trim() || !content.trim() || selectedClasses.length === 0 || submitting) return
+    setSubmitting(true)
+    await onSubmit({
       title:          title.trim(),
       content:        content.trim(),
       authorId:       user.id,
       targetClassIds: selectedClasses,
-      createdAt:      new Date().toISOString(),
       kakaoSent:      kakaoSent,
     })
+    setSubmitting(false)
   }
 
   return (
@@ -304,10 +304,10 @@ function CreateView({ user, onSubmit, onCancel }) {
 
         <button
           type="submit"
-          disabled={!title.trim() || !content.trim() || selectedClasses.length === 0}
+          disabled={!title.trim() || !content.trim() || selectedClasses.length === 0 || submitting}
           className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40"
         >
-          공지 저장
+          {submitting ? '저장 중...' : '공지 저장'}
         </button>
       </form>
     </div>

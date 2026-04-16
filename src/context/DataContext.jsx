@@ -6,6 +6,9 @@ import { classes as mockClasses } from '../data/classes'
 import { students as mockStudents } from '../data/students'
 import { attendance as mockAttendance } from '../data/attendance'
 import { grades as mockGrades } from '../data/grades'
+import { qnaQuestions as mockQna } from '../data/qna'
+import { notices as mockNotices } from '../data/notices'
+import { reports as mockReports } from '../data/reports'
 
 const DataContext = createContext(null)
 
@@ -34,28 +37,73 @@ function toStudent(s) {
     sortOrder:   s.sort_order  ?? s.id,
   }
 }
+function toQna(q) {
+  return {
+    id:         q.id,
+    testId:     q.test_id,
+    questionId: q.question_id,
+    studentId:  q.student_id,
+    content:    q.content,
+    createdAt:  q.created_at,
+    answer:     q.answer,
+    answeredAt: q.answered_at,
+    answeredBy: q.answered_by,
+  }
+}
+function toNotice(n) {
+  return {
+    id:             n.id,
+    title:          n.title,
+    content:        n.content,
+    authorId:       n.author_id,
+    targetClassIds: n.target_class_ids ?? [],
+    createdAt:      n.created_at,
+    kakaoSent:      n.kakao_sent ?? false,
+  }
+}
+function toReport(r) {
+  return {
+    id:            r.id,
+    classId:       r.class_id,
+    date:          r.date,
+    subject:       r.subject,
+    content:       r.content,
+    homework:      r.homework ?? '',
+    studentChecks: r.student_checks ?? [],
+    createdBy:     r.created_by,
+  }
+}
 
 export function DataProvider({ children }) {
   const [classes,    setClasses]    = useState(mockClasses)
   const [students,   setStudents]   = useState(mockStudents)
   const [attendance, setAttendance] = useState(mockAttendance)
   const [grades,     setGrades]     = useState(mockGrades)
+  const [qnaList,    setQnaList]    = useState(mockQna)
+  const [notices,    setNotices]    = useState(mockNotices)
+  const [reports,    setReports]    = useState(mockReports)
   const [dataLoading, setDataLoading] = useState(true)
 
   // 앱 시작 시 Supabase에서 데이터 로드
   useEffect(() => {
     async function load() {
-      const [cRes, sRes, aRes, gRes] = await Promise.all([
+      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes] = await Promise.all([
         supabase.from('classes').select('*').order('sort_order').order('id'),
         supabase.from('students').select('*').order('sort_order').order('id'),
         supabase.from('attendance').select('*').order('date', { ascending: false }),
         supabase.from('grades').select('*').order('date', { ascending: false }),
+        supabase.from('qna').select('*').order('created_at', { ascending: false }),
+        supabase.from('notices').select('*').order('created_at', { ascending: false }),
+        supabase.from('reports').select('*').order('date', { ascending: false }),
       ])
 
       if (!cRes.error && cRes.data?.length > 0) setClasses(cRes.data.map(toClass))
       if (!sRes.error && sRes.data?.length > 0) setStudents(sRes.data.map(toStudent))
       if (!aRes.error && aRes.data?.length > 0) setAttendance(aRes.data.map(toAttendance))
       if (!gRes.error && gRes.data?.length > 0) setGrades(gRes.data.map(toGrade))
+      if (!qRes.error && qRes.data?.length > 0) setQnaList(qRes.data.map(toQna))
+      if (!nRes.error && nRes.data?.length > 0) setNotices(nRes.data.map(toNotice))
+      if (!rRes.error && rRes.data?.length > 0) setReports(rRes.data.map(toReport))
       setDataLoading(false)
     }
     load()
@@ -203,6 +251,95 @@ export function DataProvider({ children }) {
     setGrades((prev) => prev.filter((g) => g.id !== id))
   }
 
+  // ── Q&A CRUD ───────────────────────────────────────────
+
+  async function addQuestion(data) {
+    const { data: inserted, error } = await supabase
+      .from('qna')
+      .insert([{
+        test_id:     data.testId,
+        question_id: data.questionId ?? null,
+        student_id:  data.studentId,
+        content:     data.content,
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('질문 등록 실패:', error); return null }
+    const newQ = toQna(inserted)
+    setQnaList((prev) => [newQ, ...prev])
+    return newQ
+  }
+
+  async function answerQuestion(id, answer, answeredBy) {
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('qna')
+      .update({ answer, answered_at: now, answered_by: answeredBy })
+      .eq('id', id)
+
+    if (error) { console.error('답변 등록 실패:', error); return }
+    setQnaList((prev) =>
+      prev.map((q) => q.id === id ? { ...q, answer, answeredAt: now, answeredBy } : q)
+    )
+  }
+
+  // ── 공지사항 CRUD ──────────────────────────────────────
+
+  async function addNotice(data) {
+    const { data: inserted, error } = await supabase
+      .from('notices')
+      .insert([{
+        title:            data.title,
+        content:          data.content,
+        author_id:        data.authorId,
+        target_class_ids: data.targetClassIds,
+        kakao_sent:       data.kakaoSent ?? false,
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('공지 등록 실패:', error); return null }
+    const newN = toNotice(inserted)
+    setNotices((prev) => [newN, ...prev])
+    return newN
+  }
+
+  // ── 진도 리포트 CRUD ───────────────────────────────────
+
+  async function addReport(data) {
+    const { data: inserted, error } = await supabase
+      .from('reports')
+      .insert([{
+        class_id:       data.classId,
+        date:           data.date,
+        subject:        data.subject,
+        content:        data.content,
+        homework:       data.homework ?? '',
+        student_checks: data.studentChecks ?? [],
+        created_by:     data.createdBy,
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('리포트 등록 실패:', error); return null }
+    const newR = toReport(inserted)
+    setReports((prev) => [newR, ...prev])
+    return newR
+  }
+
+  async function updateReportChecks(id, studentChecks) {
+    const { error } = await supabase
+      .from('reports')
+      .update({ student_checks: studentChecks })
+      .eq('id', id)
+
+    if (error) { console.error('과제 체크 저장 실패:', error); return }
+    setReports((prev) =>
+      prev.map((r) => r.id === id ? { ...r, studentChecks } : r)
+    )
+  }
+
   // ── 순서 변경 ──────────────────────────────────────────
 
   async function reorderStudents(orderedIds) {
@@ -268,13 +405,16 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider value={{
-      classes, students, attendance, grades,
+      classes, students, attendance, grades, qnaList, notices, reports,
       dataLoading,
       addStudent, updateStudent, deleteStudent, bulkAddStudents,
       addClass,  updateClass,  deleteClass,
       reorderStudents, reorderClasses,
       upsertAttendance, deleteAttendance,
       addGrade, updateGrade, deleteGrade,
+      addQuestion, answerQuestion,
+      addNotice,
+      addReport, updateReportChecks,
     }}>
       {children}
     </DataContext.Provider>
