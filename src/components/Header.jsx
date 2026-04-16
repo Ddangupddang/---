@@ -1,17 +1,19 @@
 // src/components/Header.jsx
 import { useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { KeyRound } from 'lucide-react'
 
 const pageTitles = {
-  '/dashboard':  '대시보드',
-  '/students':   '학생 관리',
-  '/attendance': '출결 관리',
-  '/grades':     '성적 관리',
-  '/videos':     '영상 관리',
-  '/tests':      '테스트',
-  '/qna':        'Q&A',
-  '/notices':    '공지사항',
-  '/reports':    '진도 리포트',
+  '/dashboard':       '대시보드',
+  '/students':        '학생 관리',
+  '/attendance':      '출결 관리',
+  '/grades':          '성적 관리',
+  '/videos':          '영상 관리',
+  '/tests':           '테스트',
+  '/qna':             'Q&A',
+  '/notices':         '공지사항',
+  '/reports':         '진도 리포트',
+  '/change-password': '비밀번호 변경',
 }
 
 function Header() {
@@ -37,6 +39,12 @@ function Header() {
           <span className="text-sm text-gray-400">{title}</span>
         )}
         <span className="text-sm text-gray-500">{user?.name}</span>
+        {/* 학생: 비밀번호 변경 아이콘 버튼 */}
+        {isStudent && (
+          <Link to="/change-password" className="text-gray-400 hover:text-gray-600">
+            <KeyRound size={16} strokeWidth={1.8} />
+          </Link>
+        )}
         {/* 학생은 항상 표시, 관리자/교사는 모바일에서만 표시 (PC는 사이드바에 로그아웃 있음) */}
         <button
           onClick={logout}
