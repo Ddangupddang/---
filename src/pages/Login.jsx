@@ -13,10 +13,14 @@ function Login() {
   // 이미 로그인된 경우 대시보드로 이동
   if (user) return <Navigate to="/dashboard" replace />
 
-  const handleSubmit = (e) => {
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    const success = login(username.trim(), password)
+    setLoading(true)
+    const success = await login(username.trim(), password)
+    setLoading(false)
     if (success) {
       navigate('/dashboard', { replace: true })
     } else {
@@ -62,9 +66,10 @@ function Login() {
 
           <button
             type="submit"
-            className="w-full h-12 bg-[#2B2B2B] text-white text-sm font-semibold rounded-xl hover:bg-[#3d3d3d] active:scale-95 transition-all mt-1"
+            disabled={loading}
+            className="w-full h-12 bg-[#2B2B2B] text-white text-sm font-semibold rounded-xl hover:bg-[#3d3d3d] active:scale-95 transition-all mt-1 disabled:opacity-50"
           >
-            로그인
+            {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
 
