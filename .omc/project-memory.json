@@ -178,14 +178,14 @@
   "hotPaths": [
     {
       "path": "src/pages/Students.jsx",
-      "accessCount": 39,
-      "lastAccessed": 1776333050078,
+      "accessCount": 41,
+      "lastAccessed": 1776752000254,
       "type": "file"
     },
     {
       "path": "src/components/Sidebar.jsx",
-      "accessCount": 30,
-      "lastAccessed": 1776315115602,
+      "accessCount": 31,
+      "lastAccessed": 1776751975280,
       "type": "file"
     },
     {
@@ -196,8 +196,8 @@
     },
     {
       "path": "src/context/AuthContext.jsx",
-      "accessCount": 26,
-      "lastAccessed": 1776327339105,
+      "accessCount": 27,
+      "lastAccessed": 1776752069963,
       "type": "file"
     },
     {
@@ -213,15 +213,15 @@
       "type": "file"
     },
     {
-      "path": "src/components/BottomNav.jsx",
-      "accessCount": 18,
-      "lastAccessed": 1776316779382,
+      "path": "src/components/Header.jsx",
+      "accessCount": 19,
+      "lastAccessed": 1776751975038,
       "type": "file"
     },
     {
-      "path": "src/components/Header.jsx",
+      "path": "src/components/BottomNav.jsx",
       "accessCount": 18,
-      "lastAccessed": 1776316812481,
+      "lastAccessed": 1776316779382,
       "type": "file"
     },
     {
@@ -273,6 +273,12 @@
       "type": "file"
     },
     {
+      "path": "src/components/Layout.jsx",
+      "accessCount": 9,
+      "lastAccessed": 1776752027730,
+      "type": "file"
+    },
+    {
       "path": "vite.config.js",
       "accessCount": 8,
       "lastAccessed": 1775964756453,
@@ -282,12 +288,6 @@
       "path": "src/data/classes.js",
       "accessCount": 8,
       "lastAccessed": 1776159705882,
-      "type": "file"
-    },
-    {
-      "path": "src/components/Layout.jsx",
-      "accessCount": 8,
-      "lastAccessed": 1776316774878,
       "type": "file"
     },
     {

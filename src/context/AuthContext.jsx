@@ -45,9 +45,10 @@ export function AuthProvider({ children }) {
     // 로그인·로그아웃 상태 변화 실시간 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // USER_UPDATED: updateUser() 호출 시 발생 — 여기서 fetchProfile 하면 데드락 발생
-        // changePassword 함수가 직접 setUser를 갱신하므로 여기서는 스킵
-        if (event === 'USER_UPDATED') {
+        // USER_UPDATED: updateUser() 호출 시 발생 — fetchProfile 하면 데드락 발생
+        // TOKEN_REFRESHED: 토큰 갱신 시 발생 — 프로필 변경 없으므로 스킵
+        // 두 이벤트 모두 fetchProfile 없이 스킵 (각 함수에서 직접 setUser 처리)
+        if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
           setLoading(false)
           return
         }
