@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1776235232595,
+  "lastScanned": 1776324545912,
   "projectRoot": "/Users/choiwonyong/Documents/수문재-학생관리",
   "techStack": {
     "languages": [
@@ -68,11 +68,20 @@
   },
   "customNotes": [],
   "directoryMap": {
+    "api": {
+      "path": "api",
+      "purpose": "API routes",
+      "fileCount": 1,
+      "lastAccessed": 1776324545888,
+      "keyFiles": [
+        "create-student-account.js"
+      ]
+    },
     "dist": {
       "path": "dist",
       "purpose": "Distribution/build output",
       "fileCount": 8,
-      "lastAccessed": 1776235232542,
+      "lastAccessed": 1776324545888,
       "keyFiles": [
         "TalkMedia_i_39e158d1ca28.png.png",
         "TalkMedia_i_758c35b340bd.png.png",
@@ -85,14 +94,14 @@
       "path": "docs",
       "purpose": "Documentation",
       "fileCount": 0,
-      "lastAccessed": 1776235232544,
+      "lastAccessed": 1776324545890,
       "keyFiles": []
     },
     "public": {
       "path": "public",
       "purpose": "Public files",
       "fileCount": 7,
-      "lastAccessed": 1776235232544,
+      "lastAccessed": 1776324545891,
       "keyFiles": [
         "TalkMedia_i_39e158d1ca28.png.png",
         "TalkMedia_i_758c35b340bd.png.png",
@@ -105,7 +114,7 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 4,
-      "lastAccessed": 1776235232544,
+      "lastAccessed": 1776324545891,
       "keyFiles": [
         "App.css",
         "App.jsx",
@@ -117,17 +126,17 @@
       "path": "dist/assets",
       "purpose": "Static assets",
       "fileCount": 2,
-      "lastAccessed": 1776235232545,
+      "lastAccessed": 1776324545891,
       "keyFiles": [
-        "index-C0lf4r-0.js",
-        "index-CQjiB9Lc.css"
+        "index-CX4m4MVP.js",
+        "index-DRh3Uyah.css"
       ]
     },
     "src/assets": {
       "path": "src/assets",
       "purpose": "Static assets",
       "fileCount": 3,
-      "lastAccessed": 1776235232545,
+      "lastAccessed": 1776324545898,
       "keyFiles": [
         "hero.png",
         "react.svg",
@@ -138,7 +147,7 @@
       "path": "src/components",
       "purpose": "UI components",
       "fileCount": 14,
-      "lastAccessed": 1776235232545,
+      "lastAccessed": 1776324545898,
       "keyFiles": [
         "BottomNav.jsx",
         "CommentSection.jsx",
@@ -149,7 +158,7 @@
       "path": "src/data",
       "purpose": "Data files",
       "fileCount": 12,
-      "lastAccessed": 1776235232546,
+      "lastAccessed": 1776324545898,
       "keyFiles": [
         "attendance.js",
         "classes.js",
@@ -160,7 +169,7 @@
       "path": "src/lib",
       "purpose": "Library code",
       "fileCount": 1,
-      "lastAccessed": 1776235232546,
+      "lastAccessed": 1776324545898,
       "keyFiles": [
         "supabase.js"
       ]
@@ -169,14 +178,32 @@
   "hotPaths": [
     {
       "path": "src/pages/Students.jsx",
-      "accessCount": 28,
-      "lastAccessed": 1776234643696,
+      "accessCount": 39,
+      "lastAccessed": 1776333050078,
       "type": "file"
     },
     {
       "path": "src/components/Sidebar.jsx",
+      "accessCount": 30,
+      "lastAccessed": 1776315115602,
+      "type": "file"
+    },
+    {
+      "path": "src/App.jsx",
+      "accessCount": 28,
+      "lastAccessed": 1776324723195,
+      "type": "file"
+    },
+    {
+      "path": "src/context/AuthContext.jsx",
       "accessCount": 26,
-      "lastAccessed": 1776121962074,
+      "lastAccessed": 1776327339105,
+      "type": "file"
+    },
+    {
+      "path": "src/pages/Attendance.jsx",
+      "accessCount": 26,
+      "lastAccessed": 1776750105978,
       "type": "file"
     },
     {
@@ -186,21 +213,15 @@
       "type": "file"
     },
     {
-      "path": "src/App.jsx",
-      "accessCount": 23,
-      "lastAccessed": 1776159862304,
-      "type": "file"
-    },
-    {
-      "path": "src/pages/Attendance.jsx",
-      "accessCount": 20,
-      "lastAccessed": 1776235267543,
-      "type": "file"
-    },
-    {
       "path": "src/components/BottomNav.jsx",
-      "accessCount": 17,
-      "lastAccessed": 1776121962123,
+      "accessCount": 18,
+      "lastAccessed": 1776316779382,
+      "type": "file"
+    },
+    {
+      "path": "src/components/Header.jsx",
+      "accessCount": 18,
+      "lastAccessed": 1776316812481,
       "type": "file"
     },
     {
@@ -210,33 +231,21 @@
       "type": "directory"
     },
     {
+      "path": "src/pages/Dashboard.jsx",
+      "accessCount": 15,
+      "lastAccessed": 1776309998995,
+      "type": "file"
+    },
+    {
       "path": "docs/superpowers/plans/2026-04-11-phase1-implementation.md",
       "accessCount": 14,
       "lastAccessed": 1775981114522,
       "type": "file"
     },
     {
-      "path": "src/components/Header.jsx",
-      "accessCount": 14,
-      "lastAccessed": 1776121976068,
-      "type": "file"
-    },
-    {
-      "path": "src/pages/Dashboard.jsx",
-      "accessCount": 14,
-      "lastAccessed": 1776159914174,
-      "type": "file"
-    },
-    {
-      "path": "src/context/AuthContext.jsx",
-      "accessCount": 12,
-      "lastAccessed": 1776237267515,
-      "type": "file"
-    },
-    {
       "path": "src/pages/Login.jsx",
-      "accessCount": 9,
-      "lastAccessed": 1776089526138,
+      "accessCount": 12,
+      "lastAccessed": 1776307823464,
       "type": "file"
     },
     {
@@ -252,15 +261,21 @@
       "type": "file"
     },
     {
-      "path": "vite.config.js",
-      "accessCount": 8,
-      "lastAccessed": 1775964756453,
+      "path": "src/data/users.js",
+      "accessCount": 9,
+      "lastAccessed": 1776307808239,
       "type": "file"
     },
     {
-      "path": "src/data/users.js",
+      "path": "src/components/ProtectedRoute.jsx",
+      "accessCount": 9,
+      "lastAccessed": 1776324725942,
+      "type": "file"
+    },
+    {
+      "path": "vite.config.js",
       "accessCount": 8,
-      "lastAccessed": 1776122131288,
+      "lastAccessed": 1775964756453,
       "type": "file"
     },
     {
@@ -270,15 +285,15 @@
       "type": "file"
     },
     {
-      "path": "src/test/setup.js",
-      "accessCount": 7,
-      "lastAccessed": 1775964756401,
+      "path": "src/components/Layout.jsx",
+      "accessCount": 8,
+      "lastAccessed": 1776316774878,
       "type": "file"
     },
     {
-      "path": "src/components/Layout.jsx",
+      "path": "src/test/setup.js",
       "accessCount": 7,
-      "lastAccessed": 1776089524762,
+      "lastAccessed": 1775964756401,
       "type": "file"
     },
     {
@@ -309,12 +324,6 @@
       "path": "docs/superpowers/specs/2026-04-11-phase1-design.md",
       "accessCount": 5,
       "lastAccessed": 1775963352272,
-      "type": "file"
-    },
-    {
-      "path": "src/components/ProtectedRoute.jsx",
-      "accessCount": 5,
-      "lastAccessed": 1776090229973,
       "type": "file"
     },
     {

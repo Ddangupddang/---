@@ -31,14 +31,18 @@ function ChangePassword() {
     }
 
     setLoading(true)
-    const { error: err } = await changePassword(form.current, form.next)
-    setLoading(false)
-
-    if (err) {
-      setError(err)
-      return
+    try {
+      const { error: err } = await changePassword(form.current, form.next)
+      if (err) {
+        setError(err)
+        return
+      }
+      setDone(true)
+    } catch {
+      setError('오류가 발생했습니다. 다시 시도해주세요.')
+    } finally {
+      setLoading(false)
     }
-    setDone(true)
   }
 
   const handleDone = () => navigate('/dashboard', { replace: true })

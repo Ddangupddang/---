@@ -20,7 +20,8 @@
       "Bash(/Users/choiwonyong/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/scripts/start-server.sh:*)",
       "mcp__plugin_oh-my-claudecode_t__project_memory_read",
       "Bash(git push:*)",
-      "Bash(ls /Users/choiwonyong/Documents/수문재-학생관리/.env*)"
+      "Bash(ls /Users/choiwonyong/Documents/수문재-학생관리/.env*)",
+      "Bash(vercel --version)"
     ]
   }
 }

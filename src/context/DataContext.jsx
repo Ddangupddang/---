@@ -14,7 +14,7 @@ const DataContext = createContext(null)
 
 // Supabase의 snake_case를 앱에서 쓰는 camelCase로 변환
 function toAttendance(a) {
-  return { id: a.id, studentId: a.student_id, date: a.date, status: a.status }
+  return { id: a.id, studentId: a.student_id, date: a.date, status: a.status, type: a.type ?? '수업' }
 }
 function toGrade(g) {
   return {
@@ -176,32 +176,33 @@ export function DataProvider({ children }) {
   // ── 출결 CRUD ──────────────────────────────────────────
 
   // 출결 기록 저장 (없으면 추가, 있으면 수정)
-  async function upsertAttendance(studentId, date, status) {
+  async function upsertAttendance(studentId, date, status, type = '수업') {
     const { data: upserted, error } = await supabase
       .from('attendance')
-      .upsert({ student_id: studentId, date, status }, { onConflict: 'student_id,date' })
+      .upsert({ student_id: studentId, date, status, type }, { onConflict: 'student_id,date,type' })
       .select()
       .single()
 
     if (error) { console.error('출결 저장 실패:', error); return }
     const record = toAttendance(upserted)
     setAttendance((prev) => {
-      const exists = prev.some((a) => a.studentId === studentId && a.date === date)
+      const exists = prev.some((a) => a.studentId === studentId && a.date === date && a.type === type)
       return exists
-        ? prev.map((a) => a.studentId === studentId && a.date === date ? record : a)
+        ? prev.map((a) => a.studentId === studentId && a.date === date && a.type === type ? record : a)
         : [record, ...prev]
     })
   }
 
-  async function deleteAttendance(studentId, date) {
+  async function deleteAttendance(studentId, date, type = '수업') {
     const { error } = await supabase
       .from('attendance')
       .delete()
       .eq('student_id', studentId)
       .eq('date', date)
+      .eq('type', type)
 
     if (error) { console.error('출결 삭제 실패:', error); return }
-    setAttendance((prev) => prev.filter((a) => !(a.studentId === studentId && a.date === date)))
+    setAttendance((prev) => prev.filter((a) => !(a.studentId === studentId && a.date === date && a.type === type)))
   }
 
   // ── 성적 CRUD ──────────────────────────────────────────
