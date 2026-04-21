@@ -43,22 +43,24 @@ export function AuthProvider({ children }) {
     })
 
     // 로그인·로그아웃 상태 변화 실시간 감지
+    // 핸들러를 동기로 유지해야 Supabase가 await하지 않아 auth 락 데드락 방지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // USER_UPDATED: updateUser() 호출 시 발생 — fetchProfile 하면 데드락 발생
-        // TOKEN_REFRESHED: 토큰 갱신 시 발생 — 프로필 변경 없으므로 스킵
-        // 두 이벤트 모두 fetchProfile 없이 스킵 (각 함수에서 직접 setUser 처리)
+      (event, session) => {
+        // USER_UPDATED, TOKEN_REFRESHED: fetchProfile 불필요 — 스킵
         if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
           setLoading(false)
           return
         }
         if (session?.user) {
-          const profile = await fetchProfile(session.user)
-          setUser(profile)
+          // 비동기 프로필 조회는 .then()으로 분리 — Supabase가 기다리지 않음
+          fetchProfile(session.user).then((profile) => {
+            setUser(profile)
+            setLoading(false)
+          })
         } else {
           setUser(null)
+          setLoading(false)
         }
-        setLoading(false)
       }
     )
 
