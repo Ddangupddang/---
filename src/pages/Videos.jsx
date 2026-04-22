@@ -83,6 +83,12 @@ export default function Videos() {
     )
   }
 
+  function handleDeleteVideo(videoId) {
+    if (!confirm('영상을 삭제하시겠습니까?')) return
+    setVideos((prev) => prev.filter((v) => v.id !== videoId))
+    setComments((prev) => prev.filter((c) => c.videoId !== videoId))
+  }
+
   // 영상 재생 화면
   if (selectedVideo) {
     return (
@@ -172,6 +178,7 @@ export default function Videos() {
                 className={cls?.name ?? ''}
                 commentCount={commentCount}
                 onClick={() => setSelectedVideo(video)}
+                onDelete={user.role !== 'student' ? () => handleDeleteVideo(video.id) : undefined}
               />
             )
           })}

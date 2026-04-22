@@ -187,6 +187,20 @@ export default function Tests() {
                             종료
                           </button>
                         )}
+                        {test.status !== 'active' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm(`"${test.title}" 테스트를 삭제하시겠습니까?`)) {
+                                setTests((prev) => prev.filter((t) => t.id !== test.id))
+                                setSubmissions((prev) => prev.filter((s) => s.testId !== test.id))
+                              }
+                            }}
+                            className="text-xs px-3 py-1 text-gray-400 hover:text-[#C0392B] hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            삭제
+                          </button>
+                        )}
                       </div>
                     )}
 
