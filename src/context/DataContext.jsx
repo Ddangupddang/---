@@ -157,7 +157,7 @@ export function DataProvider({ children }) {
       if (!sRes.error && sRes.data)              setStudents(sRes.data.map(toStudent))
       if (!aRes.error && aRes.data?.length > 0) setAttendance(aRes.data.map(toAttendance))
       if (!gRes.error && gRes.data?.length > 0) setGrades(gRes.data.map(toGrade))
-      if (!qRes.error && qRes.data?.length > 0) setQnaList(qRes.data.map(toQna))
+      if (!qRes.error && qRes.data)              setQnaList(qRes.data.map(toQna))
       if (!nRes.error && nRes.data?.length > 0) setNotices(nRes.data.map(toNotice))
       if (!rRes.error && rRes.data?.length > 0) setReports(rRes.data.map(toReport))
       if (!pRes.error && pRes.data)              setStaffProfiles(pRes.data)

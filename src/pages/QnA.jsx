@@ -1,13 +1,12 @@
 // src/pages/QnA.jsx
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { tests } from '../data/tests'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
 
 export default function QnA() {
   const { user } = useAuth()
-  const { qnaList, students, addQuestion, answerQuestion } = useData()
+  const { qnaList, students, tests, addQuestion, answerQuestion } = useData()
   const [view, setView]                         = useState('list') // list | detail | ask
   const [selectedQuestion, setSelectedQuestion] = useState(null)
   const [filterTestId, setFilterTestId]         = useState('all')
