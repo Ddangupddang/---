@@ -2,12 +2,11 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
-import { users } from '../data/users'
 import Layout from '../components/Layout'
 
 export default function Notices() {
   const { user } = useAuth()
-  const { classes, notices, addNotice } = useData()
+  const { classes, notices, addNotice, deleteNotice, staffProfiles } = useData()
   const [view, setView]         = useState('list') // list | detail | create
   const [selected, setSelected] = useState(null)
 
@@ -44,7 +43,7 @@ export default function Notices() {
         ) : (
           <div className="flex flex-col gap-3">
             {visibleNotices.map((n) => {
-              const author      = users.find((u) => u.id === n.authorId)
+              const author      = staffProfiles.find((p) => p.id === n.authorId)
               const isAllClass  = n.targetClassIds.length === classes.length
               const targetLabel = isAllClass
                 ? '전체'
@@ -52,28 +51,48 @@ export default function Notices() {
                     .map((id) => classes.find((c) => c.id === id)?.name)
                     .filter(Boolean)
                     .join(', ')
+              const canDelete = isTeacherOrAdmin && (n.authorId === user.id || user.role === 'admin')
 
               return (
                 <div
                   key={n.id}
-                  onClick={() => { setSelected(n); setView('detail') }}
-                  className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                  className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="font-semibold text-[#2B2B2B] flex-1 pr-2">{n.title}</p>
-                    {n.kakaoSent && (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full shrink-0">
-                        카카오 전송
-                      </span>
-                    )}
+                  <div
+                    onClick={() => { setSelected(n); setView('detail') }}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="font-semibold text-[#2B2B2B] flex-1 pr-2">{n.title}</p>
+                      {n.kakaoSent && (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full shrink-0">
+                          카카오 전송
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 line-clamp-2 mb-2">{n.content}</p>
                   </div>
-                  <p className="text-sm text-gray-500 line-clamp-2 mb-2">{n.content}</p>
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span>{n.createdAt?.slice(0, 10)}</span>
-                    <span>·</span>
-                    <span>{author?.name}</span>
-                    <span>·</span>
-                    <span>{targetLabel}</span>
+                  <div className="flex items-center justify-between">
+                    <div
+                      onClick={() => { setSelected(n); setView('detail') }}
+                      className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer"
+                    >
+                      <span>{n.createdAt?.slice(0, 10)}</span>
+                      <span>·</span>
+                      <span>{author?.name ?? '알 수 없음'}</span>
+                      <span>·</span>
+                      <span>{targetLabel}</span>
+                    </div>
+                    {canDelete && (
+                      <button
+                        onClick={() => {
+                          if (confirm('공지를 삭제하시겠습니까?')) deleteNotice(n.id)
+                        }}
+                        className="text-xs text-gray-300 hover:text-[#C0392B] transition-colors ml-2 shrink-0"
+                      >
+                        삭제
+                      </button>
+                    )}
                   </div>
                 </div>
               )
@@ -88,7 +107,7 @@ export default function Notices() {
   // ────────── detail 뷰 ──────────
   if (view === 'detail') {
     const n          = selected
-    const author     = users.find((u) => u.id === n.authorId)
+    const author     = staffProfiles.find((p) => p.id === n.authorId)
     const isAllClass = n.targetClassIds.length === classes.length
     const targetLabel = isAllClass
       ? '전체'

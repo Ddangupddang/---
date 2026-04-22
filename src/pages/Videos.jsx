@@ -1,8 +1,6 @@
 // src/pages/Videos.jsx
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { videos as initialVideos } from '../data/videos'
-import { comments as initialComments } from '../data/comments'
 import { useData } from '../context/DataContext'
 import VideoCard from '../components/VideoCard'
 import VideoPlayer from '../components/VideoPlayer'
@@ -10,30 +8,16 @@ import VideoForm from '../components/VideoForm'
 import { extractVideoId, getThumbnailUrl } from '../utils/youtube'
 import Layout from '../components/Layout'
 
-// localStorage 키
-const VIDEOS_KEY   = 'smj_videos'
-const COMMENTS_KEY = 'smj_comments'
-
-function loadFromStorage(key, fallback) {
-  try {
-    const saved = localStorage.getItem(key)
-    return saved ? JSON.parse(saved) : fallback
-  } catch {
-    return fallback
-  }
-}
-
 export default function Videos() {
   const { user } = useAuth()
-  const { classes, students } = useData()
-  const [videos,   setVideos]   = useState(() => loadFromStorage(VIDEOS_KEY,   initialVideos))
-  const [comments, setComments] = useState(() => loadFromStorage(COMMENTS_KEY, initialComments))
+  const {
+    classes, students,
+    videos, videoComments,
+    addVideo, deleteVideo, addVideoComment, replyVideoComment,
+  } = useData()
 
-  // videos/comments 변경 시 localStorage에 저장
-  useEffect(() => { localStorage.setItem(VIDEOS_KEY,   JSON.stringify(videos))   }, [videos])
-  useEffect(() => { localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments)) }, [comments])
-  const [selectedVideo, setSelectedVideo] = useState(null)
-  const [showForm, setShowForm] = useState(false)
+  const [selectedVideo,   setSelectedVideo]   = useState(null)
+  const [showForm,        setShowForm]        = useState(false)
   const [selectedClassId, setSelectedClassId] = useState('all')
 
   // 학생은 본인 반만, 교사/관리자는 전체 반
@@ -51,52 +35,43 @@ export default function Videos() {
     return classMatch && accessMatch
   })
 
-  function handleAddVideo(data) {
+  async function handleAddVideo(data) {
     const videoId = data.videoId ?? extractVideoId(data.youtubeUrl)
-    const newVideo = {
-      id: videos.length + 1,
+    await addVideo({
       ...data,
       videoId,
       thumbnail: videoId ? getThumbnailUrl(videoId) : '',
       teacherId: user.id,
-      createdAt: new Date().toISOString().slice(0, 10),
-    }
-    setVideos([newVideo, ...videos])
+    })
     setShowForm(false)
   }
 
-  function handleAddComment({ videoId, studentId, content }) {
-    const newComment = {
-      id: comments.length + 1,
-      videoId,
-      studentId,
-      content,
-      createdAt: new Date().toLocaleString('ko-KR'),
-      reply: null,
-    }
-    setComments([...comments, newComment])
+  async function handleAddComment({ videoId, studentId, content }) {
+    await addVideoComment({ videoId, studentId, content })
   }
 
-  function handleAddReply(commentId, reply) {
-    setComments(
-      comments.map((c) => (c.id === commentId ? { ...c, reply } : c))
-    )
+  async function handleAddReply(commentId, reply) {
+    await replyVideoComment(commentId, reply)
   }
 
-  function handleDeleteVideo(videoId) {
+  async function handleDeleteVideo(id) {
     if (!confirm('영상을 삭제하시겠습니까?')) return
-    setVideos((prev) => prev.filter((v) => v.id !== videoId))
-    setComments((prev) => prev.filter((c) => c.videoId !== videoId))
+    await deleteVideo(id)
+    if (selectedVideo?.id === id) setSelectedVideo(null)
   }
 
   // 영상 재생 화면
   if (selectedVideo) {
+    // 삭제된 경우 목록으로 복귀
+    const currentVideo = videos.find((v) => v.id === selectedVideo.id)
+    if (!currentVideo) { setSelectedVideo(null); return null }
+
     return (
       <VideoPlayer
-        video={selectedVideo}
+        video={currentVideo}
         role={user.role}
         currentUser={user}
-        comments={comments}
+        comments={videoComments}
         students={students}
         onBack={() => setSelectedVideo(null)}
         onAddComment={handleAddComment}
@@ -170,7 +145,7 @@ export default function Videos() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredVideos.map((video) => {
             const cls = classes.find((c) => c.id === video.classId)
-            const commentCount = comments.filter((c) => c.videoId === video.id).length
+            const commentCount = videoComments.filter((c) => c.videoId === video.id).length
             return (
               <VideoCard
                 key={video.id}

@@ -164,8 +164,6 @@ function Students() {
       const wb = XLSX.read(evt.target.result, { type: 'array' })
       const ws = wb.Sheets[wb.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(ws)
-      console.log('엑셀 컬럼:', Object.keys(rows[0] ?? {}))
-      console.log('첫 행:', rows[0])
       const newStudents = rows.map((row) => {
         // 컬럼명의 공백/특수문자 제거 후 매핑
         const clean = {}
@@ -175,7 +173,6 @@ function Students() {
         const parentPhone = clean['부모핸드폰'] ?? clean['학부모연락처'] ?? ''
         const className   = clean['반명']      ?? clean['반']          ?? ''
         const classId     = classes.find((c) => c.name === className)?.id ?? null
-        console.log(`${name} → 반명:"${className}" → classId:${classId}`)
         return { name, phone, parentPhone, classId }
       })
       await bulkAddStudents(newStudents)

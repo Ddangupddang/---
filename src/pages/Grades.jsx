@@ -104,7 +104,8 @@ function LineChart({ data, color = '#5B8FD4', height = 140 }) {
 // ────────── Grades 페이지 ──────────
 function Grades() {
   const { user } = useAuth()
-  const { classes, students, grades: gradeList, addGrade } = useData()
+  const { classes, students, grades: gradeList, addGrade, deleteGrade } = useData()
+  const [historyStudent, setHistoryStudent] = useState(null) // 기록 모달용
   const [activeType,    setActiveType]    = useState('weekly')
   const [selectedClass, setSelectedClass] = useState(null)
   const [showForm,      setShowForm]      = useState(false)
@@ -352,8 +353,13 @@ function Grades() {
               {classStudents.map((student) => {
                 const g = getStudentLatestGrade(student.id)
                 const pct = g ? Math.round((g.score / g.total) * 100) : null
+                const gradeCount = displayGrades.filter((x) => x.studentId === student.id).length
                 return (
-                  <tr key={student.id} className="border-b border-gray-50 last:border-0">
+                  <tr
+                    key={student.id}
+                    onClick={() => setHistoryStudent(student)}
+                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer"
+                  >
                     <td className="px-4 py-3 font-medium">{student.name}</td>
                     <td className="px-4 py-3 text-gray-500">{g?.subject ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-400 hidden md:table-cell text-xs">{g?.part ?? '—'}</td>
@@ -370,7 +376,10 @@ function Grades() {
                         <span className="text-gray-300">미입력</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 hidden md:table-cell text-xs">{g?.date ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-400 hidden md:table-cell text-xs">
+                      {g?.date ?? '—'}
+                      {gradeCount > 1 && <span className="ml-1 text-[#5B8FD4]">+{gradeCount - 1}</span>}
+                    </td>
                   </tr>
                 )
               })}
@@ -381,6 +390,50 @@ function Grades() {
           )}
         </div>
       </div>
+
+      {/* 성적 기록 모달 (학생 행 클릭) */}
+      {historyStudent && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-bold text-[#2B2B2B]">{historyStudent.name} 성적 기록</h2>
+              <button onClick={() => setHistoryStudent(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {displayGrades
+                .filter((g) => g.studentId === historyStudent.id)
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((g) => {
+                  const pct = Math.round((g.score / g.total) * 100)
+                  return (
+                    <div key={g.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                      <div>
+                        <p className="text-sm font-medium">{g.subject} {g.part && <span className="text-xs text-gray-400">· {g.part}</span>}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{g.date}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`font-bold text-sm ${pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-[#f39c12]' : 'text-[#C0392B]'}`}>
+                          {g.score}/{g.total}점
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (confirm('이 성적을 삭제하시겠습니까?')) deleteGrade(g.id)
+                          }}
+                          className="text-xs text-gray-300 hover:text-[#C0392B] transition-colors"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              {displayGrades.filter((g) => g.studentId === historyStudent.id).length === 0 && (
+                <p className="text-center text-gray-400 text-sm py-6">성적 기록이 없습니다.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 성적 입력 모달 */}
       {showForm && (

@@ -12,7 +12,7 @@ import { reports as mockReports } from '../data/reports'
 
 const DataContext = createContext(null)
 
-// Supabase의 snake_case를 앱에서 쓰는 camelCase로 변환
+// Supabase snake_case → 앱 camelCase 변환
 function toAttendance(a) {
   return { id: a.id, studentId: a.student_id, date: a.date, status: a.status, type: a.type ?? '수업' }
 }
@@ -73,37 +73,99 @@ function toReport(r) {
     createdBy:     r.created_by,
   }
 }
+function toVideo(v) {
+  return {
+    id:         v.id,
+    title:      v.title,
+    youtubeUrl: v.youtube_url ?? '',
+    videoId:    v.video_id    ?? '',
+    thumbnail:  v.thumbnail   ?? '',
+    classId:    v.class_id,
+    teacherId:  v.teacher_id,
+    createdAt:  v.created_at  ?? '',
+  }
+}
+function toVideoComment(c) {
+  return {
+    id:        c.id,
+    videoId:   c.video_id,
+    studentId: c.student_id,
+    content:   c.content,
+    reply:     c.reply ?? null,
+    createdAt: c.created_at,
+  }
+}
+function toTest(t) {
+  return {
+    id:         t.id,
+    title:      t.title,
+    classId:    t.class_id,
+    teacherId:  t.teacher_id,
+    date:       t.date,
+    timeLimit:  t.time_limit,
+    status:     t.status,
+    startedAt:  t.started_at ?? null,
+    questions:  t.questions  ?? [],
+    createdAt:  t.created_at,
+  }
+}
+function toSubmission(s) {
+  return {
+    id:          s.id,
+    testId:      s.test_id,
+    studentId:   s.student_id,
+    submittedAt: s.submitted_at,
+    answers:     s.answers ?? [],
+    scores:      s.scores  ?? [],
+  }
+}
 
 export function DataProvider({ children }) {
-  const [classes,    setClasses]    = useState(mockClasses)
-  const [students,   setStudents]   = useState(mockStudents)
-  const [attendance, setAttendance] = useState(mockAttendance)
-  const [grades,     setGrades]     = useState(mockGrades)
-  const [qnaList,    setQnaList]    = useState(mockQna)
-  const [notices,    setNotices]    = useState(mockNotices)
-  const [reports,    setReports]    = useState(mockReports)
-  const [dataLoading, setDataLoading] = useState(true)
+  const [classes,       setClasses]       = useState(mockClasses)
+  const [students,      setStudents]      = useState(mockStudents)
+  const [attendance,    setAttendance]    = useState(mockAttendance)
+  const [grades,        setGrades]        = useState(mockGrades)
+  const [qnaList,       setQnaList]       = useState(mockQna)
+  const [notices,       setNotices]       = useState(mockNotices)
+  const [reports,       setReports]       = useState(mockReports)
+  const [staffProfiles, setStaffProfiles] = useState([])
+  const [videos,        setVideos]        = useState([])
+  const [videoComments, setVideoComments] = useState([])
+  const [tests,         setTests]         = useState([])
+  const [submissions,   setSubmissions]   = useState([])
+  const [dataLoading,   setDataLoading]   = useState(true)
 
-  // 앱 시작 시 Supabase에서 데이터 로드
   useEffect(() => {
     async function load() {
-      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes] = await Promise.all([
-        supabase.from('classes').select('*').order('sort_order').order('id'),
-        supabase.from('students').select('*').order('sort_order').order('id'),
-        supabase.from('attendance').select('*').order('date', { ascending: false }),
-        supabase.from('grades').select('*').order('date', { ascending: false }),
-        supabase.from('qna').select('*').order('created_at', { ascending: false }),
-        supabase.from('notices').select('*').order('created_at', { ascending: false }),
-        supabase.from('reports').select('*').order('date', { ascending: false }),
-      ])
+      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes] =
+        await Promise.all([
+          supabase.from('classes').select('*').order('sort_order').order('id'),
+          supabase.from('students').select('*').order('sort_order').order('id'),
+          supabase.from('attendance').select('*').order('date', { ascending: false }),
+          supabase.from('grades').select('*').order('date', { ascending: false }),
+          supabase.from('qna').select('*').order('created_at', { ascending: false }),
+          supabase.from('notices').select('*').order('created_at', { ascending: false }),
+          supabase.from('reports').select('*').order('date', { ascending: false }),
+          supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher']),
+          supabase.from('videos').select('*').order('created_at', { ascending: false }),
+          supabase.from('video_comments').select('*').order('created_at'),
+          supabase.from('tests').select('*').order('created_at', { ascending: false }),
+          supabase.from('submissions').select('*').order('submitted_at', { ascending: false }),
+        ])
 
       if (!cRes.error && cRes.data?.length > 0) setClasses(cRes.data.map(toClass))
-      if (!sRes.error && sRes.data) setStudents(sRes.data.map(toStudent))
+      if (!sRes.error && sRes.data)              setStudents(sRes.data.map(toStudent))
       if (!aRes.error && aRes.data?.length > 0) setAttendance(aRes.data.map(toAttendance))
       if (!gRes.error && gRes.data?.length > 0) setGrades(gRes.data.map(toGrade))
       if (!qRes.error && qRes.data?.length > 0) setQnaList(qRes.data.map(toQna))
       if (!nRes.error && nRes.data?.length > 0) setNotices(nRes.data.map(toNotice))
       if (!rRes.error && rRes.data?.length > 0) setReports(rRes.data.map(toReport))
+      if (!pRes.error && pRes.data)              setStaffProfiles(pRes.data)
+      if (!vRes.error && vRes.data)              setVideos(vRes.data.map(toVideo))
+      if (!vcRes.error && vcRes.data)            setVideoComments(vcRes.data.map(toVideoComment))
+      if (!tRes.error && tRes.data)              setTests(tRes.data.map(toTest))
+      if (!subRes.error && subRes.data)          setSubmissions(subRes.data.map(toSubmission))
+
       setDataLoading(false)
     }
     load()
@@ -164,7 +226,6 @@ export function DataProvider({ children }) {
     setStudents((prev) => prev.filter((s) => !ids.includes(s.id)))
   }
 
-  // 엑셀 업로드 시 여러 학생 한 번에 추가
   async function bulkAddStudents(dataArray) {
     const rows = dataArray.map((d) => ({
       name:         d.name,
@@ -175,9 +236,7 @@ export function DataProvider({ children }) {
     }))
 
     const { data: inserted, error } = await supabase
-      .from('students')
-      .insert(rows)
-      .select()
+      .from('students').insert(rows).select()
 
     if (error) { console.error('학생 일괄 추가 실패:', error); return }
     setStudents((prev) => [...prev, ...inserted.map(toStudent)])
@@ -185,7 +244,6 @@ export function DataProvider({ children }) {
 
   // ── 출결 CRUD ──────────────────────────────────────────
 
-  // 출결 기록 저장 (없으면 추가, 있으면 수정)
   async function upsertAttendance(studentId, date, status, type = '수업') {
     const { data: upserted, error } = await supabase
       .from('attendance')
@@ -316,6 +374,12 @@ export function DataProvider({ children }) {
     return newN
   }
 
+  async function deleteNotice(id) {
+    const { error } = await supabase.from('notices').delete().eq('id', id)
+    if (error) { console.error('공지 삭제 실패:', error); return }
+    setNotices((prev) => prev.filter((n) => n.id !== id))
+  }
+
   // ── 진도 리포트 CRUD ───────────────────────────────────
 
   async function addReport(data) {
@@ -351,10 +415,127 @@ export function DataProvider({ children }) {
     )
   }
 
+  // ── 영상 CRUD ──────────────────────────────────────────
+
+  async function addVideo(data) {
+    const { data: inserted, error } = await supabase
+      .from('videos')
+      .insert([{
+        title:       data.title,
+        youtube_url: data.youtubeUrl  ?? null,
+        video_id:    data.videoId     ?? null,
+        thumbnail:   data.thumbnail   ?? null,
+        class_id:    data.classId     ?? null,
+        teacher_id:  data.teacherId   ?? null,
+        created_at:  new Date().toISOString().slice(0, 10),
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('영상 추가 실패:', error); return null }
+    const newVideo = toVideo(inserted)
+    setVideos((prev) => [newVideo, ...prev])
+    return newVideo
+  }
+
+  async function deleteVideo(id) {
+    const { error } = await supabase.from('videos').delete().eq('id', id)
+    if (error) { console.error('영상 삭제 실패:', error); return }
+    setVideos((prev) => prev.filter((v) => v.id !== id))
+    setVideoComments((prev) => prev.filter((c) => c.videoId !== id))
+  }
+
+  async function addVideoComment(data) {
+    const { data: inserted, error } = await supabase
+      .from('video_comments')
+      .insert([{
+        video_id:   data.videoId,
+        student_id: data.studentId ?? null,
+        content:    data.content,
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('댓글 추가 실패:', error); return null }
+    const newComment = toVideoComment(inserted)
+    setVideoComments((prev) => [...prev, newComment])
+    return newComment
+  }
+
+  async function replyVideoComment(id, reply) {
+    const { error } = await supabase.from('video_comments').update({ reply }).eq('id', id)
+    if (error) { console.error('답글 저장 실패:', error); return }
+    setVideoComments((prev) => prev.map((c) => c.id === id ? { ...c, reply } : c))
+  }
+
+  // ── 테스트 CRUD ────────────────────────────────────────
+
+  async function addTest(data) {
+    const { data: inserted, error } = await supabase
+      .from('tests')
+      .insert([{
+        title:      data.title,
+        class_id:   data.classId   ?? null,
+        teacher_id: data.teacherId ?? null,
+        date:       data.date,
+        time_limit: data.timeLimit ?? null,
+        status:     data.status    ?? 'ready',
+        started_at: data.startedAt ?? null,
+        questions:  data.questions ?? [],
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('테스트 추가 실패:', error); return null }
+    const newTest = toTest(inserted)
+    setTests((prev) => [newTest, ...prev])
+    return newTest
+  }
+
+  async function updateTestStatus(id, status, startedAt = null) {
+    const updates = { status }
+    if (startedAt) updates.started_at = startedAt
+    const { error } = await supabase.from('tests').update(updates).eq('id', id)
+    if (error) { console.error('테스트 상태 변경 실패:', error); return }
+    setTests((prev) => prev.map((t) => t.id === id ? { ...t, status, startedAt } : t))
+  }
+
+  async function deleteTest(id) {
+    const { error } = await supabase.from('tests').delete().eq('id', id)
+    if (error) { console.error('테스트 삭제 실패:', error); return }
+    setTests((prev) => prev.filter((t) => t.id !== id))
+    setSubmissions((prev) => prev.filter((s) => s.testId !== id))
+  }
+
+  // ── 제출 CRUD ──────────────────────────────────────────
+
+  async function addSubmission(data) {
+    const { data: inserted, error } = await supabase
+      .from('submissions')
+      .insert([{
+        test_id:    data.testId,
+        student_id: data.studentId ?? null,
+        answers:    data.answers   ?? [],
+        scores:     data.scores    ?? [],
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('제출 실패:', error); return null }
+    const newSub = toSubmission(inserted)
+    setSubmissions((prev) => [newSub, ...prev])
+    return newSub
+  }
+
+  async function updateSubmissionScores(id, scores) {
+    const { error } = await supabase.from('submissions').update({ scores }).eq('id', id)
+    if (error) { console.error('채점 저장 실패:', error); return }
+    setSubmissions((prev) => prev.map((s) => s.id === id ? { ...s, scores } : s))
+  }
+
   // ── 순서 변경 ──────────────────────────────────────────
 
   async function reorderStudents(orderedIds) {
-    // 지정된 ID들의 순서만 변경하고, 나머지 학생은 그대로 유지
     setStudents((prev) => {
       const idSet = new Set(orderedIds)
       const reordered = orderedIds.map((id) => prev.find((s) => s.id === id)).filter(Boolean)
@@ -417,6 +598,9 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider value={{
       classes, students, attendance, grades, qnaList, notices, reports,
+      staffProfiles,
+      videos, videoComments,
+      tests, submissions,
       dataLoading,
       addStudent, updateStudent, deleteStudent, bulkAddStudents, bulkDeleteStudents,
       addClass,  updateClass,  deleteClass,
@@ -424,8 +608,11 @@ export function DataProvider({ children }) {
       upsertAttendance, deleteAttendance,
       addGrade, updateGrade, deleteGrade,
       addQuestion, answerQuestion,
-      addNotice,
+      addNotice, deleteNotice,
       addReport, updateReportChecks,
+      addVideo, deleteVideo, addVideoComment, replyVideoComment,
+      addTest, updateTestStatus, deleteTest,
+      addSubmission, updateSubmissionScores,
     }}>
       {children}
     </DataContext.Provider>
