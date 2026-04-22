@@ -3,15 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
-import { tests } from '../data/tests'
-import { submissions } from '../data/submissions'
 
 const today = new Date().toISOString().slice(0, 10)
 
 // ────────── 관리자/교사 대시보드 ──────────
 function AdminTeacherDashboard({ user }) {
   const navigate = useNavigate()
-  const { classes, students, attendance, qnaList, notices: dbNotices } = useData()
+  const { classes, students, attendance, qnaList, notices: dbNotices, tests, submissions } = useData()
 
   const myClasses = user.role === 'admin'
     ? classes
@@ -241,7 +239,7 @@ function AdminTeacherDashboard({ user }) {
 function StudentDashboard({ user }) {
   const navigate  = useNavigate()
   const thisMonth = today.slice(0, 7)
-  const { attendance, grades: dbGrades, qnaList, notices: dbNotices } = useData()
+  const { attendance, grades: dbGrades, qnaList, notices: dbNotices, tests, submissions } = useData()
 
   // 이번 달 출결 (Supabase 실제 데이터)
   const myRecords = attendance.filter(
