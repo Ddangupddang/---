@@ -13,11 +13,28 @@ const statusBadge = {
   closed: { label: '종료',   color: 'bg-red-100 text-red-600' },
 }
 
+// localStorage 키
+const TESTS_KEY       = 'smj_tests'
+const SUBMISSIONS_KEY = 'smj_submissions'
+
+function loadFromStorage(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key)
+    return saved ? JSON.parse(saved) : fallback
+  } catch {
+    return fallback
+  }
+}
+
 export default function Tests() {
   const { user } = useAuth()
   const { classes, students } = useData()
-  const [tests, setTests]             = useState(initialTests)
-  const [submissions, setSubmissions] = useState(initialSubmissions)
+  const [tests,       setTests]       = useState(() => loadFromStorage(TESTS_KEY,       initialTests))
+  const [submissions, setSubmissions] = useState(() => loadFromStorage(SUBMISSIONS_KEY, initialSubmissions))
+
+  // tests/submissions 변경 시 localStorage에 저장
+  useEffect(() => { localStorage.setItem(TESTS_KEY,       JSON.stringify(tests))       }, [tests])
+  useEffect(() => { localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(submissions)) }, [submissions])
   const [view, setView]               = useState('list')
   const [selectedTest, setSelectedTest]             = useState(null)
   const [selectedSubmission, setSelectedSubmission] = useState(null)

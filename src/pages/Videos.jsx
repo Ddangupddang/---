@@ -1,5 +1,5 @@
 // src/pages/Videos.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { videos as initialVideos } from '../data/videos'
 import { comments as initialComments } from '../data/comments'
@@ -10,11 +10,28 @@ import VideoForm from '../components/VideoForm'
 import { extractVideoId, getThumbnailUrl } from '../utils/youtube'
 import Layout from '../components/Layout'
 
+// localStorage 키
+const VIDEOS_KEY   = 'smj_videos'
+const COMMENTS_KEY = 'smj_comments'
+
+function loadFromStorage(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key)
+    return saved ? JSON.parse(saved) : fallback
+  } catch {
+    return fallback
+  }
+}
+
 export default function Videos() {
   const { user } = useAuth()
   const { classes, students } = useData()
-  const [videos, setVideos] = useState(initialVideos)
-  const [comments, setComments] = useState(initialComments)
+  const [videos,   setVideos]   = useState(() => loadFromStorage(VIDEOS_KEY,   initialVideos))
+  const [comments, setComments] = useState(() => loadFromStorage(COMMENTS_KEY, initialComments))
+
+  // videos/comments 변경 시 localStorage에 저장
+  useEffect(() => { localStorage.setItem(VIDEOS_KEY,   JSON.stringify(videos))   }, [videos])
+  useEffect(() => { localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments)) }, [comments])
   const [selectedVideo, setSelectedVideo] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState('all')

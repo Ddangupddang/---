@@ -3,19 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
-import { attendance } from '../data/attendance'
-import { grades } from '../data/grades'
 import { tests } from '../data/tests'
 import { submissions } from '../data/submissions'
-import { qnaQuestions } from '../data/qna'
-import { notices } from '../data/notices'
 
 const today = new Date().toISOString().slice(0, 10)
 
 // ────────── 관리자/교사 대시보드 ──────────
 function AdminTeacherDashboard({ user }) {
   const navigate = useNavigate()
-  const { classes, students } = useData()
+  const { classes, students, attendance, qnaList, notices: dbNotices } = useData()
 
   const myClasses = user.role === 'admin'
     ? classes
@@ -29,7 +25,7 @@ function AdminTeacherDashboard({ user }) {
     return s.scores.length === 0 && myClassIds.includes(test?.classId)
   }).length
 
-  const unansweredQna = qnaQuestions.filter((q) => {
+  const unansweredQna = qnaList.filter((q) => {
     const test = tests.find((t) => t.id === q.testId)
     return !q.answer && (user.role === 'admin' || myClassIds.includes(test?.classId))
   }).length
@@ -38,7 +34,7 @@ function AdminTeacherDashboard({ user }) {
   const totalStudents = students.filter((s) => myClassIds.includes(s.classId)).length
 
   // 최근 공지사항 2개
-  const recentNotices = [...notices]
+  const recentNotices = [...dbNotices]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 2)
 
@@ -243,12 +239,13 @@ function AdminTeacherDashboard({ user }) {
 
 // ────────── 학생 대시보드 ──────────
 function StudentDashboard({ user }) {
-  const navigate    = useNavigate()
-  const thisMonth   = today.slice(0, 7)
+  const navigate  = useNavigate()
+  const thisMonth = today.slice(0, 7)
+  const { attendance, grades: dbGrades, qnaList, notices: dbNotices } = useData()
 
-  // 출결
+  // 이번 달 출결 (Supabase 실제 데이터)
   const myRecords = attendance.filter(
-    (a) => a.studentId === user.studentId && a.date.startsWith(thisMonth)
+    (a) => a.studentId === user.studentId && a.date.startsWith(thisMonth) && a.type === '수업'
   )
   const present = myRecords.filter((a) => a.status === 'present').length
   const absent  = myRecords.filter((a) => a.status === 'absent').length
@@ -256,32 +253,32 @@ function StudentDashboard({ user }) {
   const total   = present + absent + late
   const rate    = total > 0 ? Math.round((present / total) * 100) : 0
 
-  // 최근 테스트 결과 (채점 완료된 것만)
+  // 최근 테스트 결과 (채점 완료된 것만 — mock 데이터)
   const myTestResults = submissions
     .filter((s) => s.studentId === user.studentId && s.scores.length > 0)
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
     .slice(0, 3)
     .map((s) => {
-      const test       = tests.find((t) => t.id === s.testId)
-      const myScore    = s.scores.reduce((sum, sc) => sum + sc.score, 0)
+      const test        = tests.find((t) => t.id === s.testId)
+      const myScore     = s.scores.reduce((sum, sc) => sum + sc.score, 0)
       const totalPoints = test?.questions.reduce((sum, q) => sum + q.points, 0) ?? 0
       return { test, myScore, totalPoints, submittedAt: s.submittedAt }
     })
 
-  // 최근 성적 (내신)
-  const myGrades = [...grades]
+  // 최근 성적 (Supabase 실제 데이터)
+  const myGrades = [...dbGrades]
     .filter((g) => g.studentId === user.studentId)
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 3)
 
-  // 답변받은 Q&A (최근 3개)
-  const answeredQna = qnaQuestions
+  // 답변받은 Q&A (Supabase 실제 데이터)
+  const answeredQna = [...qnaList]
     .filter((q) => q.studentId === user.studentId && q.answer)
     .sort((a, b) => (b.answeredAt ?? '').localeCompare(a.answeredAt ?? ''))
     .slice(0, 2)
 
-  // 최근 공지사항 (내 반 또는 전체 대상)
-  const recentNotices = [...notices]
+  // 최근 공지사항 (Supabase 실제 데이터)
+  const recentNotices = [...dbNotices]
     .filter((n) => n.targetClassIds.includes(user.classId) || n.targetClassIds.length === 0)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 2)
@@ -298,34 +295,39 @@ function StudentDashboard({ user }) {
           <h3 className="font-bold text-[#2B2B2B]">이번 달 출결</h3>
           <span className="text-2xl font-bold text-[#5B8FD4]">{rate}%</span>
         </div>
-        <div className="flex justify-around">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#27ae60]">{present}</div>
-            <div className="text-xs text-gray-400">출석</div>
+        {total === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-1">이번 달 출결 기록이 없습니다.</p>
+        ) : (
+          <div className="flex justify-around">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-[#27ae60]">{present}</div>
+              <div className="text-xs text-gray-400">출석</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-[#C0392B]">{absent}</div>
+              <div className="text-xs text-gray-400">결석</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-[#f39c12]">{late}</div>
+              <div className="text-xs text-gray-400">지각</div>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#C0392B]">{absent}</div>
-            <div className="text-xs text-gray-400">결석</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#f39c12]">{late}</div>
-            <div className="text-xs text-gray-400">지각</div>
-          </div>
-        </div>
+        )}
       </button>
 
       {/* 최근 테스트 결과 */}
-      {myTestResults.length > 0 && (
-        <section>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-semibold text-gray-500">최근 테스트 결과</h2>
-            <button
-              onClick={() => navigate('/tests')}
-              className="text-xs text-[#5B8FD4] hover:underline"
-            >
-              전체 보기
-            </button>
+      <section>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-semibold text-gray-500">최근 테스트 결과</h2>
+          <button onClick={() => navigate('/tests')} className="text-xs text-[#5B8FD4] hover:underline">
+            전체 보기
+          </button>
+        </div>
+        {myTestResults.length === 0 ? (
+          <div className="bg-white rounded-xl p-4 text-center text-sm text-gray-400">
+            채점된 테스트 결과가 없습니다.
           </div>
+        ) : (
           <div className="flex flex-col gap-2">
             {myTestResults.map(({ test, myScore, totalPoints, submittedAt }) => (
               <button
@@ -335,9 +337,7 @@ function StudentDashboard({ user }) {
               >
                 <div>
                   <p className="text-sm font-medium text-[#2B2B2B]">{test?.title}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {submittedAt.slice(0, 10)}
-                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">{submittedAt.slice(0, 10)}</p>
                 </div>
                 <div className="text-right ml-3 shrink-0">
                   <p className="text-sm font-bold text-[#5B8FD4]">{myScore}점</p>
@@ -346,21 +346,22 @@ function StudentDashboard({ user }) {
               </button>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* 최근 내신 성적 */}
-      {myGrades.length > 0 && (
-        <section>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-semibold text-gray-500">최근 성적</h2>
-            <button
-              onClick={() => navigate('/grades')}
-              className="text-xs text-[#5B8FD4] hover:underline"
-            >
-              전체 보기
-            </button>
+      <section>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-semibold text-gray-500">최근 성적</h2>
+          <button onClick={() => navigate('/grades')} className="text-xs text-[#5B8FD4] hover:underline">
+            전체 보기
+          </button>
+        </div>
+        {myGrades.length === 0 ? (
+          <div className="bg-white rounded-xl p-4 text-center text-sm text-gray-400">
+            등록된 성적이 없습니다.
           </div>
+        ) : (
           <div className="bg-white rounded-xl p-3 shadow-sm flex flex-col gap-2">
             {myGrades.map((g) => (
               <div key={g.id} className="flex justify-between items-center">
@@ -375,21 +376,22 @@ function StudentDashboard({ user }) {
               </div>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* 답변받은 Q&A */}
-      {answeredQna.length > 0 && (
-        <section>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-semibold text-gray-500">Q&A 답변</h2>
-            <button
-              onClick={() => navigate('/qna')}
-              className="text-xs text-[#5B8FD4] hover:underline"
-            >
-              전체 보기
-            </button>
+      <section>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-semibold text-gray-500">Q&A 답변</h2>
+          <button onClick={() => navigate('/qna')} className="text-xs text-[#5B8FD4] hover:underline">
+            전체 보기
+          </button>
+        </div>
+        {answeredQna.length === 0 ? (
+          <div className="bg-white rounded-xl p-4 text-center text-sm text-gray-400">
+            받은 Q&A 답변이 없습니다.
           </div>
+        ) : (
           <div className="flex flex-col gap-2">
             {answeredQna.map((q) => {
               const test = tests.find((t) => t.id === q.testId)
@@ -400,28 +402,29 @@ function StudentDashboard({ user }) {
                   className="bg-[#5B8FD4]/10 border border-[#5B8FD4]/20 rounded-xl p-3 text-left hover:bg-[#5B8FD4]/15 transition-colors"
                 >
                   <p className="text-xs text-[#5B8FD4] font-medium mb-1">
-                    답변 완료 · {test?.title}
+                    답변 완료 · {test?.title ?? 'Q&A'}
                   </p>
                   <p className="text-sm text-[#2B2B2B] line-clamp-1">{q.content}</p>
                 </button>
               )
             })}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* 최근 공지사항 */}
-      {recentNotices.length > 0 && (
-        <section>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-semibold text-gray-500">공지사항</h2>
-            <button
-              onClick={() => navigate('/notices')}
-              className="text-xs text-[#5B8FD4] hover:underline"
-            >
-              전체 보기
-            </button>
+      <section>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-semibold text-gray-500">공지사항</h2>
+          <button onClick={() => navigate('/notices')} className="text-xs text-[#5B8FD4] hover:underline">
+            전체 보기
+          </button>
+        </div>
+        {recentNotices.length === 0 ? (
+          <div className="bg-white rounded-xl p-4 text-center text-sm text-gray-400">
+            공지사항이 없습니다.
           </div>
+        ) : (
           <div className="flex flex-col gap-2">
             {recentNotices.map((n) => (
               <button
@@ -436,8 +439,8 @@ function StudentDashboard({ user }) {
               </button>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   )
 }

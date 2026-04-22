@@ -46,12 +46,13 @@ export function AuthProvider({ children }) {
     // 핸들러를 동기로 유지해야 Supabase가 await하지 않아 auth 락 데드락 방지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // USER_UPDATED, TOKEN_REFRESHED: fetchProfile 불필요 — 스킵
-        if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
-          setLoading(false)
-          return
-        }
+        // USER_UPDATED, TOKEN_REFRESHED: user/loading 변경 없이 스킵
+        if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') return
+
         if (session?.user) {
+          // SIGNED_IN: 프로필 로드 전 로딩 표시 → 완료 후 user 세팅 + 로딩 해제
+          // 이렇게 해야 ProtectedRoute가 user 준비되기 전 /login으로 튕기지 않음
+          if (event === 'SIGNED_IN') setLoading(true)
           // 비동기 프로필 조회는 .then()으로 분리 — Supabase가 기다리지 않음
           fetchProfile(session.user).then((profile) => {
             setUser(profile)
@@ -68,16 +69,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   // 로그인: username → username@soomoonjae.com 형식 이메일로 변환
+  // 프로필 로드는 onAuthStateChange(SIGNED_IN)이 처리 — 여기서는 인증만
   const login = async (username, password) => {
     const email = `${username.trim()}@soomoonjae.com`
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return false
-    // 로그인 성공 즉시 프로필 조회 → user 세팅 (onAuthStateChange 타이밍 의존 안 함)
-    if (data.user) {
-      const profile = await fetchProfile(data.user)
-      setUser(profile)
-    }
-    return true
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    return !error
   }
 
   const logout = async () => {

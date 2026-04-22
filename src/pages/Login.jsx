@@ -9,11 +9,10 @@ function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-
-  // 이미 로그인된 경우 대시보드로 이동
-  if (user) return <Navigate to="/dashboard" replace />
-
   const [loading, setLoading] = useState(false)
+
+  // 이미 로그인된 경우 대시보드로 이동 (훅은 반드시 모두 선언 후 조건부 return)
+  if (user) return <Navigate to="/dashboard" replace />
 
   const handleSubmit = async (e) => {
     e.preventDefault()
