@@ -154,6 +154,12 @@ export function DataProvider({ children }) {
     setStudents((prev) => prev.filter((s) => s.id !== id))
   }
 
+  async function bulkDeleteStudents(ids) {
+    const { error } = await supabase.from('students').delete().in('id', ids)
+    if (error) { console.error('학생 일괄 삭제 실패:', error); return }
+    setStudents((prev) => prev.filter((s) => !ids.includes(s.id)))
+  }
+
   // 엑셀 업로드 시 여러 학생 한 번에 추가
   async function bulkAddStudents(dataArray) {
     const rows = dataArray.map((d) => ({
@@ -408,7 +414,7 @@ export function DataProvider({ children }) {
     <DataContext.Provider value={{
       classes, students, attendance, grades, qnaList, notices, reports,
       dataLoading,
-      addStudent, updateStudent, deleteStudent, bulkAddStudents,
+      addStudent, updateStudent, deleteStudent, bulkAddStudents, bulkDeleteStudents,
       addClass,  updateClass,  deleteClass,
       reorderStudents, reorderClasses,
       upsertAttendance, deleteAttendance,
