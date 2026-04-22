@@ -1,7 +1,7 @@
 // src/components/Header.jsx
 import { useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, Menu } from 'lucide-react'
 
 const pageTitles = {
   '/dashboard':       '대시보드',
@@ -16,7 +16,7 @@ const pageTitles = {
   '/change-password': '비밀번호 변경',
 }
 
-function Header() {
+function Header({ onMenuClick }) {
   const { user, logout } = useAuth()
   const location = useLocation()
   const isStudent = user?.role === 'student'
@@ -24,14 +24,25 @@ function Header() {
 
   return (
     <header className="flex items-center justify-between h-14 px-4 bg-white border-b border-gray-100">
-      {/* 학생(모바일): 수문재 로고 표시 / 교사·관리자: 페이지 제목 */}
-      {isStudent ? (
-        <Link to="/dashboard">
-          <img src="/logo.png" alt="수문재 로고" className="h-8 object-contain hover:opacity-80 transition-opacity" />
-        </Link>
-      ) : (
-        <h1 className="text-base font-bold text-[#2B2B2B]">{title}</h1>
-      )}
+      <div className="flex items-center gap-3">
+        {/* 관리자/교사 모바일: 햄버거 버튼 */}
+        {!isStudent && onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="md:hidden text-[#2B2B2B] hover:text-gray-600"
+          >
+            <Menu size={22} strokeWidth={1.8} />
+          </button>
+        )}
+        {/* 학생(모바일): 수문재 로고 표시 / 교사·관리자: 페이지 제목 */}
+        {isStudent ? (
+          <Link to="/dashboard">
+            <img src="/logo.png" alt="수문재 로고" className="h-8 object-contain hover:opacity-80 transition-opacity" />
+          </Link>
+        ) : (
+          <h1 className="text-base font-bold text-[#2B2B2B]">{title}</h1>
+        )}
+      </div>
 
       <div className="flex items-center gap-3">
         {/* 학생: 현재 페이지 타이틀을 오른쪽에 작게 표시 */}

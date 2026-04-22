@@ -42,14 +42,14 @@ const adminSection = {
   ],
 }
 
-function Sidebar() {
+function SidebarContent({ onClose }) {
   const { user, logout } = useAuth()
 
   return (
-    <aside className="hidden md:flex flex-col w-56 min-h-screen bg-[#2B2B2B] px-3 py-5">
+    <>
       {/* 로고 영역 — 클릭 시 대시보드로 이동 */}
       <div className="mb-7">
-        <Link to="/dashboard" className="block bg-white rounded-xl px-3 py-2.5 hover:opacity-90 transition-opacity">
+        <Link to="/dashboard" onClick={onClose} className="block bg-white rounded-xl px-3 py-2.5 hover:opacity-90 transition-opacity">
           <img src="/logo.png" alt="수문재 로고" className="w-full object-contain" style={{ maxHeight: '48px' }} />
         </Link>
       </div>
@@ -66,6 +66,7 @@ function Sidebar() {
                 <NavLink
                   key={path}
                   to={path}
+                  onClick={onClose}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
                       isActive
@@ -93,6 +94,7 @@ function Sidebar() {
                 <NavLink
                   key={path}
                   to={path}
+                  onClick={onClose}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
                       isActive
@@ -115,6 +117,7 @@ function Sidebar() {
         <div className="px-3 py-1 text-white/40 text-xs mb-1">{user?.name}</div>
         <NavLink
           to="/change-password"
+          onClick={onClose}
           className={({ isActive }) =>
             `w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors ${
               isActive ? 'text-white bg-white/10' : 'text-white/40 hover:text-white hover:bg-white/8'
@@ -125,14 +128,41 @@ function Sidebar() {
           비밀번호 변경
         </NavLink>
         <button
-          onClick={logout}
+          onClick={() => { logout(); onClose?.() }}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-white/40 hover:text-white hover:bg-white/8 rounded-lg transition-colors"
         >
           <LogOut size={15} strokeWidth={1.8} />
           로그아웃
         </button>
       </div>
-    </aside>
+    </>
+  )
+}
+
+function Sidebar({ isOpen, onClose }) {
+  return (
+    <>
+      {/* 데스크탑 사이드바 */}
+      <aside className="hidden md:flex flex-col w-56 min-h-screen bg-[#2B2B2B] px-3 py-5">
+        <SidebarContent onClose={() => {}} />
+      </aside>
+
+      {/* 모바일 오버레이 */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* 모바일 드로어 */}
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-[#2B2B2B] px-3 py-5 z-50 flex flex-col md:hidden
+        transform transition-transform duration-300 ease-in-out overflow-y-auto
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <SidebarContent onClose={onClose} />
+      </aside>
+    </>
   )
 }
 
