@@ -23,7 +23,7 @@ function Students() {
   // 학생 폼
   const [showForm, setShowForm]     = useState(false)
   const [editTarget, setEditTarget] = useState(null)
-  const [form, setForm]             = useState({ name: '', phone: '', classId: '', parentPhone: '', joinDate: '' })
+  const [form, setForm]             = useState({ name: '', phone: '', classId: '', parentPhone: '' })
   const fileInputRef                = useRef(null)
 
   // 반 폼
@@ -128,7 +128,7 @@ function Students() {
     }
     setShowForm(false)
     setEditTarget(null)
-    setForm({ name: '', phone: '', classId: '', parentPhone: '', joinDate: '' })
+    setForm({ name: '', phone: '', classId: '', parentPhone: '' })
   }
 
   const handleDelete = async (id) => {
@@ -149,7 +149,6 @@ function Students() {
       반: getClassName(s.classId),
       연락처: s.phone,
       학부모연락처: s.parentPhone,
-      등록일: s.joinDate,
     }))
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
@@ -170,7 +169,6 @@ function Students() {
         phone:       row['연락처']      ?? '',
         classId:     classes.find((c) => c.name === row['반'])?.id ?? null,
         parentPhone: row['학부모연락처'] ?? '',
-        joinDate:    row['등록일']       ?? '',
       }))
       await bulkAddStudents(newStudents)
     }
@@ -250,7 +248,7 @@ function Students() {
             {isAdmin && !selectMode && (
               <>
                 <button
-                  onClick={() => { setShowForm(true); setEditTarget(null); setForm({ name: '', phone: '', classId: '', parentPhone: '', joinDate: '' }) }}
+                  onClick={() => { setShowForm(true); setEditTarget(null); setForm({ name: '', phone: '', classId: '', parentPhone: '' }) }}
                   className="px-4 py-2 bg-[#2B2B2B] text-white text-sm rounded-lg hover:bg-[#3d3d3d]"
                 >
                   + 학생 추가
@@ -327,7 +325,6 @@ function Students() {
                   <th className="text-left px-4 py-3 font-medium">이름</th>
                   <th className="text-left px-4 py-3 font-medium">반</th>
                   <th className="text-left px-4 py-3 font-medium hidden md:table-cell">연락처</th>
-                  <th className="text-left px-4 py-3 font-medium hidden md:table-cell">등록일</th>
                   {isAdmin && !selectMode && <th className="px-4 py-3 text-center font-medium">계정</th>}
                   {isAdmin && !selectMode && <th className="px-4 py-3"></th>}
                 </tr>
@@ -515,7 +512,6 @@ function Students() {
               </select>
               <input placeholder="연락처 (010-0000-0000)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none" />
               <input placeholder="학부모 연락처" value={form.parentPhone} onChange={(e) => setForm({ ...form, parentPhone: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none" />
-              <input type="date" value={form.joinDate} onChange={(e) => setForm({ ...form, joinDate: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none" />
               <div className="flex gap-2 mt-1">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 h-11 border border-gray-200 rounded-lg text-sm text-gray-500 hover:bg-gray-50">취소</button>
                 <button type="submit" className="flex-1 h-11 bg-[#2B2B2B] text-white rounded-lg text-sm font-semibold hover:bg-[#3d3d3d]">저장</button>
@@ -643,7 +639,6 @@ function SortableStudentRow({
       <td className="px-4 py-3 font-medium">{student.name}</td>
       <td className="px-4 py-3 text-gray-500">{getClassName(student.classId)}</td>
       <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{student.phone}</td>
-      <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{student.joinDate}</td>
       {isAdmin && !selectMode && (
         <td className="px-4 py-3 text-center">
           <button onClick={onCreateAccount} className="text-xs text-[#5B8FD4] hover:underline">
