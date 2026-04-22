@@ -164,12 +164,20 @@ function Students() {
       const wb = XLSX.read(evt.target.result, { type: 'array' })
       const ws = wb.Sheets[wb.SheetNames[0]]
       const rows = XLSX.utils.sheet_to_json(ws)
-      const newStudents = rows.map((row) => ({
-        name:        row['이름']        ?? '',
-        phone:       row['연락처']      ?? '',
-        classId:     classes.find((c) => c.name === row['반'])?.id ?? null,
-        parentPhone: row['학부모연락처'] ?? '',
-      }))
+      console.log('엑셀 컬럼:', Object.keys(rows[0] ?? {}))
+      console.log('첫 행:', rows[0])
+      const newStudents = rows.map((row) => {
+        // 컬럼명의 공백/특수문자 제거 후 매핑
+        const clean = {}
+        Object.entries(row).forEach(([k, v]) => { clean[k.trim()] = v })
+        const name        = clean['성명']      ?? clean['이름']        ?? ''
+        const phone       = clean['학생핸드폰'] ?? clean['연락처']      ?? ''
+        const parentPhone = clean['부모핸드폰'] ?? clean['학부모연락처'] ?? ''
+        const className   = clean['반명']      ?? clean['반']          ?? ''
+        const classId     = classes.find((c) => c.name === className)?.id ?? null
+        console.log(`${name} → 반명:"${className}" → classId:${classId}`)
+        return { name, phone, parentPhone, classId }
+      })
       await bulkAddStudents(newStudents)
     }
     reader.readAsArrayBuffer(file)

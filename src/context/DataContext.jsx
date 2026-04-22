@@ -98,7 +98,7 @@ export function DataProvider({ children }) {
       ])
 
       if (!cRes.error && cRes.data?.length > 0) setClasses(cRes.data.map(toClass))
-      if (!sRes.error && sRes.data?.length > 0) setStudents(sRes.data.map(toStudent))
+      if (!sRes.error && sRes.data) setStudents(sRes.data.map(toStudent))
       if (!aRes.error && aRes.data?.length > 0) setAttendance(aRes.data.map(toAttendance))
       if (!gRes.error && gRes.data?.length > 0) setGrades(gRes.data.map(toGrade))
       if (!qRes.error && qRes.data?.length > 0) setQnaList(qRes.data.map(toQna))
@@ -149,14 +149,18 @@ export function DataProvider({ children }) {
   }
 
   async function deleteStudent(id) {
-    const { error } = await supabase.from('students').delete().eq('id', id)
+    const { data: deleted, error } = await supabase
+      .from('students').delete().eq('id', id).select()
     if (error) { console.error('학생 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('학생 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setStudents((prev) => prev.filter((s) => s.id !== id))
   }
 
   async function bulkDeleteStudents(ids) {
-    const { error } = await supabase.from('students').delete().in('id', ids)
+    const { data: deleted, error } = await supabase
+      .from('students').delete().in('id', ids).select()
     if (error) { console.error('학생 일괄 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('학생 일괄 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setStudents((prev) => prev.filter((s) => !ids.includes(s.id)))
   }
 
