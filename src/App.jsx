@@ -14,6 +14,7 @@ import QnA from './pages/QnA'
 import Notices from './pages/Notices'
 import Reports from './pages/Reports'
 import ChangePassword from './pages/ChangePassword'
+import Staff from './pages/Staff'
 
 function App() {
   return (
@@ -113,6 +114,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'teacher']}>
                 <Reports />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 계정 관리 (관리자만) */}
+          <Route
+            path="/staff"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Staff />
               </ProtectedRoute>
             }
           />

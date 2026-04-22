@@ -3,7 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   Users, School, ClipboardCheck, BarChart2,
-  Video, ClipboardList, MessageCircle, Bell, TrendingUp, LogOut, KeyRound,
+  Video, ClipboardList, MessageCircle, Bell, TrendingUp, LogOut, KeyRound, UserCog,
 } from 'lucide-react'
 
 // 섹션 그룹핑된 네비게이션 설정 (대시보드는 로고 클릭으로 이동)
@@ -33,6 +33,14 @@ const navSections = [
     ],
   },
 ]
+
+// 관리자 전용 섹션
+const adminSection = {
+  label: '관리',
+  items: [
+    { label: '계정 관리', path: '/staff', Icon: UserCog },
+  ],
+}
 
 function Sidebar() {
   const { user, logout } = useAuth()
@@ -73,6 +81,33 @@ function Sidebar() {
             </div>
           </div>
         ))}
+
+        {/* 관리자 전용 섹션 */}
+        {user?.role === 'admin' && (
+          <div>
+            <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-white/30 uppercase">
+              {adminSection.label}
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {adminSection.items.map(({ label, path, Icon }) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      isActive
+                        ? 'bg-[#5B8FD4]/20 text-white font-semibold border-l-2 border-[#5B8FD4]'
+                        : 'text-white/55 hover:text-white hover:bg-white/8'
+                    }`
+                  }
+                >
+                  <Icon size={15} strokeWidth={1.8} />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* 하단 사용자 정보 */}
