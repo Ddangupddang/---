@@ -403,6 +403,12 @@ export function DataProvider({ children }) {
     return newR
   }
 
+  async function deleteReport(id) {
+    const { error } = await supabase.from('reports').delete().eq('id', id)
+    if (error) { console.error('리포트 삭제 실패:', error); return }
+    setReports((prev) => prev.filter((r) => r.id !== id))
+  }
+
   async function updateReportChecks(id, studentChecks) {
     const { error } = await supabase
       .from('reports')
@@ -609,7 +615,7 @@ export function DataProvider({ children }) {
       addGrade, updateGrade, deleteGrade,
       addQuestion, answerQuestion,
       addNotice, deleteNotice,
-      addReport, updateReportChecks,
+      addReport, updateReportChecks, deleteReport,
       addVideo, deleteVideo, addVideoComment, replyVideoComment,
       addTest, updateTestStatus, deleteTest,
       addSubmission, updateSubmissionScores,

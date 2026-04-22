@@ -3,34 +3,32 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
-import { users } from '../data/users'
 import Layout from '../components/Layout'
 
 export default function Reports() {
   const { user } = useAuth()
-  const { classes, students, reports, addReport, updateReportChecks } = useData()
+  const { classes, students, reports, staffProfiles, addReport, updateReportChecks, deleteReport } = useData()
+
+  const [view,          setView]          = useState('list')
+  const [selected,      setSelected]      = useState(null)
+  const [filterClassId, setFilterClassId] = useState('all')
 
   // 학생은 이 페이지에 접근 불가
   if (user.role === 'student') {
     return (
       <Layout>
-      <div className="text-center py-20 text-gray-400">
-        <p className="text-lg">접근 권한이 없습니다.</p>
-      </div>
+        <div className="text-center py-20 text-gray-400">
+          <p className="text-lg">접근 권한이 없습니다.</p>
+        </div>
       </Layout>
     )
   }
-
-  const [view, setView]         = useState('list')  // list | detail | create
-  const [selected, setSelected] = useState(null)
-  const [filterClassId, setFilterClassId] = useState('all')
 
   // 반 필터링
   const filteredReports = reports
     .filter((r) => filterClassId === 'all' || r.classId === Number(filterClassId))
     .sort((a, b) => b.date.localeCompare(a.date))
 
-  // 특정 반의 학생 목록
   function classStudents(classId) {
     return students.filter((s) => s.classId === classId)
   }
@@ -55,9 +53,7 @@ export default function Reports() {
           <button
             onClick={() => setFilterClassId('all')}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              filterClassId === 'all'
-                ? 'bg-[#2B2B2B] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              filterClassId === 'all' ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
             전체
@@ -67,9 +63,7 @@ export default function Reports() {
               key={c.id}
               onClick={() => setFilterClassId(String(c.id))}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                filterClassId === String(c.id)
-                  ? 'bg-[#2B2B2B] text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filterClassId === String(c.id) ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {c.name}
@@ -86,35 +80,50 @@ export default function Reports() {
               const cls           = classes.find((c) => c.id === r.classId)
               const totalStudents = classStudents(r.classId).length
               const doneCount     = r.studentChecks.filter((sc) => sc.done).length
-              const author        = users.find((u) => u.id === r.createdBy)
+              const author        = staffProfiles.find((p) => p.id === r.createdBy)
+              const canDelete     = user.role === 'admin' || r.createdBy === user.id
 
               return (
-                <div
-                  key={r.id}
-                  onClick={() => { setSelected(r); setView('detail') }}
-                  className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs bg-[#5B8FD4]/15 text-[#5B8FD4] px-2 py-0.5 rounded-full font-medium">
-                          {cls?.name}
-                        </span>
-                        <span className="text-xs text-gray-400">{r.subject}</span>
+                <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div
+                    onClick={() => { setSelected(r); setView('detail') }}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs bg-[#5B8FD4]/15 text-[#5B8FD4] px-2 py-0.5 rounded-full font-medium">
+                            {cls?.name}
+                          </span>
+                          <span className="text-xs text-gray-400">{r.subject}</span>
+                        </div>
+                        <p className="text-sm font-semibold text-[#2B2B2B] line-clamp-1">{r.content}</p>
                       </div>
-                      <p className="text-sm font-semibold text-[#2B2B2B] line-clamp-1">{r.content}</p>
-                    </div>
-                    <div className="text-right ml-3 shrink-0">
-                      <p className="text-sm font-bold text-[#2B2B2B]">
-                        {doneCount}/{totalStudents}
-                      </p>
-                      <p className="text-xs text-gray-400">과제 완료</p>
+                      <div className="text-right ml-3 shrink-0">
+                        <p className="text-sm font-bold text-[#2B2B2B]">{doneCount}/{totalStudents}</p>
+                        <p className="text-xs text-gray-400">과제 완료</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
-                    <span>{r.date}</span>
-                    <span>·</span>
-                    <span>{author?.name}</span>
+                  <div className="flex items-center justify-between mt-1">
+                    <div
+                      onClick={() => { setSelected(r); setView('detail') }}
+                      className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer"
+                    >
+                      <span>{r.date}</span>
+                      <span>·</span>
+                      <span>{author?.name ?? '알 수 없음'}</span>
+                    </div>
+                    {canDelete && (
+                      <button
+                        onClick={() => {
+                          if (confirm('리포트를 삭제하시겠습니까?')) deleteReport(r.id)
+                        }}
+                        className="text-xs text-gray-300 hover:text-[#C0392B] transition-colors"
+                      >
+                        삭제
+                      </button>
+                    )}
                   </div>
                 </div>
               )
@@ -134,11 +143,11 @@ export default function Reports() {
         report={selected}
         onUpdateChecks={async (studentChecks) => {
           await updateReportChecks(selected.id, studentChecks)
-          // selected 상태도 최신화
           setSelected((prev) => ({ ...prev, studentChecks }))
         }}
         onBack={() => setView('list')}
         classStudents={classStudents}
+        staffProfiles={staffProfiles}
       />
       </Layout>
     )
@@ -165,10 +174,10 @@ export default function Reports() {
 }
 
 // ────────── DetailView 컴포넌트 ──────────
-function DetailView({ report, onUpdateChecks, onBack, classStudents }) {
+function DetailView({ report, onUpdateChecks, onBack, classStudents, staffProfiles }) {
   const { classes } = useData()
   const cls    = classes.find((c) => c.id === report.classId)
-  const author = users.find((u) => u.id === report.createdBy)
+  const author = staffProfiles.find((p) => p.id === report.createdBy)
   const studs  = classStudents(report.classId)
   const [checks, setChecks] = useState(report.studentChecks)
 
@@ -199,7 +208,7 @@ function DetailView({ report, onUpdateChecks, onBack, classStudents }) {
           </span>
           <span className="text-xs text-gray-400">{report.subject}</span>
           <span className="text-xs text-gray-400">· {report.date}</span>
-          <span className="text-xs text-gray-400">· {author?.name}</span>
+          <span className="text-xs text-gray-400">· {author?.name ?? '알 수 없음'}</span>
         </div>
 
         <div className="mb-4">
@@ -207,26 +216,25 @@ function DetailView({ report, onUpdateChecks, onBack, classStudents }) {
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{report.content}</p>
         </div>
 
-        <div>
-          <p className="text-xs font-semibold text-gray-500 mb-1">과제</p>
-          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{report.homework}</p>
-        </div>
+        {report.homework && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1">과제</p>
+            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{report.homework}</p>
+          </div>
+        )}
       </div>
 
       {/* 과제 수행 체크 */}
       <div className="bg-white rounded-xl p-5 shadow-sm">
         <div className="flex justify-between items-center mb-4">
           <p className="text-sm font-semibold text-gray-700">과제 수행 현황</p>
-          <span className="text-sm font-bold text-[#2B2B2B]">
-            {doneCount} / {studs.length}명
-          </span>
+          <span className="text-sm font-bold text-[#2B2B2B]">{doneCount} / {studs.length}명</span>
         </div>
 
         <div className="flex flex-col gap-2">
           {studs.map((s) => {
             const check = checks.find((sc) => sc.studentId === s.id)
             const done  = check?.done ?? false
-
             return (
               <div
                 key={s.id}
@@ -236,18 +244,15 @@ function DetailView({ report, onUpdateChecks, onBack, classStudents }) {
                 }`}
               >
                 <span className="text-sm font-medium text-[#2B2B2B]">{s.name}</span>
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                    done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                  }`}
-                >
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                  done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                }`}>
                   {done ? '✓' : ''}
                 </div>
               </div>
             )
           })}
         </div>
-
         <p className="text-xs text-gray-400 mt-3">* 학생 이름을 클릭하면 체크/해제됩니다.</p>
       </div>
     </div>
@@ -257,21 +262,20 @@ function DetailView({ report, onUpdateChecks, onBack, classStudents }) {
 // ────────── CreateView 컴포넌트 ──────────
 function CreateView({ user, onSubmit, onCancel, classStudents }) {
   const { classes } = useData()
-  const [classId,  setClassId]  = useState(String(classes[0]?.id ?? ''))
-  const [date,     setDate]     = useState(new Date().toISOString().slice(0, 10))
-  const [subject,  setSubject]  = useState('')
-  const [content,  setContent]  = useState('')
-  const [homework, setHomework] = useState('')
+  const [classId,    setClassId]    = useState(String(classes[0]?.id ?? ''))
+  const [date,       setDate]       = useState(new Date().toISOString().slice(0, 10))
+  const [subject,    setSubject]    = useState('')
+  const [content,    setContent]    = useState('')
+  const [homework,   setHomework]   = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [checks,     setChecks]     = useState({})
 
   const studs = classStudents(Number(classId))
-  const [checks, setChecks] = useState({})
 
   function toggleCheck(studentId) {
     setChecks((prev) => ({ ...prev, [studentId]: !prev[studentId] }))
   }
 
-  // classId가 바뀌면 체크 초기화
   function handleClassChange(val) {
     setClassId(val)
     setChecks({})
@@ -302,14 +306,11 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-700">
-          ← 목록
-        </button>
+        <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-700">← 목록</button>
         <h1 className="text-xl font-bold text-[#2B2B2B]">리포트 작성</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* 반 & 날짜 */}
         <div className="flex gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">반</label>
@@ -334,7 +335,6 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
           </div>
         </div>
 
-        {/* 과목 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">과목</label>
           <input
@@ -346,7 +346,6 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
           />
         </div>
 
-        {/* 진도 내용 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">진도 내용</label>
           <textarea
@@ -359,7 +358,6 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
           />
         </div>
 
-        {/* 과제 내용 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             과제 <span className="text-gray-400 font-normal">(선택)</span>
@@ -373,7 +371,6 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
           />
         </div>
 
-        {/* 과제 수행 체크 */}
         {studs.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -392,11 +389,9 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
                   }`}
                 >
                   <span className="text-sm font-medium text-[#2B2B2B]">{s.name}</span>
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                      checks[s.id] ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                    }`}
-                  >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                    checks[s.id] ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                  }`}>
                     {checks[s.id] ? '✓' : ''}
                   </div>
                 </div>
