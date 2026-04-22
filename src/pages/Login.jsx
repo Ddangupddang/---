@@ -20,12 +20,11 @@ function Login() {
     setError('')
     setLoading(true)
     const success = await login(username.trim(), password)
-    setLoading(false)
-    if (success) {
-      navigate('/dashboard', { replace: true })
-    } else {
+    if (!success) {
+      setLoading(false)
       setError('아이디 또는 비밀번호가 올바르지 않습니다.')
     }
+    // 성공 시: loading 유지 → onAuthStateChange에서 user 세팅 → if (user) Navigate 자동 처리
   }
 
   return (
