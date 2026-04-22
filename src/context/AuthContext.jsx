@@ -70,8 +70,13 @@ export function AuthProvider({ children }) {
   // 로그인: username → username@soomoonjae.com 형식 이메일로 변환
   const login = async (username, password) => {
     const email = `${username.trim()}@soomoonjae.com`
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return false
+    // 로그인 성공 즉시 프로필 조회 → user 세팅 (onAuthStateChange 타이밍 의존 안 함)
+    if (data.user) {
+      const profile = await fetchProfile(data.user)
+      setUser(profile)
+    }
     return true
   }
 
