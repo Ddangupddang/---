@@ -71,14 +71,11 @@ function Login() {
           </button>
         </form>
 
-        {/* 테스트 계정 안내 */}
-        <div className="mt-6 p-3 bg-[#F4F3EE] rounded-xl">
-          <p className="text-xs text-gray-500 font-semibold mb-1">테스트 계정</p>
-          <div className="text-xs text-gray-400 leading-relaxed">
-            관리자: admin / 1234<br />
-            교사: teacher1 / 1234<br />
-            학생: student1 / 1234
-          </div>
+        {/* 학원 정보 */}
+        <div className="mt-6 p-3 bg-[#F4F3EE] rounded-xl text-center">
+          <p className="text-xs text-gray-500 font-semibold mb-1">수문재국어전문학원</p>
+          <p className="text-xs text-gray-400">전화번호: 010-7324-8333</p>
+          <p className="text-xs text-gray-400 mt-0.5">문의사항은 위 번호로 연락 부탁드립니다.</p>
         </div>
       </div>
     </div>
