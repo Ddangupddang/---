@@ -327,11 +327,11 @@ function Students() {
                   )}
                   {/* 일반 모드: 드래그 핸들 열 */}
                   {isAdmin && !selectMode && <th className="px-2 py-3 w-8"></th>}
-                  <th className="text-left px-4 py-3 font-medium">이름</th>
-                  <th className="text-left px-4 py-3 font-medium">반</th>
-                  <th className="text-left px-4 py-3 font-medium hidden md:table-cell">연락처</th>
-                  {isAdmin && !selectMode && <th className="px-4 py-3 text-center font-medium">계정</th>}
-                  {isAdmin && !selectMode && <th className="px-4 py-3"></th>}
+                  <th className="text-left px-3 py-3 font-medium">이름</th>
+                  <th className="text-left px-2 py-3 font-medium">반</th>
+                  <th className="text-left px-3 py-3 font-medium hidden md:table-cell">연락처</th>
+                  {isAdmin && !selectMode && <th className="px-2 py-3 text-center font-medium hidden sm:table-cell">계정</th>}
+                  {isAdmin && !selectMode && <th className="px-2 py-3"></th>}
                 </tr>
               </thead>
               <DndContext
@@ -641,19 +641,19 @@ function SortableStudentRow({
           </div>
         </td>
       )}
-      <td className="px-4 py-3 font-medium">{student.name}</td>
-      <td className="px-4 py-3 text-gray-500">{getClassName(student.classId)}</td>
-      <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{student.phone}</td>
+      <td className="px-3 py-3 font-medium whitespace-nowrap">{student.name}</td>
+      <td className="px-2 py-3 text-gray-500 text-xs whitespace-nowrap max-w-[80px] truncate">{getClassName(student.classId)}</td>
+      <td className="px-3 py-3 text-gray-500 hidden md:table-cell">{student.phone}</td>
       {isAdmin && !selectMode && (
-        <td className="px-4 py-3 text-center">
-          <button onClick={onCreateAccount} className="text-xs text-[#5B8FD4] hover:underline">
+        <td className="px-2 py-3 text-center hidden sm:table-cell">
+          <button onClick={onCreateAccount} className="text-xs text-[#5B8FD4] hover:underline whitespace-nowrap">
             계정 생성
           </button>
         </td>
       )}
       {isAdmin && !selectMode && (
-        <td className="px-4 py-3">
-          <div className="flex gap-2 justify-end">
+        <td className="px-2 py-3">
+          <div className="flex gap-1.5 justify-end">
             <button onClick={onEdit} className="text-xs text-[#5B8FD4] hover:underline">수정</button>
             <button onClick={onDelete} className="text-xs text-[#C0392B] hover:underline">삭제</button>
           </div>
