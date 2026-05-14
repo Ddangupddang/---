@@ -282,6 +282,9 @@ export default function Homework() {
   if (view === 'take') {
     if (user.role !== 'student') { setView('list'); return null }
     const existing = submissionOf(selectedHw.id, user.studentId)
+    // 마감 후 + 이미 제출한 경우: 수정 불가 → 결과 화면으로 (스펙: "마감 후 + 제출완료 → 잠김")
+    const pastDue = new Date().toISOString().slice(0, 10) > selectedHw.dueDate
+    if (existing && pastDue) { setView('result'); return null }
     return (
       <Layout>
         <TakeView
