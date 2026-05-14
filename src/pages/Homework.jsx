@@ -12,7 +12,7 @@ export default function Homework() {
   const {
     classes, students,
     homework, homeworkSubmissions,
-    addHomework, deleteHomework, upsertHomeworkSubmission: _upsertHomeworkSubmission,
+    addHomework, deleteHomework, upsertHomeworkSubmission,
   } = useData()
 
   const [view,          setView]          = useState('list')
@@ -33,6 +33,10 @@ export default function Homework() {
   // 반별 학생
   function classStudents(classId) {
     return students.filter((s) => s.classId === classId)
+  }
+  // 특정 과제·학생의 제출
+  function submissionOf(homeworkId, studentId) {
+    return homeworkSubmissions.find((s) => s.homeworkId === homeworkId && s.studentId === studentId)
   }
   // 목록 필터 (학생은 본인 반만)
   const visibleHomework = homework.filter((h) => {
@@ -125,8 +129,39 @@ export default function Homework() {
                     </div>
                   )
                 }
-                // 학생 카드는 Task 6에서 구현
-                return null
+                // ── 학생 카드 ──
+                const mySub = submissionOf(hw.id, user.studentId)
+                let badge
+                if (!mySub) {
+                  badge = { label: '미제출', color: 'bg-gray-100 text-gray-500' }
+                } else if (isLateSubmission(mySub.submittedAt, hw.dueDate)) {
+                  badge = { label: '지각제출', color: 'bg-[#C0392B]/10 text-[#C0392B]' }
+                } else {
+                  badge = { label: '제출완료', color: 'bg-green-100 text-green-700' }
+                }
+                return (
+                  <div
+                    key={hw.id}
+                    onClick={() => {
+                      setSelectedHw(hw)
+                      setView(mySub ? 'result' : 'take')
+                    }}
+                    className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
+                            {badge.label}
+                          </span>
+                          <span className="text-xs text-gray-400">마감 {hw.dueDate}</span>
+                        </div>
+                        <p className="font-semibold text-[#2B2B2B]">{hw.title}</p>
+                        <p className="text-xs text-gray-400 mt-1">{hw.questions.length}문항</p>
+                      </div>
+                    </div>
+                  </div>
+                )
               })}
             </div>
           )}
@@ -243,8 +278,137 @@ export default function Homework() {
     )
   }
 
-  // take / result 뷰 (학생용)는 Task 6에서 구현
+  // ────────── take 뷰 (학생: 응시/수정) ──────────
+  if (view === 'take') {
+    if (user.role !== 'student') { setView('list'); return null }
+    const existing = submissionOf(selectedHw.id, user.studentId)
+    return (
+      <Layout>
+        <TakeView
+          homework={selectedHw}
+          existing={existing}
+          onSubmit={async (answers) => {
+            await upsertHomeworkSubmission({
+              homeworkId: selectedHw.id,
+              studentId:  user.studentId,
+              answers,
+            })
+            setView('result')
+          }}
+          onBack={() => setView('list')}
+        />
+      </Layout>
+    )
+  }
+
+  // ────────── result 뷰 (학생: 결과 확인) ──────────
+  if (view === 'result') {
+    if (user.role !== 'student') { setView('list'); return null }
+    const mySub = submissionOf(selectedHw.id, user.studentId)
+    if (!mySub) { setView('take'); return null }
+    const valueMap  = Object.fromEntries(mySub.answers.map((a) => [a.number, a.answer]))
+    const answerKey = Object.fromEntries(selectedHw.questions.map((q) => [q.number, q.answer]))
+    const { correctCount, total } = gradeHomework(selectedHw.questions, mySub.answers)
+    const beforeDue = new Date().toISOString().slice(0, 10) <= selectedHw.dueDate
+    return (
+      <Layout>
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={() => setView('list')} className="text-sm text-gray-500 hover:text-gray-700">← 목록</button>
+            <h1 className="text-xl font-bold text-[#2B2B2B]">{selectedHw.title} — 결과</h1>
+          </div>
+
+          <div className="bg-[#2B2B2B] text-white rounded-2xl p-6 text-center mb-4">
+            <p className="text-sm text-white/60 mb-1">정답</p>
+            <p className="text-4xl font-bold">{correctCount}<span className="text-2xl text-white/50"> / {total}</span></p>
+          </div>
+
+          {beforeDue && (
+            <button
+              onClick={() => setView('take')}
+              className="w-full py-2.5 mb-4 border border-gray-300 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50"
+            >
+              답 수정하기 (마감 전까지 가능)
+            </button>
+          )}
+
+          <ChoiceGrid
+            count={selectedHw.questions.length}
+            mode="result"
+            values={valueMap}
+            answerKey={answerKey}
+            onChange={() => {}}
+          />
+        </div>
+      </Layout>
+    )
+  }
+
   return null
+}
+
+// ────────── TakeView — 학생 응시/수정 ──────────
+function TakeView({ homework, existing, onSubmit, onBack }) {
+  // 기존 제출이 있으면 그 답을 초기값으로 (마감 전 수정)
+  const [answers, setAnswers] = useState(() =>
+    existing ? Object.fromEntries(existing.answers.map((a) => [a.number, a.answer])) : {}
+  )
+  const [submitting, setSubmitting] = useState(false)
+
+  const count       = homework.questions.length
+  const answeredNum = Object.keys(answers).length
+  const allAnswered = answeredNum === count
+  const isLate      = new Date().toISOString().slice(0, 10) > homework.dueDate
+
+  async function handleSubmit() {
+    if (!allAnswered || submitting) return
+    setSubmitting(true)
+    const payload = homework.questions.map((q) => ({
+      number: q.number,
+      answer: answers[q.number],
+    }))
+    try {
+      await onSubmit(payload)
+    } finally {
+      // 제출 성공 시 부모가 result 뷰로 전환해 이 컴포넌트가 언마운트되므로
+      // 아래 setState는 무시된다. 실패 시에는 버튼을 다시 활성화해 재시도 가능하게 한다.
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-2">
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700">← 목록</button>
+      </div>
+      <h1 className="text-xl font-bold text-[#2B2B2B] mb-1">{homework.title}</h1>
+      <p className="text-sm text-gray-500 mb-1">{count}문항 · 마감 {homework.dueDate}</p>
+      {isLate && (
+        <p className="text-xs text-[#C0392B] mb-4">마감일이 지났습니다. 지금 제출하면 지각 제출로 표시됩니다.</p>
+      )}
+
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium text-gray-700">답안 입력</span>
+          <span className="text-xs text-gray-400">{answeredNum}/{count} 입력됨</span>
+        </div>
+        <ChoiceGrid
+          count={count}
+          values={answers}
+          mode="input"
+          onChange={(number, choice) => setAnswers((prev) => ({ ...prev, [number]: choice }))}
+        />
+      </div>
+
+      <button
+        onClick={handleSubmit}
+        disabled={!allAnswered || submitting}
+        className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40"
+      >
+        {submitting ? '제출 중...' : existing ? '다시 제출하기' : '제출하기'}
+      </button>
+    </div>
+  )
 }
 
 // ────────── CreateView — 과제 출제 ──────────
