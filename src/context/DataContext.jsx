@@ -289,14 +289,16 @@ export function DataProvider({ children }) {
   }
 
   async function deleteAttendance(studentId, date, type = '수업') {
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from('attendance')
       .delete()
       .eq('student_id', studentId)
       .eq('date', date)
       .eq('type', type)
+      .select()
 
     if (error) { console.error('출결 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('출결 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setAttendance((prev) => prev.filter((a) => !(a.studentId === studentId && a.date === date && a.type === type)))
   }
 
@@ -342,8 +344,9 @@ export function DataProvider({ children }) {
   }
 
   async function deleteGrade(id) {
-    const { error } = await supabase.from('grades').delete().eq('id', id)
+    const { data: deleted, error } = await supabase.from('grades').delete().eq('id', id).select()
     if (error) { console.error('성적 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('성적 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setGrades((prev) => prev.filter((g) => g.id !== id))
   }
 
@@ -402,8 +405,9 @@ export function DataProvider({ children }) {
   }
 
   async function deleteNotice(id) {
-    const { error } = await supabase.from('notices').delete().eq('id', id)
+    const { data: deleted, error } = await supabase.from('notices').delete().eq('id', id).select()
     if (error) { console.error('공지 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('공지 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setNotices((prev) => prev.filter((n) => n.id !== id))
   }
 
@@ -431,8 +435,9 @@ export function DataProvider({ children }) {
   }
 
   async function deleteReport(id) {
-    const { error } = await supabase.from('reports').delete().eq('id', id)
+    const { data: deleted, error } = await supabase.from('reports').delete().eq('id', id).select()
     if (error) { console.error('리포트 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('리포트 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setReports((prev) => prev.filter((r) => r.id !== id))
   }
 
@@ -472,8 +477,9 @@ export function DataProvider({ children }) {
   }
 
   async function deleteVideo(id) {
-    const { error } = await supabase.from('videos').delete().eq('id', id)
+    const { data: deleted, error } = await supabase.from('videos').delete().eq('id', id).select()
     if (error) { console.error('영상 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('영상 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setVideos((prev) => prev.filter((v) => v.id !== id))
     setVideoComments((prev) => prev.filter((c) => c.videoId !== id))
   }
@@ -534,8 +540,9 @@ export function DataProvider({ children }) {
   }
 
   async function deleteTest(id) {
-    const { error } = await supabase.from('tests').delete().eq('id', id)
+    const { data: deleted, error } = await supabase.from('tests').delete().eq('id', id).select()
     if (error) { console.error('테스트 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('테스트 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setTests((prev) => prev.filter((t) => t.id !== id))
     setSubmissions((prev) => prev.filter((s) => s.testId !== id))
   }
@@ -588,8 +595,9 @@ export function DataProvider({ children }) {
   }
 
   async function deleteHomework(id) {
-    const { error } = await supabase.from('homework').delete().eq('id', id)
+    const { data: deleted, error } = await supabase.from('homework').delete().eq('id', id).select()
     if (error) { console.error('과제 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('과제 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setHomework((prev) => prev.filter((h) => h.id !== id))
     setHomeworkSubmissions((prev) => prev.filter((s) => s.homeworkId !== id))
   }
@@ -681,8 +689,9 @@ export function DataProvider({ children }) {
   }
 
   async function deleteClass(id) {
-    const { error } = await supabase.from('classes').delete().eq('id', id)
+    const { data: deleted, error } = await supabase.from('classes').delete().eq('id', id).select()
     if (error) { console.error('반 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('반 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
     setClasses((prev) => prev.filter((c) => c.id !== id))
   }
 
