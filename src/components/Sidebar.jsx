@@ -3,7 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   Users, School, ClipboardCheck, BarChart2,
-  Video, ClipboardList, MessageCircle, Bell, TrendingUp, LogOut, KeyRound, UserCog,
+  Video, ClipboardList, PencilLine, MessageCircle, Bell, TrendingUp, LogOut, KeyRound, UserCog,
 } from 'lucide-react'
 
 // 섹션 그룹핑된 네비게이션 설정 (대시보드는 로고 클릭으로 이동)
@@ -20,8 +20,9 @@ const navSections = [
   {
     label: '수업',
     items: [
-      { label: '영상 관리', path: '/videos', Icon: Video },
-      { label: '테스트',    path: '/tests',  Icon: ClipboardList },
+      { label: '영상 관리', path: '/videos',   Icon: Video },
+      { label: '테스트',    path: '/tests',    Icon: ClipboardList },
+      { label: '과제',      path: '/homework', Icon: PencilLine },
     ],
   },
   {

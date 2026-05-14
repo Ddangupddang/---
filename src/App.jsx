@@ -10,6 +10,7 @@ import Attendance from './pages/Attendance'
 import Grades from './pages/Grades'
 import Videos from './pages/Videos'
 import Tests from './pages/Tests'
+import Homework from './pages/Homework'
 import QnA from './pages/QnA'
 import Notices from './pages/Notices'
 import Reports from './pages/Reports'
@@ -84,6 +85,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
                 <Tests />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 과제 (전체 역할) */}
+          <Route
+            path="/homework"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
+                <Homework />
               </ProtectedRoute>
             }
           />

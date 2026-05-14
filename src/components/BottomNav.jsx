@@ -1,6 +1,6 @@
 // src/components/BottomNav.jsx
 import { NavLink } from 'react-router-dom'
-import { Home, ClipboardCheck, BarChart2, Video, ClipboardList, MessageCircle, Bell } from 'lucide-react'
+import { Home, ClipboardCheck, BarChart2, Video, ClipboardList, PencilLine, MessageCircle, Bell } from 'lucide-react'
 
 const tabs = [
   { label: '홈',    path: '/dashboard',  Icon: Home },
@@ -8,6 +8,7 @@ const tabs = [
   { label: '성적',  path: '/grades',     Icon: BarChart2 },
   { label: '영상',  path: '/videos',     Icon: Video },
   { label: '테스트', path: '/tests',     Icon: ClipboardList },
+  { label: '과제',  path: '/homework',   Icon: PencilLine },
   { label: 'Q&A',  path: '/qna',        Icon: MessageCircle },
   { label: '공지',  path: '/notices',   Icon: Bell },
 ]
