@@ -119,6 +119,27 @@ function toSubmission(s) {
     scores:      s.scores  ?? [],
   }
 }
+function toHomework(h) {
+  return {
+    id:        h.id,
+    title:     h.title,
+    classId:   h.class_id,
+    teacherId: h.teacher_id,
+    dueDate:   h.due_date,
+    questions: h.questions ?? [],
+    createdAt: h.created_at,
+  }
+}
+function toHomeworkSubmission(s) {
+  return {
+    id:          s.id,
+    homeworkId:  s.homework_id,
+    studentId:   s.student_id,
+    answers:     s.answers ?? [],
+    submittedAt: s.submitted_at,
+    updatedAt:   s.updated_at,
+  }
+}
 
 export function DataProvider({ children }) {
   const [classes,       setClasses]       = useState(mockClasses)
@@ -133,11 +154,13 @@ export function DataProvider({ children }) {
   const [videoComments, setVideoComments] = useState([])
   const [tests,         setTests]         = useState([])
   const [submissions,   setSubmissions]   = useState([])
+  const [homework,            setHomework]            = useState([])
+  const [homeworkSubmissions, setHomeworkSubmissions] = useState([])
   const [dataLoading,   setDataLoading]   = useState(true)
 
   useEffect(() => {
     async function load() {
-      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes] =
+      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwRes, hwSubRes] =
         await Promise.all([
           supabase.from('classes').select('*').order('sort_order').order('id'),
           supabase.from('students').select('*').order('sort_order').order('id'),
@@ -151,6 +174,8 @@ export function DataProvider({ children }) {
           supabase.from('video_comments').select('*').order('created_at'),
           supabase.from('tests').select('*').order('created_at', { ascending: false }),
           supabase.from('submissions').select('*').order('submitted_at', { ascending: false }),
+          supabase.from('homework').select('*').order('created_at', { ascending: false }),
+          supabase.from('homework_submissions').select('*').order('submitted_at', { ascending: false }),
         ])
 
       if (!cRes.error && cRes.data?.length > 0) setClasses(cRes.data.map(toClass))
@@ -165,6 +190,8 @@ export function DataProvider({ children }) {
       if (!vcRes.error && vcRes.data)            setVideoComments(vcRes.data.map(toVideoComment))
       if (!tRes.error && tRes.data)              setTests(tRes.data.map(toTest))
       if (!subRes.error && subRes.data)          setSubmissions(subRes.data.map(toSubmission))
+      if (!hwRes.error && hwRes.data)       setHomework(hwRes.data.map(toHomework))
+      if (!hwSubRes.error && hwSubRes.data) setHomeworkSubmissions(hwSubRes.data.map(toHomeworkSubmission))
 
       setDataLoading(false)
     }
@@ -539,6 +566,64 @@ export function DataProvider({ children }) {
     setSubmissions((prev) => prev.map((s) => s.id === id ? { ...s, scores } : s))
   }
 
+  // ── 과제 CRUD ──────────────────────────────────────────────────────────────
+
+  async function addHomework(data) {
+    const { data: inserted, error } = await supabase
+      .from('homework')
+      .insert([{
+        title:      data.title,
+        class_id:   data.classId   ?? null,
+        teacher_id: data.teacherId ?? null,
+        due_date:   data.dueDate,
+        questions:  data.questions ?? [],
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('과제 추가 실패:', error); return null }
+    const newHw = toHomework(inserted)
+    setHomework((prev) => [newHw, ...prev])
+    return newHw
+  }
+
+  async function deleteHomework(id) {
+    const { error } = await supabase.from('homework').delete().eq('id', id)
+    if (error) { console.error('과제 삭제 실패:', error); return }
+    setHomework((prev) => prev.filter((h) => h.id !== id))
+    setHomeworkSubmissions((prev) => prev.filter((s) => s.homeworkId !== id))
+  }
+
+  async function upsertHomeworkSubmission(data) {
+    const now = new Date().toISOString()
+    // submitted_at은 payload에 넣지 않는다 — 최초 삽입 시 DB 기본값(now())으로 채워지고,
+    // 재제출(update) 시에는 그대로 유지되어 "최초 제출 시각"으로 남는다 (지각 판정 기준).
+    // updated_at만 갱신해 마지막 수정 시각을 추적한다.
+    const { data: upserted, error } = await supabase
+      .from('homework_submissions')
+      .upsert(
+        {
+          homework_id: data.homeworkId,
+          student_id:  data.studentId,
+          answers:     data.answers ?? [],
+          updated_at:  now,
+        },
+        { onConflict: 'homework_id,student_id' }
+      )
+      .select()
+      .single()
+
+    if (error) { console.error('과제 제출 실패:', error); return null }
+    const record = toHomeworkSubmission(upserted)
+    setHomeworkSubmissions((prev) => {
+      const exists = prev.some((s) => s.homeworkId === data.homeworkId && s.studentId === data.studentId)
+      return exists
+        ? prev.map((s) => (s.homeworkId === data.homeworkId && s.studentId === data.studentId ? record : s))
+        : [record, ...prev]
+    })
+    return record
+  }
+
   // ── 순서 변경 ──────────────────────────────────────────
 
   async function reorderStudents(orderedIds) {
@@ -619,6 +704,8 @@ export function DataProvider({ children }) {
       addVideo, deleteVideo, addVideoComment, replyVideoComment,
       addTest, updateTestStatus, deleteTest,
       addSubmission, updateSubmissionScores,
+      homework, homeworkSubmissions,
+      addHomework, deleteHomework, upsertHomeworkSubmission,
     }}>
       {children}
     </DataContext.Provider>
