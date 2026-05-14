@@ -4,7 +4,7 @@
 // mode='result' : 읽기 전용, answerKey와 비교해 정답/오답 표시
 import { useState } from 'react'
 
-export const CHOICES = ['①', '②', '③', '④', '⑤']
+const CHOICES = ['①', '②', '③', '④', '⑤']
 
 export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input', answerKey = {} }) {
   // 키보드 입력 중인 칸 (1-based 문항 번호)
