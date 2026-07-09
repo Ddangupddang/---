@@ -52,8 +52,11 @@ export default function Tests() {
   useEffect(() => {
     if (selectedTest) {
       const updated = tests.find((t) => t.id === selectedTest.id)
+      // 목록(tests)이 갱신될 때 선택된 항목을 최신 버전으로 동기화
       if (updated) setSelectedTest(updated)
     }
+    // selectedTest는 의존성에서 제외 — 목록(tests) 변경 시에만 동기화하려는 의도
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tests])
 
   // ────────── list 뷰 ──────────
@@ -356,11 +359,12 @@ export default function Tests() {
 }
 
 // ────────── TakeView 컴포넌트 ──────────
-function TakeView({ test, user, onSubmit, onBack }) {
+function TakeView({ test, onSubmit, onBack }) {
   const [answers, setAnswers] = useState(
     test.questions.map((q) => ({ questionId: q.id, answer: '' }))
   )
-  const [timeLeft,   setTimeLeft]   = useState(null)
+  // 최초 렌더 시 남은 시간을 지연 초기화(effect 안에서 setState 하지 않도록)
+  const [timeLeft,   setTimeLeft]   = useState(calcTimeLeft)
   const [submitting, setSubmitting] = useState(false)
   const submitted   = useRef(false)
   const answersRef  = useRef(answers)
@@ -382,13 +386,14 @@ function TakeView({ test, user, onSubmit, onBack }) {
 
   useEffect(() => {
     if (!test.startedAt || !test.timeLimit) return
-    setTimeLeft(calcTimeLeft())
     const interval = setInterval(() => {
       const left = calcTimeLeft()
       setTimeLeft(left)
       if (left <= 0) { clearInterval(interval); handleSubmit() }
     }, 1000)
     return () => clearInterval(interval)
+    // 마운트 시 1회만 타이머 시작 (의존성 추가 시 매 렌더마다 재시작되므로 의도적으로 빈 배열)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function formatTime(sec) {

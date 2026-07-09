@@ -4,7 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 import ProtectedRoute from './ProtectedRoute'
 
-function renderWithAuth(user, element) {
+function renderWithAuth(user) {
   return render(
     <AuthContext.Provider value={{ user, login: () => {}, logout: () => {} }}>
       <MemoryRouter initialEntries={['/protected']}>

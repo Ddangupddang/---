@@ -721,4 +721,6 @@ export function DataProvider({ children }) {
   )
 }
 
+// 훅 co-export는 표준 관행 (Fast Refresh 힌트일 뿐 동작 오류 아님)
+// eslint-disable-next-line react-refresh/only-export-components
 export const useData = () => useContext(DataContext)

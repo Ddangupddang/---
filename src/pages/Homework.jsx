@@ -24,8 +24,11 @@ export default function Homework() {
   useEffect(() => {
     if (selectedHw) {
       const updated = homework.find((h) => h.id === selectedHw.id)
+      // 목록(homework)이 갱신될 때 선택된 항목을 최신 버전으로 동기화
       if (updated) setSelectedHw(updated)
     }
+    // selectedHw는 의존성에서 제외 — 목록(homework) 변경 시에만 동기화하려는 의도
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [homework])
 
   const isStaff = user.role === 'teacher' || user.role === 'admin'

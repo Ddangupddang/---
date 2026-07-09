@@ -41,6 +41,8 @@ export default function Staff() {
     setListLoading(false)
   }
 
+  // 마운트 시 1회 스태프 목록 조회 (의도된 데이터 로딩)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadStaff() }, [])
 
   // 계정 생성
