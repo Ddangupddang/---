@@ -1,9 +1,26 @@
 // src/pages/Videos.test.jsx
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 import Videos from './Videos'
+
+// DataContext(useData)를 Mock 데이터로 대체 — 실제 Supabase 연결 없이 UI 로직만 검증
+vi.mock('../context/DataContext', async () => {
+  const { classes }  = await import('../data/classes')
+  const { students } = await import('../data/students')
+  const { videos }   = await import('../data/videos')
+  return {
+    useData: () => ({
+      classes, students, videos,
+      videoComments: [],
+      addVideo: () => {},
+      deleteVideo: () => {},
+      addVideoComment: () => {},
+      replyVideoComment: () => {},
+    }),
+  }
+})
 
 function renderWithAuth(user) {
   return render(

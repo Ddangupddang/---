@@ -1,9 +1,28 @@
 // src/pages/Tests.test.jsx
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 import Tests from './Tests'
+
+// DataContext(useData)를 Mock 데이터로 대체 — 실제 Supabase 연결 없이 UI 로직만 검증
+// (DataContext는 createContext 객체를 export하지 않으므로 Provider 대신 useData를 모킹)
+vi.mock('../context/DataContext', async () => {
+  const { classes }     = await import('../data/classes')
+  const { students }    = await import('../data/students')
+  const { tests }       = await import('../data/tests')
+  const { submissions } = await import('../data/submissions')
+  return {
+    useData: () => ({
+      classes, students, tests, submissions,
+      addTest: () => {},
+      updateTestStatus: () => {},
+      deleteTest: () => {},
+      addSubmission: () => {},
+      updateSubmissionScores: () => {},
+    }),
+  }
+})
 
 function renderWithAuth(user) {
   return render(
