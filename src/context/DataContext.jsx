@@ -157,10 +157,11 @@ export function DataProvider({ children }) {
   const [homework,            setHomework]            = useState([])
   const [homeworkSubmissions, setHomeworkSubmissions] = useState([])
   const [dataLoading,   setDataLoading]   = useState(true)
+  const [studentAccountIds, setStudentAccountIds] = useState([])
 
   useEffect(() => {
     async function load() {
-      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwRes, hwSubRes] =
+      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwRes, hwSubRes, saRes] =
         await Promise.all([
           supabase.from('classes').select('*').order('sort_order').order('id'),
           supabase.from('students').select('*').order('sort_order').order('id'),
@@ -176,6 +177,7 @@ export function DataProvider({ children }) {
           supabase.from('submissions').select('*').order('submitted_at', { ascending: false }),
           supabase.from('homework').select('*').order('created_at', { ascending: false }),
           supabase.from('homework_submissions').select('*').order('submitted_at', { ascending: false }),
+          supabase.from('profiles').select('student_id').eq('role', 'student'),
         ])
 
       if (!cRes.error && cRes.data?.length > 0) setClasses(cRes.data.map(toClass))
@@ -192,6 +194,7 @@ export function DataProvider({ children }) {
       if (!subRes.error && subRes.data)          setSubmissions(subRes.data.map(toSubmission))
       if (!hwRes.error && hwRes.data)       setHomework(hwRes.data.map(toHomework))
       if (!hwSubRes.error && hwSubRes.data) setHomeworkSubmissions(hwSubRes.data.map(toHomeworkSubmission))
+      if (!saRes.error && saRes.data) setStudentAccountIds(saRes.data.map((r) => r.student_id).filter(Boolean))
 
       setDataLoading(false)
     }
@@ -695,10 +698,16 @@ export function DataProvider({ children }) {
     setClasses((prev) => prev.filter((c) => c.id !== id))
   }
 
+  // 일괄 계정 생성 후 학생 계정 목록 다시 로드
+  async function refreshStudentAccounts() {
+    const { data, error } = await supabase.from('profiles').select('student_id').eq('role', 'student')
+    if (!error && data) setStudentAccountIds(data.map((r) => r.student_id).filter(Boolean))
+  }
+
   return (
     <DataContext.Provider value={{
       classes, students, attendance, grades, qnaList, notices, reports,
-      staffProfiles,
+      staffProfiles, studentAccountIds, refreshStudentAccounts,
       videos, videoComments,
       tests, submissions,
       dataLoading,
