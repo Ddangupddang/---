@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { loginEmail } from '../utils/loginEmail'
 
 // 컨텍스트 객체 co-export는 표준 관행 (Fast Refresh 힌트일 뿐 동작 오류 아님)
 // eslint-disable-next-line react-refresh/only-export-components
@@ -73,7 +74,7 @@ export function AuthProvider({ children }) {
   // 로그인: username → username@soomoonjae.com 형식 이메일로 변환
   // 프로필 로드는 onAuthStateChange(SIGNED_IN)이 처리 — 여기서는 인증만
   const login = async (username, password) => {
-    const email = `${username.trim()}@soomoonjae.com`
+    const email = loginEmail(username.trim())
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return !error
   }
@@ -86,7 +87,7 @@ export function AuthProvider({ children }) {
   // 비밀번호 변경: 임시 클라이언트로 현재 비밀번호 검증 → 새 비밀번호 업데이트
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      const email = `${user.username}@soomoonjae.com`
+      const email = loginEmail(user.username)
 
       // 임시 클라이언트로 현재 비밀번호 검증 (메인 세션/onAuthStateChange 영향 없음)
       const tmpClient = createClient(

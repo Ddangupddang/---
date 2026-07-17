@@ -1,6 +1,7 @@
 // api/create-student-account.js
 // 학생 계정 생성 API (서비스 롤 키 사용 — 서버에서만 실행)
 import { createClient } from '@supabase/supabase-js'
+import { loginEmail } from '../src/utils/loginEmail.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
   }
 
   // Auth 계정 생성
-  const email = `${username}@soomoonjae.com`
+  const email = loginEmail(username)
   const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
     email,
     password,
