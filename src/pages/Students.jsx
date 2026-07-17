@@ -3,6 +3,7 @@ import { useState, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import Layout from '../components/Layout'
+import BulkAccountModal from '../components/BulkAccountModal'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { supabase } from '../lib/supabase'
@@ -17,6 +18,7 @@ function Students() {
     addStudent, updateStudent, deleteStudent, bulkAddStudents, bulkDeleteStudents,
     addClass, updateClass, deleteClass,
     reorderClasses, reorderStudents,
+    studentAccountIds, refreshStudentAccounts,
   } = useData()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -40,6 +42,11 @@ function Students() {
   const [accountForm,    setAccountForm]    = useState({ username: '', password: '' })
   const [accountMsg,     setAccountMsg]     = useState({ type: '', text: '' })
   const [accountLoading, setAccountLoading] = useState(false)
+
+  // 일괄 계정 생성 모달
+  const [showBulkModal, setShowBulkModal] = useState(false)
+  // 계정이 없는 학생 목록
+  const accountlessStudents = studentList.filter((s) => !studentAccountIds.includes(s.id))
 
   // ── 선택 삭제 ─────────────────────────────────────────
   const [selectMode,         setSelectMode]         = useState(false)
@@ -278,6 +285,12 @@ function Students() {
                 >
                   선택 삭제
                 </button>
+                <button
+                  onClick={() => setShowBulkModal(true)}
+                  className="px-4 py-2 bg-white border border-gray-200 text-sm rounded-lg hover:bg-gray-50 text-gray-600"
+                >
+                  계정 일괄 생성 ({accountlessStudents.length})
+                </button>
               </>
             )}
             {!isAdmin && (
@@ -502,6 +515,16 @@ function Students() {
             )}
           </div>
         </div>
+      )}
+
+      {/* 계정 일괄 생성 모달 */}
+      {showBulkModal && (
+        <BulkAccountModal
+          students={accountlessStudents}
+          getClassName={getClassName}
+          onClose={() => setShowBulkModal(false)}
+          onDone={refreshStudentAccounts}
+        />
       )}
 
       {/* 학생 추가/수정 모달 */}
