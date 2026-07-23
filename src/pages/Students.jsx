@@ -343,7 +343,7 @@ function Students() {
                   <th className="text-left px-3 py-3 font-medium">이름</th>
                   <th className="text-left px-2 py-3 font-medium">반</th>
                   <th className="text-left px-3 py-3 font-medium hidden md:table-cell">연락처</th>
-                  {isAdmin && !selectMode && <th className="px-2 py-3 text-center font-medium hidden sm:table-cell">계정</th>}
+                  {isAdmin && !selectMode && <th className="px-2 py-3 text-center font-medium">계정</th>}
                   {isAdmin && !selectMode && <th className="px-2 py-3"></th>}
                 </tr>
               </thead>
@@ -669,7 +669,7 @@ function SortableStudentRow({
       <td className="px-2 py-3 text-gray-500 text-xs whitespace-nowrap max-w-[80px] truncate">{getClassName(student.classId)}</td>
       <td className="px-3 py-3 text-gray-500 hidden md:table-cell">{student.phone}</td>
       {isAdmin && !selectMode && (
-        <td className="px-2 py-3 text-center hidden sm:table-cell">
+        <td className="px-2 py-3 text-center">
           {username
             ? <span className="font-mono text-xs text-[#2B2B2B] whitespace-nowrap">{username}</span>
             : <button onClick={onCreateAccount} className="text-xs text-[#5B8FD4] hover:underline whitespace-nowrap">
