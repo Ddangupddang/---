@@ -18,7 +18,7 @@ function Students() {
     addStudent, updateStudent, deleteStudent, bulkAddStudents, bulkDeleteStudents,
     addClass, updateClass, deleteClass,
     reorderClasses, reorderStudents,
-    studentAccountIds, refreshStudentAccounts,
+    studentAccountIds, studentUsernameById, refreshStudentAccounts,
   } = useData()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -360,6 +360,7 @@ function Students() {
                         student={student}
                         isAdmin={isAdmin}
                         getClassName={getClassName}
+                        username={studentUsernameById[student.id]}
                         onEdit={() => handleEdit(student)}
                         onDelete={() => handleDelete(student.id)}
                         onCreateAccount={() => openAccountModal(student)}
@@ -619,7 +620,7 @@ function SortableClassCard({ cls, count, isAdmin, onEdit, onDelete, onClick }) {
 
 // ── 드래그 가능한 학생 행 ──────────────────────────────
 function SortableStudentRow({
-  student, isAdmin, getClassName,
+  student, isAdmin, getClassName, username,
   onEdit, onDelete, onCreateAccount,
   selectMode, selected, onToggle,
 }) {
@@ -669,9 +670,11 @@ function SortableStudentRow({
       <td className="px-3 py-3 text-gray-500 hidden md:table-cell">{student.phone}</td>
       {isAdmin && !selectMode && (
         <td className="px-2 py-3 text-center hidden sm:table-cell">
-          <button onClick={onCreateAccount} className="text-xs text-[#5B8FD4] hover:underline whitespace-nowrap">
-            계정 생성
-          </button>
+          {username
+            ? <span className="font-mono text-xs text-[#2B2B2B] whitespace-nowrap">{username}</span>
+            : <button onClick={onCreateAccount} className="text-xs text-[#5B8FD4] hover:underline whitespace-nowrap">
+                계정 생성
+              </button>}
         </td>
       )}
       {isAdmin && !selectMode && (
