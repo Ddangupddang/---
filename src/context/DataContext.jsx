@@ -9,6 +9,10 @@ import { grades as mockGrades } from '../data/grades'
 import { qnaQuestions as mockQna } from '../data/qna'
 import { notices as mockNotices } from '../data/notices'
 import { reports as mockReports } from '../data/reports'
+import {
+  toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission,
+} from '../utils/homeworkMappers'
+import { dateForWeekday } from '../utils/homeworkWeek'
 
 const DataContext = createContext(null)
 
@@ -121,28 +125,6 @@ function toSubmission(s) {
     scores:      s.scores  ?? [],
   }
 }
-function toHomework(h) {
-  return {
-    id:        h.id,
-    title:     h.title,
-    classId:   h.class_id,
-    teacherId: h.teacher_id,
-    dueDate:   h.due_date,
-    questions: h.questions ?? [],
-    createdAt: h.created_at,
-  }
-}
-function toHomeworkSubmission(s) {
-  return {
-    id:          s.id,
-    homeworkId:  s.homework_id,
-    studentId:   s.student_id,
-    answers:     s.answers ?? [],
-    submittedAt: s.submitted_at,
-    updatedAt:   s.updated_at,
-  }
-}
-
 export function DataProvider({ children }) {
   const [classes,       setClasses]       = useState(mockClasses)
   const [students,      setStudents]      = useState(mockStudents)
@@ -156,7 +138,9 @@ export function DataProvider({ children }) {
   const [videoComments, setVideoComments] = useState([])
   const [tests,         setTests]         = useState([])
   const [submissions,   setSubmissions]   = useState([])
-  const [homework,            setHomework]            = useState([])
+  const [homeworkSets,        setHomeworkSets]        = useState([])
+  const [homeworkDays,        setHomeworkDays]        = useState([])
+  const [homeworkQuestions,   setHomeworkQuestions]   = useState([])
   const [homeworkSubmissions, setHomeworkSubmissions] = useState([])
   const [dataLoading,   setDataLoading]   = useState(true)
   const [studentAccountIds, setStudentAccountIds] = useState([])
@@ -165,7 +149,7 @@ export function DataProvider({ children }) {
 
   useEffect(() => {
     async function load() {
-      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwRes, hwSubRes, saRes] =
+      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, saRes] =
         await Promise.all([
           supabase.from('classes').select('*').order('sort_order').order('id'),
           supabase.from('students').select('*').order('sort_order').order('id'),
@@ -179,8 +163,10 @@ export function DataProvider({ children }) {
           supabase.from('video_comments').select('*').order('created_at'),
           supabase.from('tests').select('*').order('created_at', { ascending: false }),
           supabase.from('submissions').select('*').order('submitted_at', { ascending: false }),
-          supabase.from('homework').select('*').order('created_at', { ascending: false }),
-          supabase.from('homework_submissions').select('*').order('submitted_at', { ascending: false }),
+          supabase.from('homework_sets').select('*').order('week_start', { ascending: false }),
+          supabase.from('homework_days').select('*'),
+          supabase.from('homework_questions').select('*'),
+          supabase.from('homework_submissions_v2').select('*'),
           supabase.from('profiles').select('student_id, username').eq('role', 'student'),
         ])
 
@@ -196,8 +182,10 @@ export function DataProvider({ children }) {
       if (!vcRes.error && vcRes.data)            setVideoComments(vcRes.data.map(toVideoComment))
       if (!tRes.error && tRes.data)              setTests(tRes.data.map(toTest))
       if (!subRes.error && subRes.data)          setSubmissions(subRes.data.map(toSubmission))
-      if (!hwRes.error && hwRes.data)       setHomework(hwRes.data.map(toHomework))
-      if (!hwSubRes.error && hwSubRes.data) setHomeworkSubmissions(hwSubRes.data.map(toHomeworkSubmission))
+      if (!hwSetsRes.error && hwSetsRes.data) setHomeworkSets(hwSetsRes.data.map(toHomeworkSet))
+      if (!hwDaysRes.error && hwDaysRes.data) setHomeworkDays(hwDaysRes.data.map(toHomeworkDay))
+      if (!hwQRes.error && hwQRes.data)       setHomeworkQuestions(hwQRes.data.map(toHomeworkQuestion))
+      if (!hwSubRes.error && hwSubRes.data)   setHomeworkSubmissions(hwSubRes.data.map(toHomeworkSubmission))
       if (!saRes.error && saRes.data) {
         const withId = saRes.data.filter((r) => r.student_id)
         setStudentAccountIds(withId.map((r) => r.student_id))
@@ -595,63 +583,100 @@ export function DataProvider({ children }) {
     setSubmissions((prev) => prev.map((s) => s.id === id ? { ...s, scores } : s))
   }
 
-  // ── 과제 CRUD ──────────────────────────────────────────────────────────────
-
-  async function addHomework(data) {
-    const { data: inserted, error } = await supabase
-      .from('homework')
+  // ── 과제(내신/정시) CRUD ─────────────────────────────
+  // 주간 세트 + 요일 + 문항을 한 번에 생성
+  async function addHomeworkSet(payload) {
+    const { data: setRow, error: setErr } = await supabase
+      .from('homework_sets')
       .insert([{
-        title:      data.title,
-        class_id:   data.classId   ?? null,
-        teacher_id: data.teacherId ?? null,
-        due_date:   data.dueDate,
-        questions:  data.questions ?? [],
+        category:   payload.category,
+        target:     Number(payload.target),
+        week_start: payload.weekStart,
+        title:      payload.title,
+        teacher_id: payload.teacherId,
       }])
-      .select()
-      .single()
+      .select().single()
+    if (setErr) { console.error('과제 세트 생성 실패:', setErr); return null }
 
-    if (error) { console.error('과제 추가 실패:', error); return null }
-    const newHw = toHomework(inserted)
-    setHomework((prev) => [newHw, ...prev])
-    return newHw
+    const newDays = []
+    const newQuestions = []
+    for (const day of payload.days) {
+      const { data: dayRow, error: dayErr } = await supabase
+        .from('homework_days')
+        .insert([{
+          set_id:  setRow.id,
+          weekday: day.weekday,
+          date:    dateForWeekday(payload.weekStart, day.weekday),
+          question_count: day.questionCount,
+          day_solution_video_url: day.daySolutionVideoUrl || null,
+          day_solution_file_url:  day.daySolutionFileUrl || null,
+        }])
+        .select().single()
+      if (dayErr) { console.error('과제 요일 생성 실패:', dayErr); continue }
+      newDays.push(toHomeworkDay(dayRow))
+
+      if (day.questions?.length) {
+        const rows = day.questions.map((q) => ({
+          day_id: dayRow.id,
+          number: q.number,
+          answer: q.answer,
+          solution_video_url: q.solutionVideoUrl || null,
+          solution_file_url:  q.solutionFileUrl || null,
+        }))
+        const { data: qRows, error: qErr } = await supabase
+          .from('homework_questions').insert(rows).select()
+        if (qErr) { console.error('과제 문항 생성 실패:', qErr); continue }
+        newQuestions.push(...qRows.map(toHomeworkQuestion))
+      }
+    }
+
+    const newSet = toHomeworkSet(setRow)
+    setHomeworkSets((prev) => [newSet, ...prev])
+    setHomeworkDays((prev) => [...prev, ...newDays])
+    setHomeworkQuestions((prev) => [...prev, ...newQuestions])
+    return newSet
   }
 
-  async function deleteHomework(id) {
-    const { data: deleted, error } = await supabase.from('homework').delete().eq('id', id).select()
-    if (error) { console.error('과제 삭제 실패:', error); return }
-    if (!deleted?.length) { console.error('과제 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)'); return }
-    setHomework((prev) => prev.filter((h) => h.id !== id))
-    setHomeworkSubmissions((prev) => prev.filter((s) => s.homeworkId !== id))
+  // 세트 삭제 (FK on delete cascade로 요일/문항/제출 자동 삭제)
+  async function deleteHomeworkSet(setId) {
+    const { data: deleted, error } = await supabase
+      .from('homework_sets').delete().eq('id', setId).select()
+    if (error) { console.error('과제 세트 삭제 실패:', error); return }
+    if (!deleted?.length) { console.error('과제 세트 삭제 실패: 0 rows (RLS 확인)'); return }
+    const dayIds = homeworkDays.filter((d) => d.setId === setId).map((d) => d.id)
+    setHomeworkSets((prev) => prev.filter((s) => s.id !== setId))
+    setHomeworkDays((prev) => prev.filter((d) => d.setId !== setId))
+    setHomeworkQuestions((prev) => prev.filter((q) => !dayIds.includes(q.dayId)))
+    setHomeworkSubmissions((prev) => prev.filter((s) => !dayIds.includes(s.dayId)))
   }
 
-  async function upsertHomeworkSubmission(data) {
-    const now = new Date().toISOString()
-    // submitted_at은 payload에 넣지 않는다 — 최초 삽입 시 DB 기본값(now())으로 채워지고,
-    // 재제출(update) 시에는 그대로 유지되어 "최초 제출 시각"으로 남는다 (지각 판정 기준).
-    // updated_at만 갱신해 마지막 수정 시각을 추적한다.
-    const { data: upserted, error } = await supabase
-      .from('homework_submissions')
+  // 요일별 제출 (학생 × 요일) upsert
+  async function upsertHomeworkSubmission({ dayId, studentId, answers }) {
+    const { data, error } = await supabase
+      .from('homework_submissions_v2')
       .upsert(
-        {
-          homework_id: data.homeworkId,
-          student_id:  data.studentId,
-          answers:     data.answers ?? [],
-          updated_at:  now,
-        },
-        { onConflict: 'homework_id,student_id' }
+        { day_id: dayId, student_id: studentId, answers, submitted_at: new Date().toISOString() },
+        { onConflict: 'day_id,student_id' }
       )
-      .select()
-      .single()
-
-    if (error) { console.error('과제 제출 실패:', error); return null }
-    const record = toHomeworkSubmission(upserted)
+      .select().single()
+    if (error) { console.error('과제 제출 실패:', error); return }
+    const record = toHomeworkSubmission(data)
     setHomeworkSubmissions((prev) => {
-      const exists = prev.some((s) => s.homeworkId === data.homeworkId && s.studentId === data.studentId)
+      const exists = prev.some((s) => s.dayId === dayId && s.studentId === studentId)
       return exists
-        ? prev.map((s) => (s.homeworkId === data.homeworkId && s.studentId === data.studentId ? record : s))
-        : [record, ...prev]
+        ? prev.map((s) => (s.dayId === dayId && s.studentId === studentId ? record : s))
+        : [...prev, record]
     })
-    return record
+  }
+
+  // 해설 파일 업로드 → 공개 URL 반환
+  async function uploadSolutionFile(file, prefix = 'sol') {
+    const safe = file.name.replace(/[^\w.\-가-힣]/g, '_')
+    const path = `${prefix}/${Date.now()}_${safe}`
+    const { error } = await supabase.storage.from('homework-solutions').upload(path, file)
+    if (error) { console.error('해설 파일 업로드 실패:', error); return null }
+    const { data } = supabase.storage.from('homework-solutions').getPublicUrl(path)
+    return data.publicUrl
   }
 
   // ── 순서 변경 ──────────────────────────────────────────
@@ -745,8 +770,8 @@ export function DataProvider({ children }) {
       addVideo, deleteVideo, addVideoComment, replyVideoComment,
       addTest, updateTestStatus, deleteTest,
       addSubmission, updateSubmissionScores,
-      homework, homeworkSubmissions,
-      addHomework, deleteHomework, upsertHomeworkSubmission,
+      homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
+      addHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission, uploadSolutionFile,
     }}>
       {children}
     </DataContext.Provider>
