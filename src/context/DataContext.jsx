@@ -33,6 +33,8 @@ function toStudent(s) {
     phone:       s.phone       ?? '',
     parentPhone: s.parent_phone ?? '',
     classId:     s.class_id,
+    grade:       s.grade         ?? null,   // 학년(내신)
+    jeongsiLevel: s.jeongsi_level ?? null,  // 정시 레벨
     joinDate:    s.join_date   ?? '',
     sortOrder:   s.sort_order  ?? s.id,
   }
@@ -217,6 +219,8 @@ export function DataProvider({ children }) {
         phone:        data.phone        || null,
         parent_phone: data.parentPhone  || null,
         class_id:     Number(data.classId) || null,
+        grade:        data.grade ? Number(data.grade) : null,
+        jeongsi_level: data.jeongsiLevel ? Number(data.jeongsiLevel) : null,
         join_date:    data.joinDate     || new Date().toISOString().slice(0, 10),
       }])
       .select()
@@ -236,13 +240,20 @@ export function DataProvider({ children }) {
         phone:        data.phone        || null,
         parent_phone: data.parentPhone  || null,
         class_id:     Number(data.classId) || null,
+        grade:        data.grade ? Number(data.grade) : null,
+        jeongsi_level: data.jeongsiLevel ? Number(data.jeongsiLevel) : null,
         join_date:    data.joinDate     || null,
       })
       .eq('id', id)
 
     if (error) { console.error('학생 수정 실패:', error); return }
     setStudents((prev) =>
-      prev.map((s) => s.id === id ? { ...s, ...data, classId: Number(data.classId) } : s)
+      prev.map((s) => s.id === id ? {
+        ...s, ...data,
+        classId: Number(data.classId),
+        grade: data.grade ? Number(data.grade) : null,
+        jeongsiLevel: data.jeongsiLevel ? Number(data.jeongsiLevel) : null,
+      } : s)
     )
   }
 
@@ -268,6 +279,8 @@ export function DataProvider({ children }) {
       phone:        d.phone        || null,
       parent_phone: d.parentPhone  || null,
       class_id:     Number(d.classId) || null,
+      grade:        d.grade ? Number(d.grade) : null,
+      jeongsi_level: d.jeongsiLevel ? Number(d.jeongsiLevel) : null,
       join_date:    d.joinDate     || new Date().toISOString().slice(0, 10),
     }))
 
