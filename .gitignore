@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# AI 코딩 도구가 몇 초마다 갱신하는 상태 파일.
+# 여기 없으면 Tailwind가 이 폴더까지 소스로 훑어서,
+# 파일이 바뀔 때마다 dev 서버가 페이지를 새로고침한다.
+.omc/
+.claude/settings.local.json
+
 # 환경 변수 (Supabase 키 등 민감정보 — 절대 커밋 금지)
 .env
 .env.local
