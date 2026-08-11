@@ -39,12 +39,15 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
     return picked ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
   }
 
+  // 열 수는 창 너비(sm:/lg:)가 아니라 실제 들어갈 공간에 맞춘다.
+  // 한 칸에 최소 208px(번호 28 + 선지 5×28 + 여백)이 필요하고,
+  // 공간이 모자라면 자동으로 1열이 된다 → 좁은 학생 화면에서 칸이 겹치지 않는다.
   return (
     <div
       data-testid="choice-grid"
       tabIndex={mode === 'input' ? 0 : -1}
       onKeyDown={handleKeyDown}
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 focus:outline-none"
+      className="grid grid-cols-[repeat(auto-fill,minmax(208px,1fr))] gap-1.5 focus:outline-none"
     >
       {numbers.map((number) => {
         const isFocused = mode === 'input' && number === focused
