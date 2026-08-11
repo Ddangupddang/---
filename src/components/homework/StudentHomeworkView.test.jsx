@@ -1,6 +1,7 @@
 // src/components/homework/StudentHomeworkView.test.jsx
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import StudentHomeworkView from './StudentHomeworkView'
 import { mondayOf } from '../../utils/homeworkWeek'
 
@@ -48,5 +49,70 @@ describe('StudentHomeworkView (정시, 레벨 미배정)', () => {
   it('정시 레벨 없으면 안내 문구', () => {
     render(<StudentHomeworkView category="jeongsi" />)
     expect(screen.getByText(/정시 레벨이 배정되지 않았습니다/)).toBeInTheDocument()
+  })
+})
+
+describe('StudentHomeworkView (제출)', () => {
+  it('모든 문항에 답해야 제출 버튼이 활성화되고, 제출 시 답안이 전달된다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+
+    // 요일 카드 클릭 → 답안 입력 화면
+    await user.click(screen.getByText('월요일 과제'))
+    const submitBtn = screen.getByRole('button', { name: '제출하기' })
+    expect(submitBtn).toBeDisabled()
+
+    // 1번만 입력 — 2문항 중 1개라 아직 비활성
+    await user.click(screen.getByTestId('cell-1-①'))
+    expect(submitBtn).toBeDisabled()
+
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    expect(submitBtn).toBeEnabled()
+    await user.click(submitBtn)
+
+    await waitFor(() => expect(state.data.upsertHomeworkSubmission).toHaveBeenCalledWith({
+      dayId: 10,
+      studentId: 7,
+      answers: [
+        { number: 1, answer: '①' },
+        { number: 2, answer: '⑤' },
+      ],
+    }))
+  })
+})
+
+describe('StudentHomeworkView (결과·해설)', () => {
+  beforeEach(() => {
+    // 요일 해설이 달린 과제 + 1번만 맞힌 제출
+    state.data.homeworkDays = [
+      { id: 10, setId: 1, weekday: 1, date: WEEK, questionCount: 2,
+        daySolutionVideoUrl: 'https://youtu.be/dQw4w9WgXcQ', daySolutionFileUrl: 'https://example.com/sol.pdf' },
+    ]
+    state.data.homeworkSubmissions = [
+      { id: 900, dayId: 10, studentId: 7, submittedAt: `${WEEK}T10:00:00Z`,
+        answers: [{ number: 1, answer: '①' }, { number: 2, answer: '⑤' }] },
+    ]
+  })
+
+  it('제출한 요일은 제출완료 뱃지로 표시된다', () => {
+    render(<StudentHomeworkView category="naesin" />)
+    expect(screen.getByText('제출완료')).toBeInTheDocument()
+    expect(screen.queryByText('미제출')).not.toBeInTheDocument()
+  })
+
+  it('제출한 요일을 열면 채점 결과와 해설이 보인다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+
+    await user.click(screen.getByText('월요일 과제'))
+
+    // 정답 ①/② 중 1번만 맞음 → 1 / 2
+    expect(screen.getByText('월요일 과제 — 결과')).toBeInTheDocument()
+    expect(screen.getByText('/ 2').parentElement).toHaveTextContent('1 / 2')
+
+    // 해설(영상 + 파일)
+    expect(screen.getByText('요일 해설')).toBeInTheDocument()
+    expect(screen.getByTitle('해설 영상')).toBeInTheDocument()
+    expect(screen.getByText('해설 파일 열기')).toHaveAttribute('href', 'https://example.com/sol.pdf')
   })
 })
