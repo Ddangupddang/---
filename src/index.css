@@ -1,6 +1,9 @@
-@import "tailwindcss";
-
+/* 폰트 @import는 반드시 맨 위에 둔다.
+   @import "tailwindcss"는 Tailwind v4에서 실제 CSS 규칙으로 전개되므로,
+   그 아래에 @import를 쓰면 "@import must precede all other statements" 에러가 난다. */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
 
 @layer base {
   * {
