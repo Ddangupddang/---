@@ -15,7 +15,8 @@ vi.mock('../../context/DataContext', () => ({ useData: () => state.data }))
 
 beforeEach(() => {
   state.data = {
-    addHomeworkSet: vi.fn().mockResolvedValue(undefined),
+    // 실제 addHomeworkSet은 성공 시 생성된 세트를, 실패 시 null을 반환한다
+    addHomeworkSet: vi.fn().mockResolvedValue({ id: 1, category: 'naesin', target: 5 }),
     uploadSolutionFile: vi.fn(),
   }
 })
@@ -107,6 +108,29 @@ describe('TeacherHomeworkCreate (내신)', () => {
     const payload = state.data.addHomeworkSet.mock.calls[0][0]
     expect(payload.days).toHaveLength(1)
     expect(payload.days[0].weekday).toBe(1)
+  })
+})
+
+describe('TeacherHomeworkCreate (저장 실패)', () => {
+  it('저장에 실패하면 목록으로 돌아가지 않고 에러를 보여주며 입력값을 유지한다', async () => {
+    const user = userEvent.setup()
+    const onDone = vi.fn()
+    // DB 테이블 없음/RLS 거부 등으로 addHomeworkSet이 null을 반환하는 상황
+    state.data.addHomeworkSet = vi.fn().mockResolvedValue(null)
+    render(<TeacherHomeworkCreate category="naesin" onDone={onDone} />)
+
+    await user.type(screen.getByPlaceholderText(/세트 제목/), '8월 2주차')
+    await user.click(screen.getByRole('checkbox'))
+    await user.type(screen.getByRole('spinbutton'), '1')
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByRole('button', { name: '주간 과제 저장' }))
+
+    // 실패를 사용자에게 알려야 한다
+    expect(await screen.findByText(/저장에 실패했습니다/)).toBeInTheDocument()
+    // 성공한 것처럼 목록으로 빠져나가면 안 된다
+    expect(onDone).not.toHaveBeenCalled()
+    // 입력값이 날아가면 안 된다
+    expect(screen.getByPlaceholderText(/세트 제목/)).toHaveValue('8월 2주차')
   })
 })
 

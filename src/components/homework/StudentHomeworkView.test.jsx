@@ -27,7 +27,8 @@ beforeEach(() => {
       { id: 101, dayId: 10, number: 2, answer: '②', solutionVideoUrl: '', solutionFileUrl: '' },
     ],
     homeworkSubmissions: [],
-    upsertHomeworkSubmission: vi.fn(),
+    // 실제 upsertHomeworkSubmission은 성공 시 제출 레코드를, 실패 시 null을 반환한다
+    upsertHomeworkSubmission: vi.fn().mockResolvedValue({ id: 900, dayId: 10, studentId: 7 }),
   }
 })
 
@@ -78,6 +79,22 @@ describe('StudentHomeworkView (제출)', () => {
         { number: 2, answer: '⑤' },
       ],
     }))
+  })
+
+  it('제출에 실패하면 에러를 보여주고 입력한 답을 유지한다', async () => {
+    const user = userEvent.setup()
+    // DB 오류로 upsert가 null을 반환하는 상황
+    state.data.upsertHomeworkSubmission = vi.fn().mockResolvedValue(null)
+    render(<StudentHomeworkView category="naesin" />)
+
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '제출하기' }))
+
+    expect(await screen.findByText(/제출에 실패했습니다/)).toBeInTheDocument()
+    // 입력한 답이 날아가면 다시 처음부터 풀어야 한다
+    expect(screen.getByText('2/2 입력됨')).toBeInTheDocument()
   })
 })
 

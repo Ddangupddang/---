@@ -25,6 +25,7 @@ export default function StudentHomeworkView({ category }) {
   const [openDayId, setOpenDayId] = useState(null)
   const [answers, setAnswers] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const me = students.find((s) => s.id === user.studentId)
   const today = new Date().toISOString().slice(0, 10)
@@ -90,9 +91,15 @@ export default function StudentHomeworkView({ category }) {
     async function handleSubmit() {
       if (!allAnswered) return
       setSubmitting(true)
+      setSubmitError('')
       const payload = qs.map((q) => ({ number: q.number, answer: answers[q.number] }))
-      await upsertHomeworkSubmission({ dayId: day.id, studentId: me.id, answers: payload })
+      const saved = await upsertHomeworkSubmission({ dayId: day.id, studentId: me.id, answers: payload })
       setSubmitting(false)
+      // 실패했는데 답을 지우면 처음부터 다시 풀어야 한다 → 답을 남기고 알린다
+      if (!saved) {
+        setSubmitError('제출에 실패했습니다. 입력한 답은 그대로 두었으니 다시 시도해 주세요.')
+        return
+      }
       setAnswers({})
     }
     return (
@@ -107,6 +114,9 @@ export default function StudentHomeworkView({ category }) {
         </div>
         <ChoiceGrid count={qs.length} values={answers} mode="input"
           onChange={(number, choice) => setAnswers((prev) => ({ ...prev, [number]: choice }))} />
+        {submitError && (
+          <p className="text-sm text-[#C0392B] bg-[#C0392B]/10 rounded-lg px-3 py-2 mt-3">{submitError}</p>
+        )}
         <button onClick={handleSubmit} disabled={!allAnswered}
           className="w-full py-3 mt-4 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40">
           제출하기

@@ -27,6 +27,7 @@ export default function TeacherHomeworkCreate({ category, onDone }) {
   const [activeWd, setActiveWd] = useState(1)
   const [days, setDays] = useState(() => Object.fromEntries(WEEKDAYS.map((wd) => [wd, emptyDay()])))
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const d = days[activeWd]
   const setDay = (patch) => setDays((prev) => ({ ...prev, [activeWd]: { ...prev[activeWd], ...patch } }))
@@ -56,6 +57,7 @@ export default function TeacherHomeworkCreate({ category, onDone }) {
   async function handleSave() {
     if (!canSave || saving) return
     setSaving(true)
+    setError('')
     const payloadDays = enabledDays.map((wd) => {
       const dd = days[wd]
       return {
@@ -71,11 +73,16 @@ export default function TeacherHomeworkCreate({ category, onDone }) {
         })),
       }
     })
-    await addHomeworkSet({
+    const created = await addHomeworkSet({
       category, target: Number(target), weekStart, title: title.trim(),
       teacherId: user.id, days: payloadDays,
     })
     setSaving(false)
+    // 저장이 실패했는데 목록으로 넘어가면 성공한 것처럼 보인다 → 입력값 유지하고 알린다
+    if (!created) {
+      setError('저장에 실패했습니다. 입력한 내용은 그대로 두었으니 잠시 후 다시 시도해 주세요.')
+      return
+    }
     onDone()
   }
 
@@ -145,6 +152,10 @@ export default function TeacherHomeworkCreate({ category, onDone }) {
             </>
           )}
         </div>
+
+        {error && (
+          <p className="text-sm text-[#C0392B] bg-[#C0392B]/10 rounded-lg px-3 py-2">{error}</p>
+        )}
 
         <button onClick={handleSave} disabled={!canSave || saving}
           className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40">

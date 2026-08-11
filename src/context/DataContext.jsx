@@ -659,7 +659,8 @@ export function DataProvider({ children }) {
         { onConflict: 'day_id,student_id' }
       )
       .select().single()
-    if (error) { console.error('과제 제출 실패:', error); return }
+    // 실패 시 null을 돌려줘서 화면이 "제출됨"으로 잘못 넘어가지 않게 한다
+    if (error) { console.error('과제 제출 실패:', error); return null }
     const record = toHomeworkSubmission(data)
     setHomeworkSubmissions((prev) => {
       const exists = prev.some((s) => s.dayId === dayId && s.studentId === studentId)
@@ -667,6 +668,7 @@ export function DataProvider({ children }) {
         ? prev.map((s) => (s.dayId === dayId && s.studentId === studentId ? record : s))
         : [...prev, record]
     })
+    return record
   }
 
   // 해설 파일 업로드 → 공개 URL 반환
