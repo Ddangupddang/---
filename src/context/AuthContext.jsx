@@ -1,6 +1,6 @@
 // src/context/AuthContext.jsx
 // Supabase Auth 기반 인증 컨텍스트
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { loginEmail } from '../utils/loginEmail'
@@ -12,6 +12,8 @@ export const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null)
   const [loading, setLoading] = useState(true)
+  // 현재 로그인된 사용자 id 저장 — 창 전환(Alt+Tab) 시 중복 SIGNED_IN 무시용
+  const signedInUserId = useRef(null)
 
   // auth.users의 uid로 profiles 테이블에서 역할/이름 등 조회
   async function fetchProfile(authUser) {
@@ -39,6 +41,7 @@ export function AuthProvider({ children }) {
     // 앱 시작 시 현재 세션 확인 (새로고침 후 로그인 유지)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        signedInUserId.current = session.user.id
         const profile = await fetchProfile(session.user)
         setUser(profile)
       }
@@ -53,6 +56,11 @@ export function AuthProvider({ children }) {
         if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') return
 
         if (session?.user) {
+          // 창 전환(Alt+Tab) 등으로 이미 로그인된 같은 사용자에게 SIGNED_IN이
+          // 다시 발생하면 화면을 새로 그리지 않고 무시 → 열려있던 팝업/입력값 유지
+          if (event === 'SIGNED_IN' && session.user.id === signedInUserId.current) return
+
+          signedInUserId.current = session.user.id
           // SIGNED_IN: 프로필 로드 전 로딩 표시 → 완료 후 user 세팅 + 로딩 해제
           // 이렇게 해야 ProtectedRoute가 user 준비되기 전 /login으로 튕기지 않음
           if (event === 'SIGNED_IN') setLoading(true)
@@ -62,6 +70,7 @@ export function AuthProvider({ children }) {
             setLoading(false)
           })
         } else {
+          signedInUserId.current = null
           setUser(null)
           setLoading(false)
         }

@@ -64,3 +64,16 @@ describe('ChoiceGrid — result 모드', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 })
+
+describe('ChoiceGrid — 열 배치', () => {
+  // 학생 화면은 max-w-sm(384px) 박스 안에 들어간다. 뷰포트 기준 breakpoint(sm:/lg:)를 쓰면
+  // 창만 넓고 실제 공간은 좁을 때 3열로 펼쳐져 칸끼리 겹친다. 그래서 열 수는
+  // 실제 컨테이너 너비에 맞춰 자동으로 정해져야 한다.
+  // (jsdom은 레이아웃을 계산하지 않으므로 겹침 자체는 잴 수 없다 — 배치 방식만 고정한다.)
+  it('뷰포트 기준 열 수 대신 컨테이너 너비에 맞춘 자동 열을 쓴다', () => {
+    render(<ChoiceGrid count={5} values={{}} mode="input" onChange={() => {}} />)
+    const grid = screen.getByTestId('choice-grid')
+    expect(grid.className).not.toMatch(/(sm|md|lg|xl):grid-cols/)
+    expect(grid.className).toMatch(/auto-fill/)
+  })
+})

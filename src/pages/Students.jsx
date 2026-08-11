@@ -7,6 +7,7 @@ import BulkAccountModal from '../components/BulkAccountModal'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { supabase } from '../lib/supabase'
+import { GRADES, GRADE_LABELS, JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS } from '../constants/homework'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -25,7 +26,7 @@ function Students() {
   // 학생 폼
   const [showForm, setShowForm]     = useState(false)
   const [editTarget, setEditTarget] = useState(null)
-  const [form, setForm]             = useState({ name: '', phone: '', classId: '', parentPhone: '' })
+  const [form, setForm]             = useState({ name: '', phone: '', classId: '', parentPhone: '', grade: '', jeongsiLevel: '' })
   const fileInputRef                = useRef(null)
 
   // 반 폼
@@ -135,7 +136,7 @@ function Students() {
     }
     setShowForm(false)
     setEditTarget(null)
-    setForm({ name: '', phone: '', classId: '', parentPhone: '' })
+    setForm({ name: '', phone: '', classId: '', parentPhone: '', grade: '', jeongsiLevel: '' })
   }
 
   const handleDelete = async (id) => {
@@ -146,7 +147,12 @@ function Students() {
 
   const handleEdit = (student) => {
     setEditTarget(student)
-    setForm({ ...student, classId: String(student.classId) })
+    setForm({
+      ...student,
+      classId: String(student.classId),
+      grade: student.grade ?? '',
+      jeongsiLevel: student.jeongsiLevel ?? '',
+    })
     setShowForm(true)
   }
 
@@ -260,7 +266,7 @@ function Students() {
             {isAdmin && !selectMode && (
               <>
                 <button
-                  onClick={() => { setShowForm(true); setEditTarget(null); setForm({ name: '', phone: '', classId: '', parentPhone: '' }) }}
+                  onClick={() => { setShowForm(true); setEditTarget(null); setForm({ name: '', phone: '', classId: '', parentPhone: '', grade: '', jeongsiLevel: '' }) }}
                   className="px-4 py-2 bg-[#2B2B2B] text-white text-sm rounded-lg hover:bg-[#3d3d3d]"
                 >
                   + 학생 추가
@@ -541,6 +547,14 @@ function Students() {
               </select>
               <input placeholder="연락처 (010-0000-0000)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none" />
               <input placeholder="학부모 연락처" value={form.parentPhone} onChange={(e) => setForm({ ...form, parentPhone: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none" />
+              <select value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none">
+                <option value="">학년 선택(내신)</option>
+                {GRADES.map((g) => <option key={g} value={g}>{GRADE_LABELS[g]}</option>)}
+              </select>
+              <select value={form.jeongsiLevel} onChange={(e) => setForm({ ...form, jeongsiLevel: e.target.value })} className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none">
+                <option value="">정시 레벨(선택 안 함)</option>
+                {JEONGSI_LEVELS.map((l) => <option key={l} value={l}>{JEONGSI_LEVEL_LABELS[l]}</option>)}
+              </select>
               <div className="flex gap-2 mt-1">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 h-11 border border-gray-200 rounded-lg text-sm text-gray-500 hover:bg-gray-50">취소</button>
                 <button type="submit" className="flex-1 h-11 bg-[#2B2B2B] text-white rounded-lg text-sm font-semibold hover:bg-[#3d3d3d]">저장</button>
