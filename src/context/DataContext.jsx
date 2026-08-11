@@ -637,6 +637,81 @@ export function DataProvider({ children }) {
     return newSet
   }
 
+  // 기존 세트 수정 — 요일·문항을 지금 입력한 내용에 맞춘다.
+  // 문항은 통째로 지우고 다시 넣는다. 제출(homework_submissions_v2)은 요일(day_id)만 참조하고
+  // 답은 문항 번호로 맞추므로, 문항 id가 바뀌어도 학생 제출은 그대로 남는다.
+  // 학생 점수는 저장돼 있지 않고 화면에서 계산하므로 정답만 고치면 결과는 저절로 반영된다.
+  async function updateHomeworkSet(setId, payload) {
+    const { data: setRow, error: setErr } = await supabase
+      .from('homework_sets')
+      .update({
+        target:     Number(payload.target),
+        week_start: payload.weekStart,
+        title:      payload.title,
+      })
+      .eq('id', setId).select().single()
+    if (setErr) { console.error('과제 세트 수정 실패:', setErr); return null }
+
+    const existing = homeworkDays.filter((d) => d.setId === setId)
+    const keep = new Set(payload.days.map((d) => d.weekday))
+
+    // 사용 해제된 요일은 삭제한다 (cascade로 그 요일의 문항·제출도 함께 사라진다)
+    const dropped = existing.filter((d) => !keep.has(d.weekday))
+    if (dropped.length) {
+      const { error } = await supabase
+        .from('homework_days').delete().in('id', dropped.map((d) => d.id))
+      if (error) { console.error('과제 요일 삭제 실패:', error); return null }
+    }
+
+    const nextDays = []
+    const nextQuestions = []
+    for (const day of payload.days) {
+      const prev = existing.find((d) => d.weekday === day.weekday)
+      const fields = {
+        set_id:  setId,
+        weekday: day.weekday,
+        date:    dateForWeekday(payload.weekStart, day.weekday),
+        question_count: day.questionCount,
+        day_solution_video_url: day.daySolutionVideoUrl || null,
+        day_solution_file_url:  day.daySolutionFileUrl || null,
+      }
+      const { data: dayRow, error: dayErr } = prev
+        ? await supabase.from('homework_days').update(fields).eq('id', prev.id).select().single()
+        : await supabase.from('homework_days').insert([fields]).select().single()
+      if (dayErr) { console.error('과제 요일 저장 실패:', dayErr); return null }
+      nextDays.push(toHomeworkDay(dayRow))
+
+      const { error: delErr } = await supabase
+        .from('homework_questions').delete().eq('day_id', dayRow.id)
+      if (delErr) { console.error('과제 문항 교체 실패:', delErr); return null }
+      if (day.questions?.length) {
+        const rows = day.questions.map((q) => ({
+          day_id: dayRow.id,
+          number: q.number,
+          answer: q.answer,
+          solution_video_url: q.solutionVideoUrl || null,
+          solution_file_url:  q.solutionFileUrl || null,
+        }))
+        const { data: qRows, error: qErr } = await supabase
+          .from('homework_questions').insert(rows).select()
+        if (qErr) { console.error('과제 문항 저장 실패:', qErr); return null }
+        nextQuestions.push(...qRows.map(toHomeworkQuestion))
+      }
+    }
+
+    const droppedIds = dropped.map((d) => d.id)
+    const touchedIds = nextDays.map((d) => d.id)
+    const updated = toHomeworkSet(setRow)
+    setHomeworkSets((prev) => prev.map((s) => (s.id === setId ? updated : s)))
+    setHomeworkDays((prev) => [...prev.filter((d) => d.setId !== setId), ...nextDays])
+    setHomeworkQuestions((prev) => [
+      ...prev.filter((q) => !droppedIds.includes(q.dayId) && !touchedIds.includes(q.dayId)),
+      ...nextQuestions,
+    ])
+    setHomeworkSubmissions((prev) => prev.filter((s) => !droppedIds.includes(s.dayId)))
+    return updated
+  }
+
   // 세트 삭제 (FK on delete cascade로 요일/문항/제출 자동 삭제)
   async function deleteHomeworkSet(setId) {
     const { data: deleted, error } = await supabase
@@ -773,7 +848,7 @@ export function DataProvider({ children }) {
       addTest, updateTestStatus, deleteTest,
       addSubmission, updateSubmissionScores,
       homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
-      addHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission, uploadSolutionFile,
+      addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission, uploadSolutionFile,
     }}>
       {children}
     </DataContext.Provider>

@@ -15,7 +15,10 @@ export default function Homework() {
   const isStaff = user.role === 'teacher' || user.role === 'admin'
 
   const [category, setCategory] = useState(HW_CATEGORY.NAESIN)
-  const [mode, setMode] = useState('list') // list | create | status
+  const [mode, setMode] = useState('list') // list | form | status
+  const [editSet, setEditSet] = useState(null) // null이면 새로 출제, 세트가 있으면 수정
+
+  function openList() { setEditSet(null); setMode('list') }
 
   return (
     <Layout>
@@ -24,7 +27,7 @@ export default function Homework() {
         {isStaff && mode === 'list' && (
           <div className="flex gap-2">
             <button onClick={() => setMode('status')} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">제출 현황</button>
-            <button onClick={() => setMode('create')} className="px-4 py-2 bg-[#2B2B2B] text-white rounded-lg text-sm">+ 주간 과제</button>
+            <button onClick={() => { setEditSet(null); setMode('form') }} className="px-4 py-2 bg-[#2B2B2B] text-white rounded-lg text-sm">+ 주간 과제</button>
           </div>
         )}
       </div>
@@ -32,7 +35,7 @@ export default function Homework() {
       {/* 내신/정시 탭 */}
       <div className="flex gap-2 mb-6">
         {Object.values(HW_CATEGORY).map((c) => (
-          <button key={c} onClick={() => { setCategory(c); setMode('list') }}
+          <button key={c} onClick={() => { setCategory(c); openList() }}
             className={`px-4 py-2 rounded-full text-sm font-medium ${
               category === c ? 'bg-[#5B8FD4] text-white' : 'bg-gray-100 text-gray-600'
             }`}>{CATEGORY_LABELS[c]}</button>
@@ -43,24 +46,32 @@ export default function Homework() {
       {!isStaff && <StudentHomeworkView category={category} />}
 
       {/* 교사 */}
-      {isStaff && mode === 'create' && (
-        <TeacherHomeworkCreate category={category} onDone={() => setMode('list')} />
+      {isStaff && mode === 'form' && (
+        <TeacherHomeworkCreate
+          key={editSet?.id ?? 'new'}
+          category={category} editSet={editSet} onDone={openList}
+        />
       )}
       {isStaff && mode === 'status' && (
         <>
-          <button onClick={() => setMode('list')} className="text-sm text-gray-500 mb-4">← 목록</button>
+          <button onClick={openList} className="text-sm text-gray-500 mb-4">← 목록</button>
           <TeacherHomeworkStatus category={category} />
         </>
       )}
       {isStaff && mode === 'list' && (
-        <TeacherSetList category={category} sets={homeworkSets} onDelete={deleteHomeworkSet} userRole={user.role} userId={user.id} />
+        <TeacherSetList
+          category={category} sets={homeworkSets}
+          onEdit={(s) => { setEditSet(s); setMode('form') }}
+          onDelete={deleteHomeworkSet}
+          userRole={user.role} userId={user.id}
+        />
       )}
     </Layout>
   )
 }
 
-// 교사 목록: 이 종류의 세트들 (주차 최신순) + 삭제
-function TeacherSetList({ category, sets, onDelete, userRole, userId }) {
+// 교사 목록: 이 종류의 세트들 (주차 최신순) + 수정/삭제
+function TeacherSetList({ category, sets, onEdit, onDelete, userRole, userId }) {
   const mine = sets
     .filter((s) => s.category === category)
     .sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1))
@@ -68,16 +79,21 @@ function TeacherSetList({ category, sets, onDelete, userRole, userId }) {
   return (
     <div className="flex flex-col gap-3">
       {mine.map((s) => {
-        const canDelete = userRole === 'admin' || s.teacherId === userId
+        // 수정과 삭제 권한은 같다 — 관리자이거나 직접 출제한 교사
+        const canManage = userRole === 'admin' || s.teacherId === userId
         return (
           <div key={s.id} className="bg-white rounded-xl p-4 shadow-sm flex justify-between items-center">
             <div>
               <p className="font-semibold text-[#2B2B2B]">{s.title}</p>
               <p className="text-xs text-gray-400 mt-1">{s.weekStart} 주 · target {s.target}</p>
             </div>
-            {canDelete && (
-              <button onClick={() => { if (confirm(`"${s.title}" 세트를 삭제하시겠습니까?`)) onDelete(s.id) }}
-                className="text-xs text-gray-300 hover:text-[#C0392B]">삭제</button>
+            {canManage && (
+              <div className="flex items-center gap-3">
+                <button onClick={() => onEdit(s)}
+                  className="text-xs text-gray-500 hover:text-[#5B8FD4]">수정</button>
+                <button onClick={() => { if (confirm(`"${s.title}" 세트를 삭제하시겠습니까?`)) onDelete(s.id) }}
+                  className="text-xs text-gray-300 hover:text-[#C0392B]">삭제</button>
+              </div>
             )}
           </div>
         )

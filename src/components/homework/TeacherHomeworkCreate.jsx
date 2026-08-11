@@ -1,10 +1,12 @@
 // src/components/homework/TeacherHomeworkCreate.jsx
 // 교사: 한 종류(내신/정시) 주간 세트(월~토)를 한 번에 출제.
+// editSet을 받으면 그 세트를 불러와 수정하는 화면이 된다(입력 항목이 출제와 같아 화면을 공유한다).
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useData } from '../../context/DataContext'
 import ChoiceGrid from '../ChoiceGrid'
 import { mondayOf } from '../../utils/homeworkWeek'
+import { homeworkEditImpact } from '../../utils/homeworkEdit'
 import {
   HW_CATEGORY, CATEGORY_LABELS, GRADES, GRADE_LABELS,
   JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS, WEEKDAYS, WEEKDAY_LABELS,
@@ -13,19 +15,42 @@ import {
 // 요일 하나의 편집 상태 초기값
 const emptyDay = () => ({ enabled: false, count: 0, answers: {}, videoUrl: '', fileUrl: '', file: null })
 
-export default function TeacherHomeworkCreate({ category, onDone }) {
+// 수정 모드일 때 기존 세트의 요일·문항을 편집 상태로 되돌린다
+function daysFromSet(editSet, allDays, allQuestions) {
+  const state = Object.fromEntries(WEEKDAYS.map((wd) => [wd, emptyDay()]))
+  if (!editSet) return state
+  for (const day of allDays.filter((d) => d.setId === editSet.id)) {
+    const answers = {}
+    for (const q of allQuestions.filter((q) => q.dayId === day.id)) answers[q.number] = q.answer
+    state[day.weekday] = {
+      enabled: true, count: day.questionCount, answers,
+      videoUrl: day.daySolutionVideoUrl ?? '', fileUrl: day.daySolutionFileUrl ?? '', file: null,
+    }
+  }
+  return state
+}
+
+export default function TeacherHomeworkCreate({ category, editSet = null, onDone }) {
   const { user } = useAuth()
-  const { addHomeworkSet, uploadSolutionFile } = useData()
+  const {
+    addHomeworkSet, updateHomeworkSet, uploadSolutionFile,
+    homeworkDays = [], homeworkQuestions = [], homeworkSubmissions = [],
+  } = useData()
 
   const isNaesin = category === HW_CATEGORY.NAESIN
   const targets = isNaesin ? GRADES : JEONGSI_LEVELS
   const targetLabels = isNaesin ? GRADE_LABELS : JEONGSI_LEVEL_LABELS
 
-  const [target, setTarget]   = useState(String(targets[0]))
-  const [title, setTitle]     = useState('')
-  const [weekStart, setWeekStart] = useState(mondayOf(new Date().toISOString().slice(0, 10)))
-  const [activeWd, setActiveWd] = useState(1)
-  const [days, setDays] = useState(() => Object.fromEntries(WEEKDAYS.map((wd) => [wd, emptyDay()])))
+  const [target, setTarget]   = useState(String(editSet?.target ?? targets[0]))
+  const [title, setTitle]     = useState(editSet?.title ?? '')
+  const [weekStart, setWeekStart] = useState(
+    editSet?.weekStart ?? mondayOf(new Date().toISOString().slice(0, 10))
+  )
+  const [days, setDays] = useState(() => daysFromSet(editSet, homeworkDays, homeworkQuestions))
+  // 수정 화면은 실제로 과제가 있는 첫 요일부터 보여준다
+  const [activeWd, setActiveWd] = useState(
+    () => WEEKDAYS.find((wd) => daysFromSet(editSet, homeworkDays, homeworkQuestions)[wd].enabled) ?? 1
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -54,32 +79,54 @@ export default function TeacherHomeworkCreate({ category, onDone }) {
       return dd.count > 0 && Object.keys(dd.answers).length === dd.count
     })
 
+  // 저장에 보낼 요일 목록 — 경고 계산과 저장이 같은 값을 보게 한다
+  const payloadDays = enabledDays.map((wd) => {
+    const dd = days[wd]
+    return {
+      weekday: wd,
+      questionCount: dd.count,
+      daySolutionVideoUrl: dd.videoUrl,
+      daySolutionFileUrl: dd.fileUrl,
+      questions: Array.from({ length: dd.count }, (_, i) => ({
+        number: i + 1,
+        answer: dd.answers[i + 1],
+        solutionVideoUrl: '',   // 문항별 해설은 후속 UI(열린 항목). MVP는 요일 해설 사용.
+        solutionFileUrl: '',
+      })),
+    }
+  })
+
+  // 수정이 이미 제출한 학생에게 어떤 영향을 주는지 (출제 모드에서는 영향이 없다)
+  const setDayIds = editSet ? homeworkDays.filter((d) => d.setId === editSet.id).map((d) => d.id) : []
+  const impact = editSet
+    ? homeworkEditImpact({
+        days: homeworkDays.filter((d) => d.setId === editSet.id),
+        questions: homeworkQuestions.filter((q) => setDayIds.includes(q.dayId)),
+        submissions: homeworkSubmissions.filter((s) => setDayIds.includes(s.dayId)),
+        nextDays: payloadDays,
+      })
+    : { warnings: [], destructive: false }
+
   async function handleSave() {
     if (!canSave || saving) return
+    // 학생에게 영향이 가는 수정은 교사가 알고 결정해야 한다
+    if (impact.warnings.length > 0) {
+      const lines = impact.warnings.map((w) => `· ${w.message}`).join('\n')
+      if (!window.confirm(`${lines}\n\n계속하시겠습니까?`)) return
+    }
     setSaving(true)
     setError('')
-    const payloadDays = enabledDays.map((wd) => {
-      const dd = days[wd]
-      return {
-        weekday: wd,
-        questionCount: dd.count,
-        daySolutionVideoUrl: dd.videoUrl,
-        daySolutionFileUrl: dd.fileUrl,
-        questions: Array.from({ length: dd.count }, (_, i) => ({
-          number: i + 1,
-          answer: dd.answers[i + 1],
-          solutionVideoUrl: '',   // 문항별 해설은 후속 UI(열린 항목). MVP는 요일 해설 사용.
-          solutionFileUrl: '',
-        })),
-      }
-    })
-    const created = await addHomeworkSet({
-      category, target: Number(target), weekStart, title: title.trim(),
-      teacherId: user.id, days: payloadDays,
-    })
+    const saved = editSet
+      ? await updateHomeworkSet(editSet.id, {
+          target: Number(target), weekStart, title: title.trim(), days: payloadDays,
+        })
+      : await addHomeworkSet({
+          category, target: Number(target), weekStart, title: title.trim(),
+          teacherId: user.id, days: payloadDays,
+        })
     setSaving(false)
     // 저장이 실패했는데 목록으로 넘어가면 성공한 것처럼 보인다 → 입력값 유지하고 알린다
-    if (!created) {
+    if (!saved) {
       setError('저장에 실패했습니다. 입력한 내용은 그대로 두었으니 잠시 후 다시 시도해 주세요.')
       return
     }
@@ -89,7 +136,9 @@ export default function TeacherHomeworkCreate({ category, onDone }) {
   return (
     <div>
       <button onClick={onDone} className="text-sm text-gray-500 mb-4">← 목록</button>
-      <h1 className="text-xl font-bold text-[#2B2B2B] mb-4">{CATEGORY_LABELS[category]} 만들기</h1>
+      <h1 className="text-xl font-bold text-[#2B2B2B] mb-4">
+        {CATEGORY_LABELS[category]} {editSet ? '수정' : '만들기'}
+      </h1>
 
       <div className="flex flex-col gap-4">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="세트 제목 (예: 8월 2주차)"
@@ -153,13 +202,26 @@ export default function TeacherHomeworkCreate({ category, onDone }) {
           )}
         </div>
 
+        {/* 저장을 누르기 전에 학생에게 무슨 일이 생기는지 미리 보여준다 */}
+        {impact.warnings.length > 0 && (
+          <div data-testid="edit-impact"
+            className={`rounded-lg px-3 py-2 text-sm ${
+              impact.destructive ? 'bg-[#C0392B]/10 text-[#C0392B]' : 'bg-[#5B8FD4]/10 text-[#2B2B2B]'
+            }`}>
+            <p className="font-medium mb-1">{impact.destructive ? '되돌릴 수 없는 변경입니다' : '이미 제출한 학생에게 영향이 갑니다'}</p>
+            <ul className="list-disc pl-4 flex flex-col gap-0.5">
+              {impact.warnings.map((w) => <li key={`${w.type}-${w.weekday}`}>{w.message}</li>)}
+            </ul>
+          </div>
+        )}
+
         {error && (
           <p className="text-sm text-[#C0392B] bg-[#C0392B]/10 rounded-lg px-3 py-2">{error}</p>
         )}
 
         <button onClick={handleSave} disabled={!canSave || saving}
           className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40">
-          {saving ? '저장 중...' : '주간 과제 저장'}
+          {saving ? '저장 중...' : editSet ? '수정 저장' : '주간 과제 저장'}
         </button>
       </div>
     </div>

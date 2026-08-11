@@ -2,18 +2,20 @@
 // 교사: 한 종류(내신/정시)의 그룹·주차별 요일 제출 현황.
 import { useState } from 'react'
 import { useData } from '../../context/DataContext'
+import DaySubmissionList from './DaySubmissionList'
 import {
   HW_CATEGORY, GRADES, GRADE_LABELS,
   JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS, WEEKDAY_LABELS,
 } from '../../constants/homework'
 
 export default function TeacherHomeworkStatus({ category }) {
-  const { students, homeworkSets, homeworkDays, homeworkSubmissions } = useData()
+  const { students, homeworkSets, homeworkDays, homeworkQuestions = [], homeworkSubmissions } = useData()
   const isNaesin = category === HW_CATEGORY.NAESIN
   const targets = isNaesin ? GRADES : JEONGSI_LEVELS
   const targetLabels = isNaesin ? GRADE_LABELS : JEONGSI_LEVEL_LABELS
 
   const [target, setTarget] = useState(targets[0])
+  const [openDayId, setOpenDayId] = useState(null) // 펼쳐서 학생 명단을 보고 있는 요일
 
   // 이 종류·그룹의 세트(주차 최신순)
   const sets = homeworkSets
@@ -47,12 +49,26 @@ export default function TeacherHomeworkStatus({ category }) {
             <div className="flex flex-col gap-2">
               {days.map((day) => {
                 const subs = homeworkSubmissions.filter((s) => s.dayId === day.id)
+                const isOpen = openDayId === day.id
                 return (
                   <div key={day.id} className="bg-white rounded-xl p-3 shadow-sm">
-                    <div className="flex justify-between items-center">
+                    <button
+                      onClick={() => setOpenDayId(isOpen ? null : day.id)}
+                      className="w-full flex justify-between items-center text-left"
+                    >
                       <span className="text-sm font-medium text-[#2B2B2B]">{WEEKDAY_LABELS[day.weekday]}요일 · {day.date}</span>
-                      <span className="text-sm font-bold text-[#2B2B2B]">{subs.length}/{groupStudents.length} 제출</span>
-                    </div>
+                      <span className="text-sm font-bold text-[#2B2B2B]">
+                        {subs.length}/{groupStudents.length} 제출
+                        <span className="ml-2 text-xs font-normal text-gray-400">{isOpen ? '▴' : '▾'}</span>
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <DaySubmissionList
+                        students={groupStudents}
+                        questions={homeworkQuestions.filter((q) => q.dayId === day.id).sort((a, b) => a.number - b.number)}
+                        submissions={subs}
+                      />
+                    )}
                   </div>
                 )
               })}
