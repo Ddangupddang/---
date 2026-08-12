@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
+import StudentHomeworkCard from '../components/homework/StudentHomeworkCard'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -283,6 +284,9 @@ function StudentDashboard({ user }) {
 
   return (
     <div className="flex flex-col gap-4">
+
+      {/* 이번 주 과제 — 마감이 있어 가장 급한 항목이라 맨 위에 둔다 */}
+      <StudentHomeworkCard studentId={user.studentId} />
 
       {/* 이번 달 출결 */}
       <button
