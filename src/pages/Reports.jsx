@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
+import ReportHomeworkChecks from '../components/reports/ReportHomeworkChecks'
 
 export default function Reports() {
   const { user } = useAuth()
@@ -181,15 +182,10 @@ function DetailView({ report, onUpdateChecks, onBack, classStudents, staffProfil
   const studs  = classStudents(report.classId)
   const [checks, setChecks] = useState(report.studentChecks)
 
-  async function toggleCheck(studentId) {
-    const updated = checks.map((sc) =>
-      sc.studentId === studentId ? { ...sc, done: !sc.done } : sc
-    )
+  async function handleChecksChange(updated) {
     setChecks(updated)
     await onUpdateChecks(updated)
   }
-
-  const doneCount = checks.filter((sc) => sc.done).length
 
   return (
     <div>
@@ -224,37 +220,13 @@ function DetailView({ report, onUpdateChecks, onBack, classStudents, staffProfil
         )}
       </div>
 
-      {/* 과제 수행 체크 */}
-      <div className="bg-white rounded-xl p-5 shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-sm font-semibold text-gray-700">과제 수행 현황</p>
-          <span className="text-sm font-bold text-[#2B2B2B]">{doneCount} / {studs.length}명</span>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          {studs.map((s) => {
-            const check = checks.find((sc) => sc.studentId === s.id)
-            const done  = check?.done ?? false
-            return (
-              <div
-                key={s.id}
-                onClick={() => toggleCheck(s.id)}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                  done ? 'bg-green-50' : 'bg-gray-50 hover:bg-gray-100'
-                }`}
-              >
-                <span className="text-sm font-medium text-[#2B2B2B]">{s.name}</span>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                  done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                }`}>
-                  {done ? '✓' : ''}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <p className="text-xs text-gray-400 mt-3">* 학생 이름을 클릭하면 체크/해제됩니다.</p>
-      </div>
+      {/* 과제 수행 체크 — 제출 기록 자동 반영 + 교사 수정 */}
+      <ReportHomeworkChecks
+        date={report.date}
+        students={studs}
+        checks={checks}
+        onChange={handleChecksChange}
+      />
     </div>
   )
 }
