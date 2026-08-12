@@ -4,6 +4,9 @@
 // 교사가 한 학생의 한 주를 보려면 출결·테스트·과제 화면 세 곳을 열어야 했다.
 // 그 합치는 일을 여기서 한다.
 
+import { gradeHomework } from './homework'
+import { matchesStudent } from './homeworkSelect'
+
 // 한 학생의 그 주 출결 집계.
 // 지각은 "왔다"이므로 출석률 분자에 넣되, 별도로 세어 표에서 감춰지지 않게 한다.
 // 그 주 기록이 아예 없으면 null — 출석률 0%와 "기록 없음"은 다른 뜻이다.
@@ -52,4 +55,41 @@ export function weeklyTests({ tests, testSubmissions, student, classId, dates })
     : Math.round(graded.reduce((sum, r) => sum + (r.score / r.total) * 100, 0) / graded.length)
 
   return { rows, summary: { average, count: rows.length } }
+}
+
+// 한 학생의 그 주 한 종류(내신/정시) 과제 수행.
+// 과제는 반이 아니라 학년(내신)·정시레벨로 배정되므로 학생마다 자기 세트를 찾아야 한다.
+// 배정된 세트가 없으면 null — "0% 제출"과 "낼 과제가 없었음"은 전혀 다른 뜻이다.
+export function weeklyHomework({ sets, days, questions, submissions, student, category, weekStart }) {
+  const mySetIds = new Set(
+    sets
+      .filter((s) => s.category === category && s.weekStart === weekStart && matchesStudent(s, student))
+      .map((s) => s.id)
+  )
+  if (mySetIds.size === 0) return null
+
+  const myDays = days.filter((d) => mySetIds.has(d.setId))
+  if (myDays.length === 0) return null
+
+  let submitted = 0
+  let correct = 0
+  let attempted = 0
+
+  for (const day of myDays) {
+    const sub = submissions.find((s) => s.dayId === day.id && s.studentId === student.id)
+    if (!sub) continue
+    submitted++
+    const graded = gradeHomework(questions.filter((q) => q.dayId === day.id), sub.answers)
+    correct += graded.correctCount
+    attempted += graded.total
+  }
+
+  return {
+    submitted,
+    total: myDays.length,
+    submitRate: Math.round((submitted / myDays.length) * 100),
+    // 낸 회차의 문항만 분모로 삼는다 — 안 낸 회차까지 넣으면
+    // 성실도와 실력이 뒤섞여 어느 쪽이 문제인지 알 수 없다
+    correctRate: attempted === 0 ? null : Math.round((correct / attempted) * 100),
+  }
 }

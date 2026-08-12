@@ -1,6 +1,6 @@
 // src/utils/weeklyReport.test.js
 import { describe, it, expect } from 'vitest'
-import { weeklyAttendance, weeklyTests } from './weeklyReport'
+import { weeklyAttendance, weeklyTests, weeklyHomework } from './weeklyReport'
 
 const DATES = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15']
 
@@ -106,5 +106,74 @@ describe('weeklyTests', () => {
       tests: others, testSubmissions: [], student: STUDENT, classId: 10, dates: DATES,
     })
     expect(rows).toEqual([])
+  })
+})
+
+const WEEK = '2026-08-10'
+
+// 고2(grade 5) 내신 세트: 월·화·수 3일, 각 2문항
+const HW = {
+  sets: [
+    { id: 1, category: 'naesin',  target: 5, weekStart: WEEK, title: '내신' },
+    { id: 2, category: 'jeongsi', target: 2, weekStart: WEEK, title: '정시' },
+    { id: 3, category: 'naesin',  target: 5, weekStart: '2026-08-03', title: '지난주' },
+  ],
+  days: [
+    { id: 11, setId: 1, weekday: 1, date: '2026-08-10', questionCount: 2 },
+    { id: 12, setId: 1, weekday: 2, date: '2026-08-11', questionCount: 2 },
+    { id: 13, setId: 1, weekday: 3, date: '2026-08-12', questionCount: 2 },
+    { id: 21, setId: 2, weekday: 1, date: '2026-08-10', questionCount: 2 },
+    { id: 31, setId: 3, weekday: 1, date: '2026-08-03', questionCount: 2 },
+  ],
+  questions: [
+    { id: 111, dayId: 11, number: 1, answer: '①' }, { id: 112, dayId: 11, number: 2, answer: '②' },
+    { id: 121, dayId: 12, number: 1, answer: '③' }, { id: 122, dayId: 12, number: 2, answer: '④' },
+    { id: 131, dayId: 13, number: 1, answer: '⑤' }, { id: 132, dayId: 13, number: 2, answer: '①' },
+    { id: 211, dayId: 21, number: 1, answer: '①' }, { id: 212, dayId: 21, number: 2, answer: '②' },
+  ],
+}
+
+describe('weeklyHomework', () => {
+  it('제출한 요일 수와 정답률을 계산한다', () => {
+    // 월요일: 2문항 다 맞음 / 화요일: 1문항만 맞음 / 수요일: 미제출
+    const submissions = [
+      { dayId: 11, studentId: 1, answers: [{ number: 1, answer: '①' }, { number: 2, answer: '②' }] },
+      { dayId: 12, studentId: 1, answers: [{ number: 1, answer: '③' }, { number: 2, answer: '⑤' }] },
+    ]
+    expect(weeklyHomework({
+      ...HW, submissions, student: STUDENT, category: 'naesin', weekStart: WEEK,
+    })).toEqual({
+      submitted: 2, total: 3, submitRate: 67,
+      // 낸 2회차 4문항 중 3개 정답 = 75%. 안 낸 수요일 문항은 분모에 넣지 않는다.
+      correctRate: 75,
+    })
+  })
+
+  it('하나도 안 냈으면 제출률 0, 정답률은 null', () => {
+    expect(weeklyHomework({
+      ...HW, submissions: [], student: STUDENT, category: 'naesin', weekStart: WEEK,
+    })).toEqual({ submitted: 0, total: 3, submitRate: 0, correctRate: null })
+  })
+
+  it('배정된 세트가 없으면 null — 제출률 0%와 구별해야 한다', () => {
+    const noLevel = { ...STUDENT, jeongsiLevel: null }
+    expect(weeklyHomework({
+      ...HW, submissions: [], student: noLevel, category: 'jeongsi', weekStart: WEEK,
+    })).toBeNull()
+  })
+
+  it('학생의 학년·레벨에 맞는 세트만 본다', () => {
+    const grade6 = { ...STUDENT, grade: 6 }
+    expect(weeklyHomework({
+      ...HW, submissions: [], student: grade6, category: 'naesin', weekStart: WEEK,
+    })).toBeNull()
+  })
+
+  it('다른 주 세트는 세지 않는다', () => {
+    const result = weeklyHomework({
+      ...HW, submissions: [], student: STUDENT, category: 'naesin', weekStart: WEEK,
+    })
+    // 지난주 세트(id 3)의 요일이 섞였다면 total이 4가 된다
+    expect(result.total).toBe(3)
   })
 })
