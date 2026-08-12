@@ -34,12 +34,28 @@ describe('WeeklyReport', () => {
     expect(screen.getByText('김민서')).toBeInTheDocument()
   })
 
-  it('이전 주 버튼을 누르면 표시되는 주가 바뀐다', async () => {
+  it('이전 주/다음 주 버튼을 누르면 정확히 7일 이동한다', async () => {
     const user = userEvent.setup()
     render(<WeeklyReport />)
-    const before = screen.getByTestId('week-label').textContent
+
+    // 라벨에서 주 시작 날짜만 뽑는다. 구현 함수(shiftWeek 등)를 다시 호출해 비교하면
+    // 구현이 틀려도 테스트가 같은 실수로 통과하는 순환 논증이 되므로 문자열만 파싱한다.
+    const weekStartFromLabel = () =>
+      Date.parse(screen.getByTestId('week-label').textContent.trim().slice(0, 10))
+    const DAY = 24 * 60 * 60 * 1000
+
+    const base = weekStartFromLabel()
+
+    // 이전 주: 정확히 7일 전으로 이동해야 한다
     await user.click(screen.getByRole('button', { name: '이전 주' }))
-    expect(screen.getByTestId('week-label').textContent).not.toBe(before)
+    const afterPrev = weekStartFromLabel()
+    expect(base - afterPrev).toBe(7 * DAY)
+
+    // 다음 주: afterPrev에서 다시 7일 후(=base)로 이동해야 한다
+    await user.click(screen.getByRole('button', { name: '다음 주' }))
+    const afterNext = weekStartFromLabel()
+    expect(afterNext - afterPrev).toBe(7 * DAY)
+    expect(afterNext).toBe(base)
   })
 
   it('학생을 누르면 개인 상세로 들어가고 목록으로 돌아온다', async () => {
