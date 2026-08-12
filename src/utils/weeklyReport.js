@@ -6,6 +6,8 @@
 
 import { gradeHomework } from './homework'
 import { matchesStudent } from './homeworkSelect'
+import { weekDates } from './homeworkWeek'
+import { HW_CATEGORY, LOW_SUBMISSION } from '../constants/homework'
 
 // 한 학생의 그 주 출결 집계.
 // 지각은 "왔다"이므로 출석률 분자에 넣되, 별도로 세어 표에서 감춰지지 않게 한다.
@@ -92,4 +94,45 @@ export function weeklyHomework({ sets, days, questions, submissions, student, ca
     // 성실도와 실력이 뒤섞여 어느 쪽이 문제인지 알 수 없다
     correctRate: attempted === 0 ? null : Math.round((correct / attempted) * 100),
   }
+}
+
+// 한 반의 한 주 전체. 화면은 이 결과를 그리기만 한다.
+export function weeklyClassReport({
+  students, attendance, tests, testSubmissions,
+  homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
+  classId, weekStart,
+}) {
+  const dates = weekDates(weekStart)
+  const hw = {
+    sets: homeworkSets, days: homeworkDays,
+    questions: homeworkQuestions, submissions: homeworkSubmissions,
+    weekStart,
+  }
+
+  const rows = students
+    .filter((s) => s.classId === classId)
+    .map((student) => {
+      const att = weeklyAttendance(attendance, student.id, dates)
+      const { rows: testRows, summary } = weeklyTests({
+        tests, testSubmissions, student, classId, dates,
+      })
+      const naesin  = weeklyHomework({ ...hw, student, category: HW_CATEGORY.NAESIN })
+      const jeongsi = weeklyHomework({ ...hw, student, category: HW_CATEGORY.JEONGSI })
+
+      // 교사가 먼저 봐야 할 신호만 flag로 세운다
+      const flags = []
+      if (att && att.absent > 0) flags.push('absence')
+      if (testRows.some((r) => r.state === 'absent')) flags.push('testAbsent')
+      if ([naesin, jeongsi].some((h) => h && h.submitRate < LOW_SUBMISSION)) flags.push('lowHomework')
+
+      return { student, attendance: att, tests: testRows, testSummary: summary, naesin, jeongsi, flags }
+    })
+
+  // 문제 있는 학생이 먼저 보여야 표를 훑는 의미가 있다
+  rows.sort((a, b) =>
+    b.flags.length - a.flags.length ||
+    a.student.name.localeCompare(b.student.name, 'ko')
+  )
+
+  return { weekStart, dates, rows }
 }

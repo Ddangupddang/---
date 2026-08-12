@@ -1,6 +1,6 @@
 // src/utils/weeklyReport.test.js
 import { describe, it, expect } from 'vitest'
-import { weeklyAttendance, weeklyTests, weeklyHomework } from './weeklyReport'
+import { weeklyAttendance, weeklyTests, weeklyHomework, weeklyClassReport } from './weeklyReport'
 
 const DATES = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15']
 
@@ -175,5 +175,91 @@ describe('weeklyHomework', () => {
     })
     // 지난주 세트(id 3)의 요일이 섞였다면 total이 4가 된다
     expect(result.total).toBe(3)
+  })
+})
+
+describe('weeklyClassReport', () => {
+  // 같은 반 학생 3명: 문제 없음 / 결석+과제부진 / 시험 미응시
+  const STUDENTS = [
+    { id: 1, name: '가나다', classId: 10, grade: 5, jeongsiLevel: null },
+    { id: 2, name: '하마바', classId: 10, grade: 5, jeongsiLevel: null },
+    { id: 3, name: '사아자', classId: 10, grade: 5, jeongsiLevel: null },
+    { id: 9, name: '남의반', classId: 99, grade: 5, jeongsiLevel: null },
+  ]
+  const ATT = [
+    { studentId: 1, date: '2026-08-10', status: 'present' },
+    { studentId: 2, date: '2026-08-10', status: 'absent'  },
+    { studentId: 3, date: '2026-08-10', status: 'present' },
+  ]
+  const SUBS_HW = [
+    // 1번은 3일 다 제출, 2번은 1일만 제출(33% → 부진), 3번은 3일 다 제출
+    { dayId: 11, studentId: 1, answers: [{ number: 1, answer: '①' }, { number: 2, answer: '②' }] },
+    { dayId: 12, studentId: 1, answers: [{ number: 1, answer: '③' }, { number: 2, answer: '④' }] },
+    { dayId: 13, studentId: 1, answers: [{ number: 1, answer: '⑤' }, { number: 2, answer: '①' }] },
+    { dayId: 11, studentId: 2, answers: [{ number: 1, answer: '①' }, { number: 2, answer: '②' }] },
+    { dayId: 11, studentId: 3, answers: [{ number: 1, answer: '①' }, { number: 2, answer: '②' }] },
+    { dayId: 12, studentId: 3, answers: [{ number: 1, answer: '③' }, { number: 2, answer: '④' }] },
+    { dayId: 13, studentId: 3, answers: [{ number: 1, answer: '⑤' }, { number: 2, answer: '①' }] },
+  ]
+  const TEST_SUBS = [
+    { testId: 100, studentId: 1, scores: [{ questionId: 1, score: 60 }, { questionId: 2, score: 40 }] },
+    { testId: 100, studentId: 2, scores: [{ questionId: 1, score: 30 }, { questionId: 2, score: 20 }] },
+    // 3번은 미응시
+  ]
+
+  function run() {
+    return weeklyClassReport({
+      students: STUDENTS, attendance: ATT,
+      tests: [TESTS[0]], testSubmissions: TEST_SUBS,
+      homeworkSets: HW.sets, homeworkDays: HW.days,
+      homeworkQuestions: HW.questions, homeworkSubmissions: SUBS_HW,
+      classId: 10, weekStart: WEEK,
+    })
+  }
+
+  it('그 반 학생만 행으로 만든다', () => {
+    const { rows } = run()
+    expect(rows).toHaveLength(3)
+    expect(rows.map((r) => r.student.id).sort()).toEqual([1, 2, 3])
+  })
+
+  it('월~토 6일을 dates로 돌려준다', () => {
+    expect(run().dates).toEqual(DATES)
+  })
+
+  it('결석·시험미응시·과제부진에 flag를 세운다', () => {
+    const { rows } = run()
+    const byId = Object.fromEntries(rows.map((r) => [r.student.id, r]))
+    expect(byId[1].flags).toEqual([])
+    expect(byId[2].flags).toEqual(expect.arrayContaining(['absence', 'lowHomework']))
+    expect(byId[3].flags).toEqual(['testAbsent'])
+  })
+
+  it('flag가 많은 학생을 위로, 같으면 이름 가나다순으로 정렬한다', () => {
+    const { rows } = run()
+    // 2번(flag 2개) → 3번(1개) → 1번(0개)
+    expect(rows.map((r) => r.student.id)).toEqual([2, 3, 1])
+  })
+
+  it('정시 레벨이 없는 학생은 jeongsi가 null이다', () => {
+    const { rows } = run()
+    expect(rows.every((r) => r.jeongsi === null)).toBe(true)
+    expect(rows.every((r) => r.naesin !== null)).toBe(true)
+  })
+
+  it('제출률 70%는 부진이 아니고 69%는 부진이다', () => {
+    // 10일 중 7일 제출 = 70% (경계값)
+    const days = Array.from({ length: 10 }, (_, i) => ({
+      id: 500 + i, setId: 1, weekday: 1, date: '2026-08-10', questionCount: 0,
+    }))
+    const subs7 = Array.from({ length: 7 }, (_, i) => ({ dayId: 500 + i, studentId: 1, answers: [] }))
+    const base = {
+      students: [STUDENTS[0]], attendance: [], tests: [], testSubmissions: [],
+      homeworkSets: HW.sets, homeworkDays: days, homeworkQuestions: [],
+      classId: 10, weekStart: WEEK,
+    }
+    expect(weeklyClassReport({ ...base, homeworkSubmissions: subs7 }).rows[0].flags).toEqual([])
+    expect(weeklyClassReport({ ...base, homeworkSubmissions: subs7.slice(0, 6) }).rows[0].flags)
+      .toEqual(['lowHomework'])
   })
 })
