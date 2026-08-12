@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   Users, School, ClipboardCheck, BarChart2,
   Video, ClipboardList, PencilLine, MessageCircle, Bell, TrendingUp, LogOut, KeyRound, UserCog,
+  CalendarRange,
 } from 'lucide-react'
 
 // 섹션 그룹핑된 네비게이션 설정 (대시보드는 로고 클릭으로 이동)
@@ -31,6 +32,7 @@ const navSections = [
       { label: 'Q&A',       path: '/qna',     Icon: MessageCircle },
       { label: '공지사항',  path: '/notices', Icon: Bell },
       { label: '진도 리포트', path: '/reports', Icon: TrendingUp },
+      { label: '주간 리포트', path: '/weekly-report', Icon: CalendarRange },
     ],
   },
 ]

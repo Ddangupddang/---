@@ -14,6 +14,7 @@ import Homework from './pages/Homework'
 import QnA from './pages/QnA'
 import Notices from './pages/Notices'
 import Reports from './pages/Reports'
+import WeeklyReport from './pages/WeeklyReport'
 import ChangePassword from './pages/ChangePassword'
 import Staff from './pages/Staff'
 
@@ -125,6 +126,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'teacher']}>
                 <Reports />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 주간 리포트 (관리자, 교사만) */}
+          <Route
+            path="/weekly-report"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                <WeeklyReport />
               </ProtectedRoute>
             }
           />
