@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useData } from '../../context/DataContext'
 import DaySubmissionList from './DaySubmissionList'
+import DayQuestionStats from './DayQuestionStats'
 import {
   HW_CATEGORY, GRADES, GRADE_LABELS,
   JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS, WEEKDAY_LABELS,
@@ -15,7 +16,8 @@ export default function TeacherHomeworkStatus({ category }) {
   const targetLabels = isNaesin ? GRADE_LABELS : JEONGSI_LEVEL_LABELS
 
   const [target, setTarget] = useState(targets[0])
-  const [openDayId, setOpenDayId] = useState(null) // 펼쳐서 학생 명단을 보고 있는 요일
+  const [openDayId, setOpenDayId] = useState(null) // 펼쳐서 보고 있는 요일
+  const [dayView, setDayView] = useState('students') // students | questions
 
   // 이 종류·그룹의 세트(주차 최신순)
   const sets = homeworkSets
@@ -53,7 +55,7 @@ export default function TeacherHomeworkStatus({ category }) {
                 return (
                   <div key={day.id} className="bg-white rounded-xl p-3 shadow-sm">
                     <button
-                      onClick={() => setOpenDayId(isOpen ? null : day.id)}
+                      onClick={() => { setOpenDayId(isOpen ? null : day.id); setDayView('students') }}
                       className="w-full flex justify-between items-center text-left"
                     >
                       <span className="text-sm font-medium text-[#2B2B2B]">{WEEKDAY_LABELS[day.weekday]}요일 · {day.date}</span>
@@ -62,13 +64,33 @@ export default function TeacherHomeworkStatus({ category }) {
                         <span className="ml-2 text-xs font-normal text-gray-400">{isOpen ? '▴' : '▾'}</span>
                       </span>
                     </button>
-                    {isOpen && (
-                      <DaySubmissionList
-                        students={groupStudents}
-                        questions={homeworkQuestions.filter((q) => q.dayId === day.id).sort((a, b) => a.number - b.number)}
-                        submissions={subs}
-                      />
-                    )}
+                    {isOpen && (() => {
+                      const dayQuestions = homeworkQuestions
+                        .filter((q) => q.dayId === day.id)
+                        .sort((a, b) => a.number - b.number)
+                      return (
+                        <>
+                          {/* 학생별(누가 냈나) / 문항별(무엇을 틀렸나) */}
+                          <div className="flex gap-2 mt-3">
+                            {[['students', '학생별'], ['questions', '문항별']].map(([key, label]) => (
+                              <button key={key} onClick={() => setDayView(key)}
+                                className={`px-3 py-1 rounded-full text-xs ${
+                                  dayView === key ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600'
+                                }`}>{label}</button>
+                            ))}
+                          </div>
+                          {dayView === 'students' ? (
+                            <DaySubmissionList
+                              students={groupStudents}
+                              questions={dayQuestions}
+                              submissions={subs}
+                            />
+                          ) : (
+                            <DayQuestionStats questions={dayQuestions} submissions={subs} />
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 )
               })}

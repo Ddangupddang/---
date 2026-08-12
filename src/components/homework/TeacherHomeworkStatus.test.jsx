@@ -136,6 +136,72 @@ describe('TeacherHomeworkStatus — 요일별 학생 명단', () => {
   })
 })
 
+describe('TeacherHomeworkStatus — 문항별 오답률', () => {
+  async function openMondayQuestions(user) {
+    await user.click(screen.getByRole('button', { name: '고2' }))
+    await user.click(screen.getByRole('button', { name: /월요일 · 2026-08-10/ }))
+    await user.click(screen.getByRole('button', { name: '문항별' }))
+  }
+
+  it('요일을 펼치면 학생별 화면이 먼저 나온다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await user.click(screen.getByRole('button', { name: '고2' }))
+    await user.click(screen.getByRole('button', { name: /월요일 · 2026-08-10/ }))
+
+    expect(screen.getByText('고2-A')).toBeInTheDocument()
+    expect(screen.queryByTestId('day-question-stats')).not.toBeInTheDocument()
+  })
+
+  it('문항별을 누르면 문항마다 오답률이 보인다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await openMondayQuestions(user)
+
+    // 제출 1명(고2-A): 1번 정답, 2번 오답
+    expect(screen.getByTestId('day-question-stats')).toHaveTextContent('제출 1명')
+    expect(screen.getByTestId('qstat-1')).toHaveTextContent('0%')
+    expect(screen.getByTestId('qstat-2')).toHaveTextContent('100%')
+  })
+
+  it('절반 넘게 틀린 문항을 따로 알려준다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await openMondayQuestions(user)
+    expect(screen.getByText(/절반 이상이 틀린 문항: 2번/)).toBeInTheDocument()
+  })
+
+  it('오답이 몰린 선지를 집어준다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await openMondayQuestions(user)
+    // 2번 정답은 ②인데 ⑤를 골랐다
+    expect(screen.getByTestId('qstat-2')).toHaveTextContent('⑤ 고른 학생 1명')
+  })
+
+  it('제출이 없는 요일에는 집계 대신 안내를 보여준다', async () => {
+    const user = userEvent.setup()
+    // 화요일에도 문항은 있지만 아직 아무도 내지 않은 상태
+    state.data.homeworkQuestions.push({ id: 3, dayId: 111, number: 1, answer: '①' })
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await user.click(screen.getByRole('button', { name: '고2' }))
+    await user.click(screen.getByRole('button', { name: /화요일 · 2026-08-11/ }))
+    await user.click(screen.getByRole('button', { name: '문항별' }))
+
+    expect(screen.getByText('아직 제출한 학생이 없습니다.')).toBeInTheDocument()
+  })
+
+  it('학생별로 다시 돌아올 수 있다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await openMondayQuestions(user)
+    await user.click(screen.getByRole('button', { name: '학생별' }))
+
+    expect(screen.getByText('고2-A')).toBeInTheDocument()
+    expect(screen.queryByTestId('day-question-stats')).not.toBeInTheDocument()
+  })
+})
+
 describe('TeacherHomeworkStatus (정시)', () => {
   it('정시 레벨 탭 기준으로 그룹 인원을 센다', async () => {
     const user = userEvent.setup()
