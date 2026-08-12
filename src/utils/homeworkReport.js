@@ -3,9 +3,7 @@
 // 요일 단위 제출 현황만으로는 "이 학생이 요즘 성실한가"를 알 수 없어,
 // 학부모 상담과 학생 관리를 위해 기간 단위로 모아 본다.
 import { gradeHomework } from './homework'
-
-// 제출률이 이보다 낮으면 눈에 띄게 표시한다
-const LOW_SUBMISSION = 70
+import { LOW_SUBMISSION } from '../constants/homework'
 
 export function homeworkPeriodReport({
   students, sets, days, questions, submissions, category, target, month,

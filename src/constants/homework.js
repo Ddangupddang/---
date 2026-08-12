@@ -16,3 +16,7 @@ export const JEONGSI_LEVEL_LABELS = { 1: '1레벨', 2: '2레벨', 3: '3레벨' }
 // 요일: 1=월 … 6=토
 export const WEEKDAYS = [1, 2, 3, 4, 5, 6]
 export const WEEKDAY_LABELS = { 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토' }
+
+// 과제 제출률이 이보다 낮으면 부진으로 본다.
+// 월간 과제 리포트와 주간 리포트가 같은 기준을 써야 교사가 헷갈리지 않는다.
+export const LOW_SUBMISSION = 70
