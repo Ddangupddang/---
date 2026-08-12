@@ -20,6 +20,12 @@ const DataContext = createContext(null)
 function toAttendance(a) {
   return { id: a.id, studentId: a.student_id, date: a.date, status: a.status, type: a.type ?? '수업' }
 }
+function toWeeklyNote(n) {
+  return {
+    id: n.id, studentId: n.student_id, weekStart: n.week_start,
+    content: n.content ?? '', updatedAt: n.updated_at,
+  }
+}
 function toGrade(g) {
   return {
     id: g.id, studentId: g.student_id, type: g.type,
@@ -142,6 +148,7 @@ export function DataProvider({ children }) {
   const [homeworkDays,        setHomeworkDays]        = useState([])
   const [homeworkQuestions,   setHomeworkQuestions]   = useState([])
   const [homeworkSubmissions, setHomeworkSubmissions] = useState([])
+  const [weeklyNotes, setWeeklyNotes] = useState([])
   const [dataLoading,   setDataLoading]   = useState(true)
   const [studentAccountIds, setStudentAccountIds] = useState([])
   // 학생 ID → 로그인 아이디(username) 매핑. 학생 관리 목록에 아이디를 보여줄 때 사용.
@@ -149,7 +156,7 @@ export function DataProvider({ children }) {
 
   useEffect(() => {
     async function load() {
-      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, saRes] =
+      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, wnRes, saRes] =
         await Promise.all([
           supabase.from('classes').select('*').order('sort_order').order('id'),
           supabase.from('students').select('*').order('sort_order').order('id'),
@@ -167,6 +174,7 @@ export function DataProvider({ children }) {
           supabase.from('homework_days').select('*'),
           supabase.from('homework_questions').select('*'),
           supabase.from('homework_submissions_v2').select('*'),
+          supabase.from('weekly_report_notes').select('*'),
           supabase.from('profiles').select('student_id, username').eq('role', 'student'),
         ])
 
@@ -186,6 +194,7 @@ export function DataProvider({ children }) {
       if (!hwDaysRes.error && hwDaysRes.data) setHomeworkDays(hwDaysRes.data.map(toHomeworkDay))
       if (!hwQRes.error && hwQRes.data)       setHomeworkQuestions(hwQRes.data.map(toHomeworkQuestion))
       if (!hwSubRes.error && hwSubRes.data)   setHomeworkSubmissions(hwSubRes.data.map(toHomeworkSubmission))
+      if (!wnRes.error && wnRes.data) setWeeklyNotes(wnRes.data.map(toWeeklyNote))
       if (!saRes.error && saRes.data) {
         const withId = saRes.data.filter((r) => r.student_id)
         setStudentAccountIds(withId.map((r) => r.student_id))
@@ -781,6 +790,28 @@ export function DataProvider({ children }) {
     return true
   }
 
+  // 주간 리포트 코멘트 저장 — 학생·주 조합 하나당 한 줄
+  async function upsertWeeklyNote({ studentId, weekStart, content }) {
+    const { data, error } = await supabase
+      .from('weekly_report_notes')
+      .upsert(
+        { student_id: studentId, week_start: weekStart, content, updated_at: new Date().toISOString() },
+        { onConflict: 'student_id,week_start' }
+      )
+      .select().single()
+    // 실패 시 null을 돌려줘서 화면이 "저장됨"으로 잘못 넘어가지 않게 한다
+    if (error) { console.error('주간 코멘트 저장 실패:', error); return null }
+
+    const record = toWeeklyNote(data)
+    setWeeklyNotes((prev) => {
+      const exists = prev.some((n) => n.studentId === studentId && n.weekStart === weekStart)
+      return exists
+        ? prev.map((n) => (n.studentId === studentId && n.weekStart === weekStart ? record : n))
+        : [...prev, record]
+    })
+    return record
+  }
+
   // ── 순서 변경 ──────────────────────────────────────────
 
   async function reorderStudents(orderedIds) {
@@ -875,6 +906,7 @@ export function DataProvider({ children }) {
       homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
       addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission,
       uploadSolutionFile, deleteSolutionFile,
+      weeklyNotes, upsertWeeklyNote,
     }}>
       {children}
     </DataContext.Provider>
