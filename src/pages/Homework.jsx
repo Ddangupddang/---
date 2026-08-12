@@ -7,6 +7,7 @@ import Layout from '../components/Layout'
 import StudentHomeworkView from '../components/homework/StudentHomeworkView'
 import TeacherHomeworkCreate from '../components/homework/TeacherHomeworkCreate'
 import TeacherHomeworkStatus from '../components/homework/TeacherHomeworkStatus'
+import HomeworkReport from '../components/homework/HomeworkReport'
 import { HW_CATEGORY, CATEGORY_LABELS } from '../constants/homework'
 
 export default function Homework() {
@@ -26,6 +27,7 @@ export default function Homework() {
         <h1 className="text-xl font-bold text-[#2B2B2B]">과제</h1>
         {isStaff && mode === 'list' && (
           <div className="flex gap-2">
+            <button onClick={() => setMode('report')} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">리포트</button>
             <button onClick={() => setMode('status')} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">제출 현황</button>
             <button onClick={() => { setEditSet(null); setMode('form') }} className="px-4 py-2 bg-[#2B2B2B] text-white rounded-lg text-sm">+ 주간 과제</button>
           </div>
@@ -56,6 +58,12 @@ export default function Homework() {
         <>
           <button onClick={openList} className="text-sm text-gray-500 mb-4">← 목록</button>
           <TeacherHomeworkStatus category={category} />
+        </>
+      )}
+      {isStaff && mode === 'report' && (
+        <>
+          <button onClick={openList} className="text-sm text-gray-500 mb-4">← 목록</button>
+          <HomeworkReport category={category} />
         </>
       )}
       {isStaff && mode === 'list' && (
