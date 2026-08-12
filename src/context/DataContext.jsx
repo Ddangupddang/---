@@ -726,14 +726,24 @@ export function DataProvider({ children }) {
   }
 
   // 요일별 제출 (학생 × 요일) upsert
+  // 과제 제출은 1회만 — 한 번 낸 답안은 학생이 고칠 수 없다.
+  // 화면에서도 수정 경로를 막지만, 중복 클릭·다른 기기·새로고침으로 다시 들어오는 경우가 있어
+  // 여기서도 덮어쓰기를 막는다(insert 사용 → 중복이면 DB가 거부).
   async function upsertHomeworkSubmission({ dayId, studentId, answers }) {
+    const already = homeworkSubmissions.find((s) => s.dayId === dayId && s.studentId === studentId)
+    if (already) return already
+
     const { data, error } = await supabase
       .from('homework_submissions_v2')
-      .upsert(
-        { day_id: dayId, student_id: studentId, answers, submitted_at: new Date().toISOString() },
-        { onConflict: 'day_id,student_id' }
-      )
+      .insert({ day_id: dayId, student_id: studentId, answers, submitted_at: new Date().toISOString() })
       .select().single()
+    // 다른 기기에서 이미 제출한 경우(unique 위반) — 먼저 낸 답안이 정답이므로 그것을 돌려준다
+    if (error?.code === '23505') {
+      const { data: existing } = await supabase
+        .from('homework_submissions_v2')
+        .select('*').eq('day_id', dayId).eq('student_id', studentId).single()
+      return existing ? toHomeworkSubmission(existing) : null
+    }
     // 실패 시 null을 돌려줘서 화면이 "제출됨"으로 잘못 넘어가지 않게 한다
     if (error) { console.error('과제 제출 실패:', error); return null }
     const record = toHomeworkSubmission(data)
@@ -754,6 +764,21 @@ export function DataProvider({ children }) {
     if (error) { console.error('해설 파일 업로드 실패:', error); return null }
     const { data } = supabase.storage.from('homework-solutions').getPublicUrl(path)
     return data.publicUrl
+  }
+
+  // 공개 URL에서 스토리지 경로만 뽑아낸다 (.../object/public/homework-solutions/<경로>)
+  function solutionPathFromUrl(url) {
+    const m = String(url || '').match(/\/homework-solutions\/(.+)$/)
+    return m ? decodeURIComponent(m[1].split('?')[0]) : null
+  }
+
+  // 해설 파일 삭제 — 세트 저장이 끝난 뒤에 호출해서 안 쓰는 파일만 정리한다
+  async function deleteSolutionFile(url) {
+    const path = solutionPathFromUrl(url)
+    if (!path) return false
+    const { error } = await supabase.storage.from('homework-solutions').remove([path])
+    if (error) { console.error('해설 파일 삭제 실패:', error); return false }
+    return true
   }
 
   // ── 순서 변경 ──────────────────────────────────────────
@@ -848,7 +873,8 @@ export function DataProvider({ children }) {
       addTest, updateTestStatus, deleteTest,
       addSubmission, updateSubmissionScores,
       homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
-      addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission, uploadSolutionFile,
+      addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission,
+      uploadSolutionFile, deleteSolutionFile,
     }}>
       {children}
     </DataContext.Provider>

@@ -19,6 +19,7 @@ beforeEach(() => {
     addHomeworkSet: vi.fn().mockResolvedValue({ id: 1, category: 'naesin', target: 5 }),
     updateHomeworkSet: vi.fn().mockResolvedValue({ id: 11 }),
     uploadSolutionFile: vi.fn(),
+    deleteSolutionFile: vi.fn().mockResolvedValue(true),
     homeworkDays: [], homeworkQuestions: [], homeworkSubmissions: [],
   }
 })
@@ -248,5 +249,54 @@ describe('TeacherHomeworkCreate (정시)', () => {
     const payload = state.data.addHomeworkSet.mock.calls[0][0]
     expect(payload.category).toBe('jeongsi')
     expect(payload.target).toBe(2)
+  })
+})
+
+// 이미 해설 파일이 올라간 수정용 세트
+const SOL_URL =
+  'https://xyz.supabase.co/storage/v1/object/public/homework-solutions/naesin-5-2026-08-10/1723000000000_8월2주차해설.pdf'
+function withSolutionFile() {
+  withExistingSet()
+  state.data.homeworkDays[0].daySolutionFileUrl = SOL_URL
+}
+
+describe('TeacherHomeworkCreate (해설 파일 삭제)', () => {
+  it('올려둔 해설 파일은 파일명과 삭제 버튼으로 보인다', () => {
+    withSolutionFile()
+    render(<TeacherHomeworkCreate category="naesin" editSet={EDIT_SET} onDone={vi.fn()} />)
+
+    // 업로드 시 붙인 타임스탬프는 빼고 원래 파일명만 보여준다
+    expect(screen.getByText('8월2주차해설.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument()
+  })
+
+  it('삭제 후 저장하면 해설 파일이 비워지고 스토리지에서도 지워진다', async () => {
+    const user = userEvent.setup()
+    withSolutionFile()
+    render(<TeacherHomeworkCreate category="naesin" editSet={EDIT_SET} onDone={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: '삭제' }))
+    expect(screen.queryByText('8월2주차해설.pdf')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '수정 저장' }))
+
+    await waitFor(() => expect(state.data.updateHomeworkSet).toHaveBeenCalledTimes(1))
+    const payload = state.data.updateHomeworkSet.mock.calls[0][1]
+    expect(payload.days[0].daySolutionFileUrl).toBe('')
+    // 저장이 끝난 뒤에 스토리지의 옛 파일도 정리한다 (저장 전에 지우면 링크만 깨진다)
+    await waitFor(() => expect(state.data.deleteSolutionFile).toHaveBeenCalledWith(SOL_URL))
+  })
+
+  it('저장하지 않고 나가면 스토리지 파일은 그대로 둔다', async () => {
+    const user = userEvent.setup()
+    withSolutionFile()
+    const onDone = vi.fn()
+    render(<TeacherHomeworkCreate category="naesin" editSet={EDIT_SET} onDone={onDone} />)
+
+    await user.click(screen.getByRole('button', { name: '삭제' }))
+    await user.click(screen.getByRole('button', { name: '← 목록' }))
+
+    expect(onDone).toHaveBeenCalled()
+    expect(state.data.deleteSolutionFile).not.toHaveBeenCalled()
   })
 })

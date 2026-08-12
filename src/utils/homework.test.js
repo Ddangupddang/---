@@ -1,6 +1,6 @@
 // src/utils/homework.test.js
 import { describe, it, expect } from 'vitest'
-import { gradeHomework, isLateSubmission } from './homework'
+import { gradeHomework, isLateSubmission, solutionFileName } from './homework'
 
 describe('gradeHomework', () => {
   const questions = [
@@ -44,5 +44,22 @@ describe('isLateSubmission', () => {
   it('값이 없으면 false', () => {
     expect(isLateSubmission(null, '2026-05-15')).toBe(false)
     expect(isLateSubmission('2026-05-20T09:00:00.000Z', null)).toBe(false)
+  })
+})
+
+describe('solutionFileName', () => {
+  it('업로드 타임스탬프를 떼고 원래 파일명만 남긴다', () => {
+    expect(solutionFileName(
+      'https://x.supabase.co/storage/v1/object/public/homework-solutions/naesin-5-2026-08-10/1723000000000_8월2주차해설.pdf'
+    )).toBe('8월2주차해설.pdf')
+  })
+  it('URL 인코딩된 한글 파일명을 읽을 수 있게 되돌린다', () => {
+    expect(solutionFileName(
+      'https://x.supabase.co/storage/v1/object/public/homework-solutions/a/1723000000000_%ED%95%B4%EC%84%A4.pdf'
+    )).toBe('해설.pdf')
+  })
+  it('값이 없으면 빈 문자열', () => {
+    expect(solutionFileName('')).toBe('')
+    expect(solutionFileName(null)).toBe('')
   })
 })

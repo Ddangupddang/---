@@ -81,6 +81,36 @@ describe('StudentHomeworkView (제출)', () => {
     }))
   })
 
+  it('제출 전에 한 번만 낼 수 있다고 알려준다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+
+    await user.click(screen.getByText('월요일 과제'))
+    expect(screen.getByText(/제출한 뒤에는 답을 수정할 수 없습니다/)).toBeInTheDocument()
+  })
+
+  it('제출하는 동안에는 버튼이 잠겨 두 번 제출되지 않는다', async () => {
+    const user = userEvent.setup()
+    let finish
+    state.data.upsertHomeworkSubmission = vi.fn(
+      () => new Promise((resolve) => { finish = resolve })
+    )
+    render(<StudentHomeworkView category="naesin" />)
+
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '제출하기' }))
+
+    // 제출이 끝나기 전에 다시 눌러도 요청이 한 번만 나가야 한다
+    const btn = screen.getByRole('button', { name: '제출 중...' })
+    expect(btn).toBeDisabled()
+    await user.click(btn)
+    expect(state.data.upsertHomeworkSubmission).toHaveBeenCalledTimes(1)
+
+    finish({ id: 900, dayId: 10, studentId: 7 })
+  })
+
   it('제출에 실패하면 에러를 보여주고 입력한 답을 유지한다', async () => {
     const user = userEvent.setup()
     // DB 오류로 upsert가 null을 반환하는 상황
@@ -115,6 +145,19 @@ describe('StudentHomeworkView (결과·해설)', () => {
     render(<StudentHomeworkView category="naesin" />)
     expect(screen.getByText('제출완료')).toBeInTheDocument()
     expect(screen.queryByText('미제출')).not.toBeInTheDocument()
+  })
+
+  it('마감 전이라도 이미 제출했으면 답을 수정할 수 없다', async () => {
+    const user = userEvent.setup()
+    // 마감이 한참 남은 상태로 만들어, 수정 버튼이 없는 이유가 "마감"이 아님을 분명히 한다
+    state.data.homeworkDays[0].date = '2999-12-31'
+    render(<StudentHomeworkView category="naesin" />)
+
+    await user.click(screen.getByText('월요일 과제'))
+
+    expect(screen.getByText('월요일 과제 — 결과')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /답 수정하기/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '제출하기' })).not.toBeInTheDocument()
   })
 
   it('제출한 요일을 열면 채점 결과와 해설이 보인다', async () => {

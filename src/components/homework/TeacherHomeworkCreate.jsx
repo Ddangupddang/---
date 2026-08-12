@@ -7,6 +7,7 @@ import { useData } from '../../context/DataContext'
 import ChoiceGrid from '../ChoiceGrid'
 import { mondayOf } from '../../utils/homeworkWeek'
 import { homeworkEditImpact } from '../../utils/homeworkEdit'
+import { solutionFileName } from '../../utils/homework'
 import {
   HW_CATEGORY, CATEGORY_LABELS, GRADES, GRADE_LABELS,
   JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS, WEEKDAYS, WEEKDAY_LABELS,
@@ -33,7 +34,7 @@ function daysFromSet(editSet, allDays, allQuestions) {
 export default function TeacherHomeworkCreate({ category, editSet = null, onDone }) {
   const { user } = useAuth()
   const {
-    addHomeworkSet, updateHomeworkSet, uploadSolutionFile,
+    addHomeworkSet, updateHomeworkSet, uploadSolutionFile, deleteSolutionFile,
     homeworkDays = [], homeworkQuestions = [], homeworkSubmissions = [],
   } = useData()
 
@@ -53,6 +54,11 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // 삭제·교체로 더 이상 쓰지 않게 된 해설 파일 URL. 저장이 성공한 뒤에 스토리지에서 지운다.
+  // (저장 전에 지우면, 교사가 저장을 안 하고 나갔을 때 학생 화면의 링크만 깨진다)
+  const [staleFileUrls, setStaleFileUrls] = useState([])
+  // 파일 선택창을 비우기 위한 값 — 삭제할 때마다 올려서 input을 새로 그린다
+  const [fileInputKey, setFileInputKey] = useState(0)
 
   const d = days[activeWd]
   const setDay = (patch) => setDays((prev) => ({ ...prev, [activeWd]: { ...prev[activeWd], ...patch } }))
@@ -68,7 +74,16 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
     const file = e.target.files?.[0]
     if (!file) return
     const url = await uploadSolutionFile(file, `${category}-${target}-${weekStart}`)
-    if (url) setDay({ fileUrl: url })
+    if (!url) { setError('해설 파일 업로드에 실패했습니다. 다시 시도해 주세요.'); return }
+    setDay({ fileUrl: url })
+  }
+
+  // 올린 해설 파일 빼기 — 실제 삭제는 "저장"을 눌러야 반영된다
+  function handleRemoveFile() {
+    if (!d.fileUrl) return
+    setStaleFileUrls((prev) => [...prev, d.fileUrl])
+    setDay({ fileUrl: '' })
+    setFileInputKey((k) => k + 1)
   }
 
   const enabledDays = WEEKDAYS.filter((wd) => days[wd].enabled)
@@ -130,6 +145,9 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
       setError('저장에 실패했습니다. 입력한 내용은 그대로 두었으니 잠시 후 다시 시도해 주세요.')
       return
     }
+    // 저장이 끝난 뒤에야 안 쓰는 해설 파일을 스토리지에서 지운다.
+    // 정리에 실패해도 저장은 이미 끝났으므로 화면을 막지 않는다.
+    await Promise.all(staleFileUrls.map((url) => deleteSolutionFile(url)))
     onDone()
   }
 
@@ -194,10 +212,23 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
               <input value={d.videoUrl} onChange={(e) => setDay({ videoUrl: e.target.value })}
                 placeholder="해설 영상 YouTube 링크(선택)"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2" />
-              <div className="flex items-center gap-2">
-                <input type="file" onChange={handleFile} className="text-sm" />
-                {d.fileUrl && <span className="text-xs text-green-600">파일 업로드됨</span>}
-              </div>
+              {d.fileUrl ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a href={d.fileUrl} target="_blank" rel="noreferrer"
+                    className="text-sm text-[#5B8FD4] underline break-all">
+                    {solutionFileName(d.fileUrl)}
+                  </a>
+                  <button type="button" onClick={handleRemoveFile}
+                    className="text-xs px-2 py-1 rounded-lg bg-[#C0392B]/10 text-[#C0392B] font-medium">
+                    삭제
+                  </button>
+                  <span className="text-xs text-gray-400 w-full">저장을 눌러야 삭제가 반영됩니다.</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input key={fileInputKey} type="file" onChange={handleFile} className="text-sm" />
+                </div>
+              )}
             </>
           )}
         </div>

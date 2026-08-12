@@ -24,7 +24,7 @@ export default function StudentHomeworkView({ category }) {
   } = useData()
   const [openDayId, setOpenDayId] = useState(null)
   const [answers, setAnswers] = useState({})
-  const [submitting, setSubmitting] = useState(false)
+  const [submitting, setSubmitting] = useState(false)  // 제출 요청이 오가는 중
   const [submitError, setSubmitError] = useState('')
 
   const me = students.find((s) => s.id === user.studentId)
@@ -57,8 +57,8 @@ export default function StudentHomeworkView({ category }) {
     const sub = subOf(day.id)
     const beforeDue = today <= day.date
 
-    // 결과 보기 (제출 있음)
-    if (sub && !submitting) {
+    // 결과 보기 — 한 번 제출하면 수정 없이 결과·해설만 본다
+    if (sub) {
       const valueMap = Object.fromEntries(sub.answers.map((a) => [a.number, a.answer]))
       const answerKey = Object.fromEntries(qs.map((q) => [q.number, q.answer]))
       const { correctCount, total } = gradeHomework(qs, sub.answers)
@@ -70,12 +70,6 @@ export default function StudentHomeworkView({ category }) {
             <p className="text-sm text-white/60 mb-1">정답</p>
             <p className="text-4xl font-bold">{correctCount}<span className="text-2xl text-white/50"> / {total}</span></p>
           </div>
-          {beforeDue && (
-            <button
-              onClick={() => { setAnswers(valueMap); setSubmitting(true) }}
-              className="w-full py-2.5 mb-3 border border-gray-300 text-gray-600 rounded-xl text-sm font-medium"
-            >답 수정하기 (마감 전까지)</button>
-          )}
           <ChoiceGrid count={qs.length} mode="result" values={valueMap} answerKey={answerKey} onChange={() => {}} />
           <SolutionViewer videoUrl={day.daySolutionVideoUrl} fileUrl={day.daySolutionFileUrl} label="요일 해설" />
           {qs.filter((q) => q.solutionVideoUrl || q.solutionFileUrl).map((q) => (
@@ -89,7 +83,8 @@ export default function StudentHomeworkView({ category }) {
     const answeredNum = Object.keys(answers).length
     const allAnswered = answeredNum === qs.length && qs.length > 0
     async function handleSubmit() {
-      if (!allAnswered) return
+      // 제출은 한 번뿐이라 중복 클릭도 막아야 한다
+      if (!allAnswered || submitting) return
       setSubmitting(true)
       setSubmitError('')
       const payload = qs.map((q) => ({ number: q.number, answer: answers[q.number] }))
@@ -117,9 +112,12 @@ export default function StudentHomeworkView({ category }) {
         {submitError && (
           <p className="text-sm text-[#C0392B] bg-[#C0392B]/10 rounded-lg px-3 py-2 mt-3">{submitError}</p>
         )}
-        <button onClick={handleSubmit} disabled={!allAnswered}
-          className="w-full py-3 mt-4 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40">
-          제출하기
+        <p className="text-xs text-[#C0392B] bg-[#C0392B]/10 rounded-lg px-3 py-2 mt-3">
+          제출한 뒤에는 답을 수정할 수 없습니다. 답을 다시 확인하고 제출하세요.
+        </p>
+        <button onClick={handleSubmit} disabled={!allAnswered || submitting}
+          className="w-full py-3 mt-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40">
+          {submitting ? '제출 중...' : '제출하기'}
         </button>
       </div>
     )
@@ -137,7 +135,7 @@ export default function StudentHomeworkView({ category }) {
         const badge = BADGE[st]
         return (
           <div key={day.id}
-            onClick={() => { const sub = subOf(day.id); setAnswers(sub ? Object.fromEntries(sub.answers.map((a) => [a.number, a.answer])) : {}); setSubmitting(!sub); setOpenDayId(day.id) }}
+            onClick={() => { setAnswers({}); setSubmitError(''); setOpenDayId(day.id) }}
             className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow flex justify-between items-center">
             <div>
               <p className="font-semibold text-[#2B2B2B]">{WEEKDAY_LABELS[day.weekday]}요일 과제</p>

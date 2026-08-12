@@ -20,6 +20,14 @@ export function gradeHomework(questions, answers) {
   }
 }
 
+// 해설 파일 공개 URL에서 사람이 읽을 파일명만 뽑는다.
+// 업로드할 때 이름 앞에 `<타임스탬프>_`를 붙이므로 그 부분은 떼어낸다.
+export function solutionFileName(url) {
+  if (!url) return ''
+  const last = decodeURIComponent(String(url).split('?')[0].split('/').pop() || '')
+  return last.replace(/^\d+_/, '')
+}
+
 // 제출 시각(ISO 문자열)이 마감일(YYYY-MM-DD)보다 늦으면 지각 제출이다.
 export function isLateSubmission(submittedAt, dueDate) {
   if (!submittedAt || !dueDate) return false
