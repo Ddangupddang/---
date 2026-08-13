@@ -4,13 +4,14 @@ import { weeklyAttendance, weeklyTests, weeklyHomework, weeklyClassReport } from
 
 const DATES = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15']
 
+// 실제 기록은 toAttendance를 거치며 type이 항상 채워진다 ('수업' 또는 '클리닉')
 describe('weeklyAttendance', () => {
   it('출석·지각·결석을 각각 세고, 지각은 출석률 분자에 포함한다', () => {
     const records = [
-      { studentId: 1, date: '2026-08-10', status: 'present' },
-      { studentId: 1, date: '2026-08-11', status: 'late'    },
-      { studentId: 1, date: '2026-08-12', status: 'absent'  },
-      { studentId: 1, date: '2026-08-13', status: 'present' },
+      { studentId: 1, date: '2026-08-10', status: 'present', type: '수업' },
+      { studentId: 1, date: '2026-08-11', status: 'late',    type: '수업' },
+      { studentId: 1, date: '2026-08-12', status: 'absent',  type: '수업' },
+      { studentId: 1, date: '2026-08-13', status: 'present', type: '수업' },
     ]
     // 왔다는 사실(출석+지각)은 분자에 넣되, 지각은 따로 세어 감춰지지 않게 한다
     expect(weeklyAttendance(records, 1, DATES)).toEqual({
@@ -19,24 +20,44 @@ describe('weeklyAttendance', () => {
   })
 
   it('그 주 기록이 하나도 없으면 null — 0%와 구별해야 한다', () => {
-    const records = [{ studentId: 1, date: '2026-08-03', status: 'present' }]
+    const records = [{ studentId: 1, date: '2026-08-03', status: 'present', type: '수업' }]
     expect(weeklyAttendance(records, 1, DATES)).toBeNull()
   })
 
   it('다른 학생의 기록은 세지 않는다', () => {
     const records = [
-      { studentId: 1, date: '2026-08-10', status: 'present' },
-      { studentId: 2, date: '2026-08-10', status: 'absent'  },
+      { studentId: 1, date: '2026-08-10', status: 'present', type: '수업' },
+      { studentId: 2, date: '2026-08-10', status: 'absent',  type: '수업' },
     ]
     expect(weeklyAttendance(records, 1, DATES).counted).toBe(1)
   })
 
   it('주 범위 밖 날짜는 세지 않는다', () => {
     const records = [
-      { studentId: 1, date: '2026-08-10', status: 'present' },
-      { studentId: 1, date: '2026-08-16', status: 'absent'  }, // 일요일 = 범위 밖
+      { studentId: 1, date: '2026-08-10', status: 'present', type: '수업' },
+      { studentId: 1, date: '2026-08-16', status: 'absent',  type: '수업' }, // 일요일 = 범위 밖
     ]
     expect(weeklyAttendance(records, 1, DATES).counted).toBe(1)
+  })
+
+  it('클리닉 기록은 수업 출결에 섞지 않는다 — 분모가 부풀면 출석률이 좋아 보인다', () => {
+    // 클리닉은 같은 날짜에 별도 행으로 쌓이고 항상 'present'다
+    const records = [
+      { studentId: 1, date: '2026-08-10', status: 'present', type: '수업'   },
+      { studentId: 1, date: '2026-08-11', status: 'absent',  type: '수업'   },
+      { studentId: 1, date: '2026-08-11', status: 'present', type: '클리닉' },
+      { studentId: 1, date: '2026-08-12', status: 'present', type: '클리닉' },
+      { studentId: 1, date: '2026-08-13', status: 'present', type: '클리닉' },
+    ]
+    // 수업 2건(출석1·결석1)만 세야 한다. 클리닉 3건까지 세면 4/5 = 80%가 된다.
+    expect(weeklyAttendance(records, 1, DATES)).toEqual({
+      present: 1, late: 0, absent: 1, counted: 2, rate: 50,
+    })
+  })
+
+  it('그 주 수업 기록 없이 클리닉만 있으면 null — 출결 기록이 있는 것처럼 보이면 안 된다', () => {
+    const records = [{ studentId: 1, date: '2026-08-10', status: 'present', type: '클리닉' }]
+    expect(weeklyAttendance(records, 1, DATES)).toBeNull()
   })
 })
 
@@ -187,9 +208,9 @@ describe('weeklyClassReport', () => {
     { id: 9, name: '남의반', classId: 99, grade: 5, jeongsiLevel: null },
   ]
   const ATT = [
-    { studentId: 1, date: '2026-08-10', status: 'present' },
-    { studentId: 2, date: '2026-08-10', status: 'absent'  },
-    { studentId: 3, date: '2026-08-10', status: 'present' },
+    { studentId: 1, date: '2026-08-10', status: 'present', type: '수업' },
+    { studentId: 2, date: '2026-08-10', status: 'absent',  type: '수업' },
+    { studentId: 3, date: '2026-08-10', status: 'present', type: '수업' },
   ]
   const SUBS_HW = [
     // 1번은 3일 다 제출, 2번은 1일만 제출(33% → 부진), 3번은 3일 다 제출

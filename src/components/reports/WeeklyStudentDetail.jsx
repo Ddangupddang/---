@@ -24,9 +24,11 @@ export default function WeeklyStudentDetail({
   const [message, setMessage] = useState('')
   const [error, setError]     = useState('')
 
+  // 클리닉을 거르지 않으면 같은 날짜의 두 행이 겹쳐 뒤에 온 행이 이긴다 —
+  // 수업 결석이 클리닉 출석에 덮여 '출석'으로 보일 수 있다
   const statusByDate = Object.fromEntries(
     attendanceRecords
-      .filter((a) => a.studentId === row.student.id)
+      .filter((a) => a.studentId === row.student.id && a.type === '수업')
       .map((a) => [a.date, a.status])
   )
 

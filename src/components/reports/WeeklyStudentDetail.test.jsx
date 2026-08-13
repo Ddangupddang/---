@@ -19,10 +19,11 @@ const ROW = {
   flags: ['absence', 'lowHomework'],
 }
 
+// 실제 기록은 toAttendance를 거치며 type이 항상 채워진다 ('수업' 또는 '클리닉')
 const ATT_RECORDS = [
-  { studentId: 2, date: '2026-08-10', status: 'present' },
-  { studentId: 2, date: '2026-08-11', status: 'late'    },
-  { studentId: 2, date: '2026-08-12', status: 'absent'  },
+  { studentId: 2, date: '2026-08-10', status: 'present', type: '수업' },
+  { studentId: 2, date: '2026-08-11', status: 'late',    type: '수업' },
+  { studentId: 2, date: '2026-08-12', status: 'absent',  type: '수업' },
 ]
 
 function renderDetail(overrides = {}) {
@@ -58,6 +59,21 @@ describe('WeeklyStudentDetail', () => {
     expect(screen.getByTestId('att-2026-08-12')).toHaveTextContent('결석')
     // 기록이 없는 날은 빈칸으로 둔다 — 결석으로 단정하면 안 된다
     expect(screen.getByTestId('att-2026-08-15')).toHaveTextContent('-')
+  })
+
+  it('같은 날 클리닉 출석이 있어도 수업 결석을 덮지 않는다', () => {
+    // 클리닉은 같은 날짜의 별도 행이라, 거르지 않으면 뒤에 온 행이 이겨 결석이 사라진다.
+    // 12일은 수업 결석 뒤에 클리닉 출석이, 13일은 클리닉 기록만 있다.
+    renderDetail({
+      attendanceRecords: [
+        ...ATT_RECORDS,
+        { studentId: 2, date: '2026-08-12', status: 'present', type: '클리닉' },
+        { studentId: 2, date: '2026-08-13', status: 'present', type: '클리닉' },
+      ],
+    })
+    expect(screen.getByTestId('att-2026-08-12')).toHaveTextContent('결석')
+    // 클리닉만 온 날은 수업 출결 기록이 아니므로 빈칸이다
+    expect(screen.getByTestId('att-2026-08-13')).toHaveTextContent('-')
   })
 
   it('기존 코멘트를 입력창에 채워서 연다', () => {

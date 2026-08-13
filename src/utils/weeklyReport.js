@@ -14,7 +14,9 @@ import { HW_CATEGORY, LOW_SUBMISSION } from '../constants/homework'
 // 그 주 기록이 아예 없으면 null — 출석률 0%와 "기록 없음"은 다른 뜻이다.
 export function weeklyAttendance(records, studentId, dates) {
   const inWeek = new Set(dates)
-  const mine = records.filter((a) => a.studentId === studentId && inWeek.has(a.date))
+  // 클리닉은 같은 날짜에 별도 행으로 쌓이고 항상 'present'라, 함께 세면
+  // 분모가 부풀어 수업 출석률이 실제보다 좋아 보인다
+  const mine = records.filter((a) => a.studentId === studentId && inWeek.has(a.date) && a.type === '수업')
 
   const present = mine.filter((a) => a.status === 'present').length
   const late    = mine.filter((a) => a.status === 'late').length
