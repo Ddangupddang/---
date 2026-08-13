@@ -148,7 +148,9 @@
 
 ## 코딩 규칙
 - 컴포넌트는 함수형으로 작성
-- 색상은 constants/colors.js에서 불러와서 사용
+- 색상은 `src/index.css`의 `@theme` 토큰 클래스를 쓴다 (`bg-ink`, `text-danger`, `border-line` 등). hex를 직접 쓰지 않는다
+- 모서리는 `rounded`(4px), 뱃지만 `rounded-sm`(2px). 그림자 대신 `border border-line`으로 구분한다
+- 페이지 제목은 `font-serif`(본명조), 본문은 기본 sans(Pretendard)
 - 한글 주석 사용
 - 모든 페이지는 역할(role) props를 받아 권한 분기 처리
 - 모바일 우선(Mobile First) 설계 (학생 화면)
