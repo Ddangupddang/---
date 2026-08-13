@@ -67,10 +67,12 @@ export default function ReportHomeworkChecks({ date, students, checks, onChange 
               {row.source === 'manual' && (
                 <>
                   <span className="text-xs bg-navy-soft text-navy px-1.5 py-0.5 rounded shrink-0">수정됨</span>
+                  {/* 클릭 가능한 컨트롤이라 남색 배경(bg-navy-soft) 위에서도 읽히도록
+                      가장 옅은 회색(ink-faint) 대신 ink-soft를 쓴다 */}
                   {row.auto && (
                     <button
                       onClick={(e) => { e.stopPropagation(); revert(row) }}
-                      className="text-xs text-ink-faint hover:text-ink-soft underline shrink-0"
+                      className="text-xs text-ink-soft hover:text-ink underline shrink-0"
                     >되돌리기</button>
                   )}
                 </>
