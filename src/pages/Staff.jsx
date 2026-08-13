@@ -241,13 +241,14 @@ export default function Staff() {
               <Button variant="ghost" onClick={() => setDeleteTarget(null)} className="flex-1">
                 취소
               </Button>
-              <button
+              <Button
+                variant="danger"
                 onClick={handleDelete}
                 disabled={deleteLoading}
-                className="flex-1 py-2.5 rounded bg-danger text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1"
               >
                 {deleteLoading ? '삭제 중...' : '삭제'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

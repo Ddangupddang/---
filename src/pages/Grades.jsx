@@ -4,6 +4,7 @@ import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Button from '../components/ui/Button'
+import PageTitle from '../components/ui/PageTitle'
 // ────────── SVG 꺾은선 그래프 ──────────
 // data: [{ label: 'MM-DD', value: 점수, max: 만점 }]
 // color는 SVG 속성이라 클래스가 아닌 CSS 변수(var(--color-*))로 토큰을 참조한다
@@ -169,6 +170,7 @@ function Grades() {
 
     return (
       <Layout>
+        <PageTitle title="성적 관리" />
         {/* 탭 */}
         <div className="flex gap-1 mb-4 bg-surface border border-line rounded p-1 w-fit">
           {typeTabs.map((tab) => (
@@ -284,6 +286,7 @@ function Grades() {
 
   return (
     <Layout>
+      <PageTitle title="성적 관리" />
       {/* 탭 */}
       <div className="flex gap-1 mb-4 bg-surface border border-line rounded p-1 w-fit">
         {typeTabs.map((tab) => (

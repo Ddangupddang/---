@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Button from '../components/ui/Button'
 
 function Login() {
   const { user, login } = useAuth()
@@ -61,20 +62,26 @@ function Login() {
             <p className="text-sm text-danger text-center">{error}</p>
           )}
 
-          <button
+          {/* 공통 Button을 쓰되, 모바일에서 눌린 느낌을 주는 active:scale-95만 덧붙인다.
+              Button의 py-3와 h-12는 충돌하지 않는다 — border-box라 높이 48px가 그대로 지켜지고
+              (안쪽 여백 24px + 글자 22px = 46px < 48px) 넘치지 않는다. py-0으로 덮지 않는 이유는
+              같은 속성끼리는 class 순서가 아니라 CSS 출력 순서로 결정돼 믿을 수 없기 때문이다. */}
+          <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 bg-ink text-white text-sm font-semibold rounded hover:opacity-90 active:scale-95 transition-all mt-1 disabled:opacity-50"
+            className="w-full h-12 mt-1 active:scale-95"
           >
             {loading ? '로그인 중...' : '로그인'}
-          </button>
+          </Button>
         </form>
 
         {/* 학원 정보 */}
         <div className="mt-6 p-3 bg-surface-alt rounded text-center">
           <p className="text-xs text-ink-mute font-semibold mb-1">수문재국어전문학원</p>
-          <p className="text-xs text-ink-faint">전화번호: 010-7324-8333</p>
-          <p className="text-xs text-ink-faint mt-0.5">문의사항은 위 번호로 연락 부탁드립니다.</p>
+          {/* 학원 대표 번호 — 로그인 못 하는 학부모가 보는 유일한 연락처라
+              회색 배경(bg-surface-alt) 위에서 3:1을 넘도록 한 단계 진하게 쓴다 */}
+          <p className="text-xs text-ink-mute">전화번호: 010-7324-8333</p>
+          <p className="text-xs text-ink-mute mt-0.5">문의사항은 위 번호로 연락 부탁드립니다.</p>
         </div>
       </div>
     </div>

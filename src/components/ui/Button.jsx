@@ -6,6 +6,9 @@ const VARIANTS = {
   primary: 'bg-ink text-white hover:opacity-90',
   accent:  'bg-navy text-white hover:opacity-90',
   ghost:   'border border-line text-ink hover:bg-surface-alt',
+  // 삭제 같은 되돌릴 수 없는 동작. 이게 없어서 각 화면이 삭제 버튼을 손으로 그렸고,
+  // 바로 옆 ghost '취소'와 글자 크기·굵기가 달라 보였다.
+  danger:  'bg-danger text-white hover:opacity-90',
 }
 
 export default function Button({

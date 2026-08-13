@@ -6,6 +6,7 @@ import { useData } from '../context/DataContext'
 import { checkAcademyWifi } from '../utils/checkWifi'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
+import PageTitle from '../components/ui/PageTitle'
 
 // 출석 상태의 의미별 톤. 팔레트에 초록·빨강·노랑이 따로 없어
 // 출석=navy(긍정) · 지각=warn(주의) · 결석=danger(경고) · 미기록=neutral로 대응한다.
@@ -22,7 +23,10 @@ const PILL_TONE = {
   navy:    'bg-navy-soft text-navy',
   danger:  'bg-danger-soft text-danger',
   warn:    'bg-warn-soft text-warn',
-  neutral: 'bg-surface-alt text-ink-faint',
+  // neutral만 Badge와 글자색이 달랐다(ink-faint). 같은 화면에 Badge와 이 pill이
+  // 동시에 뜨는데 같은 톤 이름이 두 색을 갖게 되고, 누를 수 있는 컨트롤인데도
+  // 대비가 가장 낮았다 — Badge의 neutral과 같은 ink-soft로 맞춘다.
+  neutral: 'bg-surface-alt text-ink-soft',
 }
 
 const nextStatus = { none: 'present', present: 'absent', absent: 'late', late: 'none' }
@@ -357,6 +361,7 @@ function Attendance() {
   if (user?.role === 'student') {
     return (
       <Layout>
+        <PageTitle title="출결 관리" />
         <StudentAttendance user={user} records={attendance} upsertAttendance={upsertAttendance} />
       </Layout>
     )
@@ -364,6 +369,7 @@ function Attendance() {
 
   return (
     <Layout>
+      <PageTitle title="출결 관리" />
       <div className="flex flex-col gap-4">
         {/* 수업/클리닉 탭 */}
         <div className="flex gap-2">

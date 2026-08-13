@@ -14,6 +14,7 @@ import { CSS } from '@dnd-kit/utilities'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Alert from '../components/ui/Alert'
+import PageTitle from '../components/ui/PageTitle'
 
 function Students() {
   const { user } = useAuth()
@@ -241,6 +242,7 @@ function Students() {
 
   return (
     <Layout>
+      <PageTitle title="학생 관리" />
       {/* 탭 */}
       <div className="flex gap-1 mb-4 bg-surface border border-line rounded p-1 w-fit">
         <button
@@ -570,15 +572,15 @@ function Students() {
               >
                 취소
               </Button>
-              {/* 삭제는 위험 동작이라 accent(남색)가 아니라 danger 톤을 직접 입힌다 —
-                  Button에는 danger variant가 없어 여기만 수동으로 남긴다 */}
-              <button
+              {/* 삭제는 위험 동작이라 accent(남색)가 아니라 danger 톤을 쓴다 */}
+              <Button
+                variant="danger"
                 onClick={handleBulkDelete}
                 disabled={bulkDeleting}
-                className="flex-1 h-11 bg-danger text-white rounded text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1"
               >
                 {bulkDeleting ? '삭제 중...' : `${selectedIds.length}명 삭제`}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
+import PageTitle from '../components/ui/PageTitle'
 
 function ChangePassword() {
   const { user, changePassword } = useAuth()
@@ -53,7 +54,7 @@ function ChangePassword() {
     <Layout>
       <div className="max-w-sm mx-auto mt-6">
         <div className="bg-surface border border-line rounded p-6">
-          <h1 className="font-bold text-ink text-lg mb-1">비밀번호 변경</h1>
+          <PageTitle title="비밀번호 변경" />
 
           {isFirstLogin && (
             <Alert tone="info" className="mb-4">
