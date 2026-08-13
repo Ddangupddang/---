@@ -57,8 +57,9 @@ export default function ReportHomeworkChecks({ date, students, checks, onChange 
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm font-medium text-ink">{row.student.name}</span>
+              {/* 체크되면 행이 bg-navy-soft가 돼 ink-faint는 2.66:1까지 떨어진다 */}
               {row.auto && (
-                <span className="text-xs text-ink-faint shrink-0">
+                <span className="text-xs text-ink-mute shrink-0">
                   {row.auto.submitted === 0
                     ? '미제출'
                     : `${row.auto.submitted}/${row.auto.total} 제출`}

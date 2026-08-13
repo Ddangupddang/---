@@ -224,7 +224,8 @@ function DetailView({ question, test, questionIndex, displayName, isTeacherOrAdm
         <Alert tone="info">
           <p className="text-xs font-semibold text-navy mb-2">선생님 답변</p>
           <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap font-normal">{question.answer}</p>
-          <p className="text-xs text-ink-faint mt-3 font-normal">
+          {/* Alert(info)의 남색 배경 위라 ink-faint는 2.66:1까지 떨어진다 */}
+          <p className="text-xs text-ink-mute mt-3 font-normal">
             {question.answeredAt?.slice(0, 16).replace('T', ' ')}
           </p>
         </Alert>
@@ -243,9 +244,10 @@ function DetailView({ question, test, questionIndex, displayName, isTeacherOrAdm
           </Button>
         </div>
       ) : (
+        // 옅은 배경 위 안내문이라 ink-faint(2.94:1)로는 읽히지 않아 한 단계 진하게 쓴다
         <div className="bg-surface-alt rounded p-6 text-center">
-          <p className="text-sm text-ink-faint">아직 답변이 등록되지 않았습니다.</p>
-          <p className="text-xs text-ink-faint mt-1">선생님이 곧 답변 드릴 예정입니다.</p>
+          <p className="text-sm text-ink-mute">아직 답변이 등록되지 않았습니다.</p>
+          <p className="text-xs text-ink-mute mt-1">선생님이 곧 답변 드릴 예정입니다.</p>
         </div>
       )}
     </div>

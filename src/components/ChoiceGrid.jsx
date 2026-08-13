@@ -49,7 +49,8 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
         case 'correct': return 'bg-navy text-white'               // 맞게 고름
         case 'answer':  return 'border-2 border-navy text-navy'   // 실제 정답 표시
         case 'wrong':   return 'bg-danger text-white'              // 틀리게 고름
-        default:        return 'bg-surface-alt text-ink-faint'
+        // 옅은 회색 배경 위라 ink-faint는 2.94:1로 읽히지 않는다 → 한 단계 진하게
+        default:        return 'bg-surface-alt text-ink-mute'
       }
     }
     const picked = values[number] === choice
