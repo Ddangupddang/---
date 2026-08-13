@@ -36,32 +36,32 @@ export default function TeacherHomeworkStatus({ category }) {
         {targets.map((t) => (
           <button key={t} onClick={() => setTarget(t)}
             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
-              target === t ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600'
+              target === t ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
             }`}>{targetLabels[t]}</button>
         ))}
       </div>
 
       {sets.length === 0 ? (
-        <p className="text-center text-gray-400 py-10">등록된 과제가 없습니다.</p>
+        <p className="text-center text-ink-faint py-10">등록된 과제가 없습니다.</p>
       ) : sets.map((set) => {
         const days = homeworkDays.filter((d) => d.setId === set.id).sort((a, b) => a.weekday - b.weekday)
         return (
           <div key={set.id} className="mb-6">
-            <p className="font-semibold text-[#2B2B2B] mb-2">{set.title} <span className="text-xs text-gray-400">({set.weekStart} 주)</span></p>
+            <p className="font-semibold text-ink mb-2">{set.title} <span className="text-xs text-ink-faint">({set.weekStart} 주)</span></p>
             <div className="flex flex-col gap-2">
               {days.map((day) => {
                 const subs = homeworkSubmissions.filter((s) => s.dayId === day.id)
                 const isOpen = openDayId === day.id
                 return (
-                  <div key={day.id} className="bg-white rounded-xl p-3 shadow-sm">
+                  <div key={day.id} className="bg-surface border border-line rounded p-3">
                     <button
                       onClick={() => { setOpenDayId(isOpen ? null : day.id); setDayView('students') }}
                       className="w-full flex justify-between items-center text-left"
                     >
-                      <span className="text-sm font-medium text-[#2B2B2B]">{WEEKDAY_LABELS[day.weekday]}요일 · {day.date}</span>
-                      <span className="text-sm font-bold text-[#2B2B2B]">
+                      <span className="text-sm font-medium text-ink">{WEEKDAY_LABELS[day.weekday]}요일 · {day.date}</span>
+                      <span className="text-sm font-bold text-ink">
                         {subs.length}/{groupStudents.length} 제출
-                        <span className="ml-2 text-xs font-normal text-gray-400">{isOpen ? '▴' : '▾'}</span>
+                        <span className="ml-2 text-xs font-normal text-ink-faint">{isOpen ? '▴' : '▾'}</span>
                       </span>
                     </button>
                     {isOpen && (() => {
@@ -75,7 +75,7 @@ export default function TeacherHomeworkStatus({ category }) {
                             {[['students', '학생별'], ['questions', '문항별']].map(([key, label]) => (
                               <button key={key} onClick={() => setDayView(key)}
                                 className={`px-3 py-1 rounded-full text-xs ${
-                                  dayView === key ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600'
+                                  dayView === key ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
                                 }`}>{label}</button>
                             ))}
                           </div>

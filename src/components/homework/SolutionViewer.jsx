@@ -13,11 +13,11 @@ export default function SolutionViewer({ videoUrl, fileUrl, label = '해설' }) 
   if (!vid && !fileUrl) return null
   return (
     <div className="mt-3">
-      <p className="text-sm font-semibold text-gray-700 mb-2">{label}</p>
+      <p className="text-sm font-semibold text-ink-soft mb-2">{label}</p>
       {vid && (
         <div className="relative w-full mb-2" style={{ paddingTop: '56.25%' }}>
           <iframe
-            className="absolute inset-0 w-full h-full rounded-lg"
+            className="absolute inset-0 w-full h-full rounded"
             src={`https://www.youtube.com/embed/${vid}`}
             title="해설 영상"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -28,7 +28,7 @@ export default function SolutionViewer({ videoUrl, fileUrl, label = '해설' }) 
       {fileUrl && (
         <a
           href={fileUrl} target="_blank" rel="noreferrer"
-          className="inline-block px-4 py-2 bg-[#5B8FD4]/15 text-[#5B8FD4] rounded-lg text-sm font-medium"
+          className="inline-block px-4 py-2 bg-navy-soft text-navy rounded text-sm font-medium"
         >
           해설 파일 열기
         </a>

@@ -5,6 +5,8 @@
 import { useState } from 'react'
 import { useData } from '../../context/DataContext'
 import { homeworkPeriodReport } from '../../utils/homeworkReport'
+import Card from '../ui/Card'
+import Alert from '../ui/Alert'
 import {
   HW_CATEGORY, GRADES, GRADE_LABELS,
   JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS,
@@ -38,55 +40,55 @@ export default function HomeworkReport({ category }) {
         {targets.map((t) => (
           <button key={t} onClick={() => setTarget(t)}
             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
-              target === t ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600'
+              target === t ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
             }`}>{targetLabels[t]}</button>
         ))}
       </div>
 
       <div className="flex items-center justify-between mb-4">
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-        <span className="text-sm text-gray-500">과제 {totalDays}회</span>
+          className="border border-line rounded px-3 py-2 text-sm" />
+        <span className="text-sm text-ink-mute">과제 {totalDays}회</span>
       </div>
 
       {totalDays === 0 ? (
-        <p className="text-center text-gray-400 py-10">이 달에 출제된 과제가 없습니다.</p>
+        <p className="text-center text-ink-faint py-10">이 달에 출제된 과제가 없습니다.</p>
       ) : rows.length === 0 ? (
-        <p className="text-center text-gray-400 py-10">이 그룹에 학생이 없습니다.</p>
+        <p className="text-center text-ink-faint py-10">이 그룹에 학생이 없습니다.</p>
       ) : (
         <>
           {lowCount > 0 && (
-            <p className="text-xs text-[#C0392B] bg-[#C0392B]/10 rounded-lg px-3 py-2 mb-3">
+            <Alert tone="danger" className="mb-3">
               제출률 70% 미만 {lowCount}명 — 상담이 필요할 수 있습니다.
-            </p>
+            </Alert>
           )}
 
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="flex items-center px-4 py-2 border-b border-gray-100 text-xs text-gray-400">
+          <Card className="overflow-hidden">
+            <div className="flex items-center px-4 py-2 border-b border-line text-xs text-ink-faint">
               <span className="flex-1">이름</span>
               <span className="w-20 text-right">제출</span>
               <span className="w-16 text-right">정답률</span>
             </div>
             {rows.map((r) => (
               <div key={r.student.id} data-testid={`report-row-${r.student.id}`}
-                className="flex items-center px-4 py-2.5 border-b border-gray-50 last:border-0">
-                <span className="flex-1 text-sm text-[#2B2B2B]">
+                className="flex items-center px-4 py-2.5 border-b border-line-soft last:border-0">
+                <span className="flex-1 text-sm text-ink">
                   {r.student.name}
-                  {r.lowSubmission && <span className="ml-2 text-xs text-[#C0392B]">주의</span>}
+                  {r.lowSubmission && <span className="ml-2 text-xs text-danger">주의</span>}
                 </span>
                 <span className={`w-20 text-right text-sm ${
-                  r.lowSubmission ? 'text-[#C0392B] font-semibold' : 'text-gray-700'
+                  r.lowSubmission ? 'text-danger font-semibold' : 'text-ink-soft'
                 }`}>
                   {r.submitted}/{r.total}
                 </span>
-                <span className="w-16 text-right text-sm text-gray-500">
+                <span className="w-16 text-right text-sm text-ink-mute">
                   {r.correctRate == null ? '—' : `${r.correctRate}%`}
                 </span>
               </div>
             ))}
-          </div>
+          </Card>
 
-          <p className="text-xs text-gray-400 mt-3">
+          <p className="text-xs text-ink-faint mt-3">
             정답률은 제출한 회차의 문항만으로 계산합니다. 안 낸 회차는 제출률에 반영됩니다.
           </p>
         </>

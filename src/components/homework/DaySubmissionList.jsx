@@ -28,11 +28,11 @@ export default function DaySubmissionList({ students, questions, submissions }) 
     const values = Object.fromEntries(open.submission.answers.map((a) => [a.number, a.answer]))
     const answerKey = Object.fromEntries(questions.map((q) => [q.number, q.answer]))
     return (
-      <div className="border-t border-gray-100 mt-3 pt-3">
-        <button onClick={() => setOpenStudentId(null)} className="text-sm text-gray-500 mb-2">← 학생 목록</button>
-        <p className="text-sm font-semibold text-[#2B2B2B] mb-2">
+      <div className="border-t border-line mt-3 pt-3">
+        <button onClick={() => setOpenStudentId(null)} className="text-sm text-ink-mute mb-2">← 학생 목록</button>
+        <p className="text-sm font-semibold text-ink mb-2">
           {open.student.name}
-          <span className="ml-2 font-normal text-gray-500">{open.score.correctCount}/{open.score.total}</span>
+          <span className="ml-2 font-normal text-ink-mute">{open.score.correctCount}/{open.score.total}</span>
         </p>
         <ChoiceGrid count={questions.length} mode="result" values={values} answerKey={answerKey} onChange={() => {}} />
       </div>
@@ -40,23 +40,23 @@ export default function DaySubmissionList({ students, questions, submissions }) 
   }
 
   if (rows.length === 0) {
-    return <p className="border-t border-gray-100 mt-3 pt-3 text-sm text-gray-400">이 그룹에 학생이 없습니다.</p>
+    return <p className="border-t border-line mt-3 pt-3 text-sm text-ink-faint">이 그룹에 학생이 없습니다.</p>
   }
 
   return (
-    <div className="border-t border-gray-100 mt-3 pt-3 flex flex-col gap-1">
+    <div className="border-t border-line mt-3 pt-3 flex flex-col gap-1">
       {missing.map(({ student }) => (
         <div key={student.id} className="flex justify-between items-center px-1 py-1.5 text-sm">
-          <span className="text-gray-500">{student.name}</span>
-          <span className="text-xs text-[#C0392B]">미제출</span>
+          <span className="text-ink-mute">{student.name}</span>
+          <span className="text-xs text-danger">미제출</span>
         </div>
       ))}
-      {missing.length > 0 && done.length > 0 && <div className="border-t border-gray-100 my-1" />}
+      {missing.length > 0 && done.length > 0 && <div className="border-t border-line my-1" />}
       {done.map(({ student, score }) => (
         <button key={student.id} onClick={() => setOpenStudentId(student.id)}
-          className="flex justify-between items-center px-1 py-1.5 text-sm rounded-lg hover:bg-gray-50 text-left">
-          <span className="text-[#2B2B2B]">{student.name}</span>
-          <span className="text-xs text-gray-500">{score.correctCount}/{score.total} ›</span>
+          className="flex justify-between items-center px-1 py-1.5 text-sm rounded hover:bg-surface-alt text-left">
+          <span className="text-ink">{student.name}</span>
+          <span className="text-xs text-ink-mute">{score.correctCount}/{score.total} ›</span>
         </button>
       ))}
     </div>

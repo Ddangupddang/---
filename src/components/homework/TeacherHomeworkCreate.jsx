@@ -5,6 +5,10 @@ import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useData } from '../../context/DataContext'
 import ChoiceGrid from '../ChoiceGrid'
+import PageTitle from '../ui/PageTitle'
+import Card from '../ui/Card'
+import Alert from '../ui/Alert'
+import Button from '../ui/Button'
 import { mondayOf } from '../../utils/homeworkWeek'
 import { homeworkEditImpact } from '../../utils/homeworkEdit'
 import { solutionFileName } from '../../utils/homework'
@@ -153,27 +157,25 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
 
   return (
     <div>
-      <button onClick={onDone} className="text-sm text-gray-500 mb-4">← 목록</button>
-      <h1 className="text-xl font-bold text-[#2B2B2B] mb-4">
-        {CATEGORY_LABELS[category]} {editSet ? '수정' : '만들기'}
-      </h1>
+      <button onClick={onDone} className="text-sm text-ink-mute mb-4">← 목록</button>
+      <PageTitle title={`${CATEGORY_LABELS[category]} ${editSet ? '수정' : '만들기'}`} />
 
       <div className="flex flex-col gap-4">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="세트 제목 (예: 8월 2주차)"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]" />
+          className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy" />
 
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">{isNaesin ? '학년' : '정시 레벨'}</label>
+            <label className="block text-sm font-medium text-ink-soft mb-1">{isNaesin ? '학년' : '정시 레벨'}</label>
             <select value={target} onChange={(e) => setTarget(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+              className="w-full border border-line rounded px-3 py-2 text-sm">
               {targets.map((t) => <option key={t} value={t}>{targetLabels[t]}</option>)}
             </select>
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">주 시작(월요일)</label>
+            <label className="block text-sm font-medium text-ink-soft mb-1">주 시작(월요일)</label>
             <input type="date" value={weekStart} onChange={(e) => setWeekStart(mondayOf(e.target.value))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              className="w-full border border-line rounded px-3 py-2 text-sm" />
           </div>
         </div>
 
@@ -181,48 +183,48 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
         <div className="flex gap-2 overflow-x-auto">
           {WEEKDAYS.map((wd) => (
             <button key={wd} onClick={() => setActiveWd(wd)}
-              className={`px-3 py-2 rounded-lg text-sm whitespace-nowrap ${
-                activeWd === wd ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600'
-              } ${days[wd].enabled ? 'ring-2 ring-[#5B8FD4]' : ''}`}>
+              className={`px-3 py-2 rounded text-sm whitespace-nowrap ${
+                activeWd === wd ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
+              } ${days[wd].enabled ? 'ring-2 ring-navy' : ''}`}>
               {WEEKDAY_LABELS[wd]}
             </button>
           ))}
         </div>
 
         {/* 선택 요일 편집 */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <label className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-700">
+        <Card className="p-4">
+          <label className="flex items-center gap-2 mb-3 text-sm font-medium text-ink-soft">
             <input type="checkbox" checked={d.enabled} onChange={(e) => setDay({ enabled: e.target.checked })} />
             {WEEKDAY_LABELS[activeWd]}요일 과제 사용
           </label>
           {d.enabled && (
             <>
               <div className="flex items-center gap-2 mb-3">
-                <label className="text-sm text-gray-700">문항 수</label>
+                <label className="text-sm text-ink-soft">문항 수</label>
                 <input type="number" min="0" max="300" value={d.count || ''} onChange={(e) => changeCount(e.target.value)}
-                  className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-sm" />
+                  className="w-24 border border-line rounded px-2 py-1 text-sm" />
               </div>
               {d.count > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs text-gray-400 mb-2">정답 입력 ({Object.keys(d.answers).length}/{d.count})</p>
+                  <p className="text-xs text-ink-faint mb-2">정답 입력 ({Object.keys(d.answers).length}/{d.count})</p>
                   <ChoiceGrid count={d.count} values={d.answers} mode="input"
                     onChange={(number, choice) => setDay({ answers: { ...d.answers, [number]: choice } })} />
                 </div>
               )}
               <input value={d.videoUrl} onChange={(e) => setDay({ videoUrl: e.target.value })}
                 placeholder="해설 영상 YouTube 링크(선택)"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2" />
+                className="w-full border border-line rounded px-3 py-2 text-sm mb-2" />
               {d.fileUrl ? (
                 <div className="flex items-center gap-2 flex-wrap">
                   <a href={d.fileUrl} target="_blank" rel="noreferrer"
-                    className="text-sm text-[#5B8FD4] underline break-all">
+                    className="text-sm text-navy underline break-all">
                     {solutionFileName(d.fileUrl)}
                   </a>
                   <button type="button" onClick={handleRemoveFile}
-                    className="text-xs px-2 py-1 rounded-lg bg-[#C0392B]/10 text-[#C0392B] font-medium">
+                    className="text-xs px-2 py-1 rounded bg-danger-soft text-danger font-medium">
                     삭제
                   </button>
-                  <span className="text-xs text-gray-400 w-full">저장을 눌러야 삭제가 반영됩니다.</span>
+                  <span className="text-xs text-ink-faint w-full">저장을 눌러야 삭제가 반영됩니다.</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
@@ -231,29 +233,26 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
               )}
             </>
           )}
-        </div>
+        </Card>
 
         {/* 저장을 누르기 전에 학생에게 무슨 일이 생기는지 미리 보여준다 */}
         {impact.warnings.length > 0 && (
-          <div data-testid="edit-impact"
-            className={`rounded-lg px-3 py-2 text-sm ${
-              impact.destructive ? 'bg-[#C0392B]/10 text-[#C0392B]' : 'bg-[#5B8FD4]/10 text-[#2B2B2B]'
-            }`}>
-            <p className="font-medium mb-1">{impact.destructive ? '되돌릴 수 없는 변경입니다' : '이미 제출한 학생에게 영향이 갑니다'}</p>
-            <ul className="list-disc pl-4 flex flex-col gap-0.5">
-              {impact.warnings.map((w) => <li key={`${w.type}-${w.weekday}`}>{w.message}</li>)}
-            </ul>
+          // Alert는 임의 props를 전달하지 않으므로, 테스트가 찾는 data-testid는 감싸는 div에 둔다
+          <div data-testid="edit-impact">
+            <Alert tone={impact.destructive ? 'danger' : 'info'}>
+              <p className="font-medium mb-1">{impact.destructive ? '되돌릴 수 없는 변경입니다' : '이미 제출한 학생에게 영향이 갑니다'}</p>
+              <ul className="list-disc pl-4 flex flex-col gap-0.5">
+                {impact.warnings.map((w) => <li key={`${w.type}-${w.weekday}`}>{w.message}</li>)}
+              </ul>
+            </Alert>
           </div>
         )}
 
-        {error && (
-          <p className="text-sm text-[#C0392B] bg-[#C0392B]/10 rounded-lg px-3 py-2">{error}</p>
-        )}
+        {error && <Alert tone="danger">{error}</Alert>}
 
-        <button onClick={handleSave} disabled={!canSave || saving}
-          className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40">
+        <Button variant="primary" onClick={handleSave} disabled={!canSave || saving} className="w-full">
           {saving ? '저장 중...' : editSet ? '수정 저장' : '주간 과제 저장'}
-        </button>
+        </Button>
       </div>
     </div>
   )

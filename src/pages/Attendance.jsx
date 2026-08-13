@@ -4,12 +4,25 @@ import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { checkAcademyWifi } from '../utils/checkWifi'
+import Card from '../components/ui/Card'
+import Badge from '../components/ui/Badge'
 
+// 출석 상태의 의미별 톤. 팔레트에 초록·빨강·노랑이 따로 없어
+// 출석=navy(긍정) · 지각=warn(주의) · 결석=danger(경고) · 미기록=neutral로 대응한다.
 const statusConfig = {
-  present: { label: '출석', color: 'bg-green-100 text-green-700' },
-  absent:  { label: '결석', color: 'bg-red-100 text-red-700' },
-  late:    { label: '지각', color: 'bg-yellow-100 text-yellow-700' },
-  none:    { label: '미기록', color: 'bg-gray-100 text-gray-400' },
+  present: { label: '출석', tone: 'navy' },
+  absent:  { label: '결석', tone: 'danger' },
+  late:    { label: '지각', tone: 'warn' },
+  none:    { label: '미기록', tone: 'neutral' },
+}
+
+// Badge와 같은 톤 팔레트. 출결 토글 버튼은 클릭 가능해야 해서 Badge(비클릭) 대신
+// 같은 배경/글자색 조합을 여기서 재사용한다.
+const PILL_TONE = {
+  navy:    'bg-navy-soft text-navy',
+  danger:  'bg-danger-soft text-danger',
+  warn:    'bg-warn-soft text-warn',
+  neutral: 'bg-surface-alt text-ink-faint',
 }
 
 const nextStatus = { none: 'present', present: 'absent', absent: 'late', late: 'none' }
@@ -48,7 +61,7 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
         type="date"
         value={selectedDate}
         onChange={(e) => setSelectedDate(e.target.value)}
-        className="w-fit px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+        className="w-fit px-3 py-2 bg-surface border border-line rounded text-sm focus:outline-none focus:ring-2 focus:ring-navy"
       />
 
       <div className="flex gap-2 flex-wrap">
@@ -56,7 +69,7 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
           <button
             key={cls.id}
             onClick={() => setSelectedClass(cls.id)}
-            className={`px-3 py-1 rounded-full text-xs font-medium ${activeClass === cls.id ? 'bg-[#2B2B2B] text-white' : 'bg-white text-gray-500 border border-gray-200'}`}
+            className={`px-3 py-1 rounded-full text-xs font-medium ${activeClass === cls.id ? 'bg-ink text-white' : 'bg-surface text-ink-mute border border-line'}`}
           >
             {cls.name}
           </button>
@@ -65,30 +78,30 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
 
       <div className="flex gap-3">
         {[
-          { label: '출석', count: presentCount, color: 'text-green-600' },
-          { label: '결석', count: absentCount,  color: 'text-red-500' },
-          { label: '지각', count: lateCount,    color: 'text-yellow-500' },
+          { label: '출석', count: presentCount, color: 'text-navy' },
+          { label: '결석', count: absentCount,  color: 'text-danger' },
+          { label: '지각', count: lateCount,    color: 'text-warn' },
         ].map((item) => (
-          <div key={item.label} className="bg-white rounded-xl px-4 py-3 shadow-sm text-center flex-1">
+          <Card key={item.label} className="px-4 py-3 text-center flex-1">
             <div className={`text-2xl font-bold ${item.color}`}>{item.count}</div>
-            <div className="text-xs text-gray-400">{item.label}</div>
-          </div>
+            <div className="text-xs text-ink-faint">{item.label}</div>
+          </Card>
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <Card className="overflow-hidden">
         {classStudents.length === 0 ? (
-          <div className="py-8 text-center text-gray-400 text-sm">해당 반에 학생이 없습니다.</div>
+          <div className="py-8 text-center text-ink-faint text-sm">해당 반에 학생이 없습니다.</div>
         ) : (
           classStudents.map((student) => {
             const status = getStatus(student.id)
             const cfg = statusConfig[status]
             return (
-              <div key={student.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+              <div key={student.id} className="flex items-center justify-between px-4 py-3 border-b border-line-soft last:border-0">
                 <span className="text-sm font-medium">{student.name}</span>
                 <button
                   onClick={() => toggleStatus(student.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${cfg.color}`}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${PILL_TONE[cfg.tone]}`}
                 >
                   {cfg.label}
                 </button>
@@ -96,8 +109,8 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
             )
           })
         )}
-      </div>
-      <p className="text-xs text-gray-400">💡 상태를 클릭하면 출석 → 결석 → 지각 순으로 변경됩니다.</p>
+      </Card>
+      <p className="text-xs text-ink-faint">💡 상태를 클릭하면 출석 → 결석 → 지각 순으로 변경됩니다.</p>
     </div>
   )
 }
@@ -134,69 +147,69 @@ function ClinicAttendance({ records, upsertAttendance, deleteAttendance }) {
         type="date"
         value={selectedDate}
         onChange={(e) => setSelectedDate(e.target.value)}
-        className="w-fit px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+        className="w-fit px-3 py-2 bg-surface border border-line rounded text-sm focus:outline-none focus:ring-2 focus:ring-navy"
       />
 
       {/* 참석자 수 */}
-      <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
-        <div className="text-2xl font-bold text-[#5B8FD4]">{clinicRecords.length}</div>
-        <div className="text-sm text-gray-500">명 참석</div>
-      </div>
+      <Card className="px-4 py-3 flex items-center gap-3">
+        <div className="text-2xl font-bold text-navy">{clinicRecords.length}</div>
+        <div className="text-sm text-ink-mute">명 참석</div>
+      </Card>
 
       {/* 참석자 목록 */}
       {clinicRecords.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 text-xs font-semibold text-gray-500">참석자</div>
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 border-b border-line text-xs font-semibold text-ink-mute">참석자</div>
           {students
             .filter((s) => attendedIds.has(s.id))
             .map((student) => (
-              <div key={student.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+              <div key={student.id} className="flex items-center justify-between px-4 py-3 border-b border-line-soft last:border-0">
                 <div>
                   <span className="text-sm font-medium">{student.name}</span>
-                  <span className="text-xs text-gray-400 ml-2">{getClassName(student.classId)}</span>
+                  <span className="text-xs text-ink-faint ml-2">{getClassName(student.classId)}</span>
                 </div>
                 <button
                   onClick={() => toggle(student.id)}
-                  className="px-3 py-1 rounded-full text-xs font-semibold bg-[#5B8FD4] text-white"
+                  className="px-3 py-1 rounded-full text-xs font-semibold bg-navy text-white"
                 >
                   참석 ✓
                 </button>
               </div>
             ))}
-        </div>
+        </Card>
       )}
 
       {/* 학생 검색 */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-4 pt-3 pb-2 border-b border-gray-100">
+      <Card className="overflow-hidden">
+        <div className="px-4 pt-3 pb-2 border-b border-line">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="학생 이름 검색 후 추가..."
-            className="w-full text-sm bg-[#F4F3EE] px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+            className="w-full text-sm bg-surface-alt px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-navy"
           />
         </div>
         {search.trim() !== '' && filtered.length === 0 && (
-          <div className="py-6 text-center text-gray-400 text-sm">검색 결과가 없습니다.</div>
+          <div className="py-6 text-center text-ink-faint text-sm">검색 결과가 없습니다.</div>
         )}
         {filtered
           .filter((s) => !attendedIds.has(s.id))
           .map((student) => (
-            <div key={student.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+            <div key={student.id} className="flex items-center justify-between px-4 py-3 border-b border-line-soft last:border-0">
               <div>
                 <span className="text-sm font-medium">{student.name}</span>
-                <span className="text-xs text-gray-400 ml-2">{getClassName(student.classId)}</span>
+                <span className="text-xs text-ink-faint ml-2">{getClassName(student.classId)}</span>
               </div>
               <button
                 onClick={() => toggle(student.id)}
-                className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500"
+                className="px-3 py-1 rounded-full text-xs font-semibold bg-surface-alt text-ink-mute"
               >
                 + 추가
               </button>
             </div>
           ))}
-      </div>
+      </Card>
     </div>
   )
 }
@@ -243,29 +256,29 @@ function StudentAttendance({ user, records, upsertAttendance }) {
   return (
     <div className="flex flex-col gap-4">
       {/* 출석 체크 버튼 */}
-      <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-col items-center gap-3">
-        <p className="text-sm text-gray-500">오늘 수업 출석 체크</p>
+      <Card className="p-4 flex flex-col items-center gap-3">
+        <p className="text-sm text-ink-mute">오늘 수업 출석 체크</p>
         <button
           onClick={handleCheckIn}
           disabled={checking || alreadyChecked}
-          className={`w-full h-12 rounded-xl text-sm font-semibold transition-colors
+          className={`w-full h-12 rounded text-sm font-semibold transition-colors
             ${alreadyChecked
-              ? 'bg-green-100 text-green-700 cursor-default'
-              : 'bg-[#2B2B2B] text-white disabled:opacity-40'
+              ? 'bg-navy-soft text-navy cursor-default'
+              : 'bg-ink text-white disabled:opacity-40'
             }`}
         >
           {checking ? '확인 중...' : alreadyChecked ? '출석 완료 ✓' : '출석 체크'}
         </button>
         {checkResult === 'success' && (
-          <p className="text-sm text-green-600 font-medium">출석이 기록됐습니다!</p>
+          <p className="text-sm text-navy font-medium">출석이 기록됐습니다!</p>
         )}
         {checkResult === 'fail' && (
-          <p className="text-sm text-[#C0392B]">학원 WiFi에 연결되어 있지 않습니다.</p>
+          <p className="text-sm text-danger">학원 WiFi에 연결되어 있지 않습니다.</p>
         )}
         {checkResult === 'already' && (
-          <p className="text-sm text-gray-400">오늘 이미 출석 체크했습니다.</p>
+          <p className="text-sm text-ink-faint">오늘 이미 출석 체크했습니다.</p>
         )}
-      </div>
+      </Card>
 
       {/* 탭 */}
       <div className="flex gap-2">
@@ -273,7 +286,7 @@ function StudentAttendance({ user, records, upsertAttendance }) {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${activeTab === tab ? 'bg-[#2B2B2B] text-white' : 'bg-white text-gray-500 border border-gray-200'}`}
+            className={`px-4 py-2 rounded-full text-sm font-medium ${activeTab === tab ? 'bg-ink text-white' : 'bg-surface text-ink-mute border border-line'}`}
           >
             {tab}
           </button>
@@ -284,53 +297,53 @@ function StudentAttendance({ user, records, upsertAttendance }) {
         type="month"
         value={selectedMonth}
         onChange={(e) => setSelectedMonth(e.target.value)}
-        className="w-fit px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+        className="w-fit px-3 py-2 bg-surface border border-line rounded text-sm"
       />
 
       {activeTab === '수업' ? (
         <>
           <div className="flex gap-3">
             {[
-              { label: '출석', count: present, color: 'text-green-600' },
-              { label: '결석', count: absent,  color: 'text-red-500' },
-              { label: '지각', count: late,    color: 'text-yellow-500' },
+              { label: '출석', count: present, color: 'text-navy' },
+              { label: '결석', count: absent,  color: 'text-danger' },
+              { label: '지각', count: late,    color: 'text-warn' },
             ].map((item) => (
-              <div key={item.label} className="bg-white rounded-xl px-4 py-3 shadow-sm text-center flex-1">
+              <Card key={item.label} className="px-4 py-3 text-center flex-1">
                 <div className={`text-2xl font-bold ${item.color}`}>{item.count}</div>
-                <div className="text-xs text-gray-400">{item.label}</div>
-              </div>
+                <div className="text-xs text-ink-faint">{item.label}</div>
+              </Card>
             ))}
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
-          <div className="text-2xl font-bold text-[#5B8FD4]">{myRecords.length}</div>
-          <div className="text-sm text-gray-500">회 참석</div>
-        </div>
+        <Card className="px-4 py-3 flex items-center gap-3">
+          <div className="text-2xl font-bold text-navy">{myRecords.length}</div>
+          <div className="text-sm text-ink-mute">회 참석</div>
+        </Card>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 text-xs font-semibold text-gray-500">
+      <Card className="overflow-hidden">
+        <div className="px-4 py-3 border-b border-line text-xs font-semibold text-ink-mute">
           {selectedMonth} {activeTab} 기록
         </div>
         {myRecords.length === 0 ? (
-          <div className="py-8 text-center text-gray-400 text-sm">기록이 없습니다.</div>
+          <div className="py-8 text-center text-ink-faint text-sm">기록이 없습니다.</div>
         ) : (
           myRecords
             .sort((a, b) => b.date.localeCompare(a.date))
             .map((record) => {
               const cfg = activeTab === '클리닉'
-                ? { label: '참석', color: 'bg-[#5B8FD4]/10 text-[#5B8FD4]' }
+                ? { label: '참석', tone: 'navy' }
                 : statusConfig[record.status]
               return (
-                <div key={record.id} className="flex justify-between items-center px-4 py-3 border-b border-gray-50 last:border-0">
-                  <span className="text-sm text-gray-600">{record.date}</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
+                <div key={record.id} className="flex justify-between items-center px-4 py-3 border-b border-line-soft last:border-0">
+                  <span className="text-sm text-ink-soft">{record.date}</span>
+                  <Badge tone={cfg.tone}>{cfg.label}</Badge>
                 </div>
               )
             })
         )}
-      </div>
+      </Card>
     </div>
   )
 }
@@ -358,7 +371,7 @@ function Attendance() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${activeTab === tab ? 'bg-[#2B2B2B] text-white' : 'bg-white text-gray-500 border border-gray-200'}`}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${activeTab === tab ? 'bg-ink text-white' : 'bg-surface text-ink-mute border border-line'}`}
             >
               {tab} 출결
             </button>
