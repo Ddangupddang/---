@@ -2,16 +2,20 @@
 // 주간 리포트 — 학생 한 명의 한 주 + 교사 코멘트.
 import { useState } from 'react'
 import { WEEKDAY_LABELS, WEEKDAYS } from '../../constants/homework'
+import Card from '../ui/Card'
+import Badge from '../ui/Badge'
+import Button from '../ui/Button'
+import Alert from '../ui/Alert'
 
 const ATT_LABEL = { present: '출석', late: '지각', absent: '결석' }
 
 // 과제 한 종류를 한 줄로. 배정이 없으면 "0% 제출"이 아니라 "배정 없음"이다.
 function HomeworkLine({ label, hw }) {
-  if (!hw) return <p className="text-sm text-gray-400">{label} — 배정 없음</p>
+  if (!hw) return <p className="text-sm text-ink-faint">{label} — 배정 없음</p>
   return (
-    <p className="text-sm text-[#2B2B2B]">
+    <p className="text-sm text-ink">
       {label} {hw.submitted}/{hw.total} 제출
-      {hw.correctRate != null && <span className="text-gray-500"> · 정답률 {hw.correctRate}%</span>}
+      {hw.correctRate != null && <span className="text-ink-mute"> · 정답률 {hw.correctRate}%</span>}
     </p>
   )
 }
@@ -49,63 +53,62 @@ export default function WeeklyStudentDetail({
 
   return (
     <div>
-      <button onClick={onBack} className="text-sm text-gray-500 mb-3">← 목록</button>
-      <h2 className="text-lg font-bold text-[#2B2B2B] mb-4">{row.student.name}</h2>
+      <button onClick={onBack} className="text-sm text-ink-mute mb-3">← 목록</button>
+      <h2 className="font-serif text-2xl font-bold text-ink mb-4">{row.student.name}</h2>
 
       {/* 출석 — 요일별로 펼쳐 보여준다. 숫자만으로는 언제 빠졌는지 알 수 없다 */}
-      <section className="bg-white rounded-xl p-4 shadow-sm mb-3">
-        <p className="text-sm font-semibold text-gray-700 mb-2">
+      <Card className="p-4 mb-3">
+        <p className="text-sm font-semibold text-ink-soft mb-2">
           출석 {row.attendance ? `${row.attendance.present + row.attendance.late}/${row.attendance.counted}` : '기록 없음'}
         </p>
         <div className="flex gap-2">
           {WEEKDAYS.map((wd, i) => (
             <div key={wd} className="flex-1 text-center">
-              <p className="text-xs text-gray-400 mb-1">{WEEKDAY_LABELS[wd]}</p>
+              <p className="text-xs text-ink-faint mb-1">{WEEKDAY_LABELS[wd]}</p>
               <p data-testid={`att-${dates[i]}`}
-                className={`text-xs ${statusByDate[dates[i]] === 'absent' ? 'text-[#C0392B]' : 'text-[#2B2B2B]'}`}>
+                className={`text-xs ${statusByDate[dates[i]] === 'absent' ? 'text-danger' : 'text-ink'}`}>
                 {ATT_LABEL[statusByDate[dates[i]]] ?? '-'}
               </p>
             </div>
           ))}
         </div>
-      </section>
+      </Card>
 
       {/* 주간테스트 */}
-      <section className="bg-white rounded-xl p-4 shadow-sm mb-3">
-        <p className="text-sm font-semibold text-gray-700 mb-2">주간테스트</p>
-        {row.tests.length === 0 && <p className="text-sm text-gray-400">이번 주 시험이 없습니다.</p>}
+      <Card className="p-4 mb-3">
+        <p className="text-sm font-semibold text-ink-soft mb-2">주간테스트</p>
+        {row.tests.length === 0 && <p className="text-sm text-ink-faint">이번 주 시험이 없습니다.</p>}
         {row.tests.map((t) => (
-          <p key={t.test.id} className="text-sm text-[#2B2B2B]">
+          <p key={t.test.id} className="text-sm text-ink">
             {t.test.title}{' '}
             {t.state === 'graded'  && <span>{t.score}/{t.total}</span>}
-            {t.state === 'grading' && <span className="text-gray-500">채점중</span>}
-            {t.state === 'absent'  && <span className="text-[#C0392B]">미응시</span>}
+            {t.state === 'grading' && <Badge tone="warn">채점중</Badge>}
+            {t.state === 'absent'  && <Badge tone="danger">미응시</Badge>}
           </p>
         ))}
-      </section>
+      </Card>
 
       {/* 주간과제 */}
-      <section className="bg-white rounded-xl p-4 shadow-sm mb-3">
-        <p className="text-sm font-semibold text-gray-700 mb-2">주간과제</p>
+      <Card className="p-4 mb-3">
+        <p className="text-sm font-semibold text-ink-soft mb-2">주간과제</p>
         <HomeworkLine label="내신" hw={row.naesin} />
         <HomeworkLine label="정시" hw={row.jeongsi} />
-      </section>
+      </Card>
 
       {/* 교사 코멘트 */}
-      <section className="bg-white rounded-xl p-4 shadow-sm">
-        <p className="text-sm font-semibold text-gray-700 mb-2">교사 코멘트</p>
+      <Card className="p-4">
+        <p className="text-sm font-semibold text-ink-soft mb-2">교사 코멘트</p>
         <textarea
           value={content} onChange={(e) => setContent(e.target.value)} rows={3}
           placeholder="상담이나 다음 주 지도에 참고할 내용을 적어 두세요."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+          className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
         />
-        {error   && <p className="text-sm text-[#C0392B] bg-[#C0392B]/10 rounded-lg px-3 py-2 mt-2">{error}</p>}
-        {message && <p className="text-sm text-[#5B8FD4] mt-2">{message}</p>}
-        <button onClick={handleSave} disabled={saving}
-          className="w-full py-2.5 mt-3 bg-[#2B2B2B] text-white rounded-xl text-sm font-medium disabled:opacity-40">
+        {error   && <Alert tone="danger" className="mt-2">{error}</Alert>}
+        {message && <p className="text-sm text-navy mt-2">{message}</p>}
+        <Button variant="primary" onClick={handleSave} disabled={saving} className="w-full mt-3">
           {saving ? '저장 중...' : '저장'}
-        </button>
-      </section>
+        </Button>
+      </Card>
     </div>
   )
 }

@@ -25,7 +25,8 @@ const ROWS = [
 
 // 셀 값은 숫자 안에 보조 span이 섞여 있고 같은 값이 여러 열에 나올 수 있다.
 // getByText로 잡으면 깨지기 쉬워서 셀마다 testid로 찍어 확인한다.
-const cell = (studentId, key) => screen.getByTestId(`${key}-${studentId}`).textContent
+// DataTable이 만드는 셀 testid 형식: cell-{학생id}-{열key}
+const cell = (studentId, key) => screen.getByTestId(`cell-${studentId}-${key}`).textContent
 
 describe('WeeklyReportTable', () => {
   it('학생별 출석·테스트·내신·정시를 보여준다', () => {

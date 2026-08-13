@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
+import PageTitle from '../components/ui/PageTitle'
 import WeeklyReportTable from '../components/reports/WeeklyReportTable'
 import WeeklyStudentDetail from '../components/reports/WeeklyStudentDetail'
 import { weeklyClassReport } from '../utils/weeklyReport'
@@ -39,7 +40,7 @@ export default function WeeklyReport() {
   if (user.role === 'student') {
     return (
       <Layout>
-        <div className="text-center py-20 text-gray-400">
+        <div className="text-center py-20 text-ink-faint">
           <p className="text-lg">접근 권한이 없습니다.</p>
         </div>
       </Layout>
@@ -63,20 +64,20 @@ export default function WeeklyReport() {
   return (
     <Layout>
       <div>
-        <h1 className="text-xl font-bold text-[#2B2B2B] mb-4">주간 리포트</h1>
+        <PageTitle title="주간 리포트" lead="한 반의 한 주를 한눈에 봅니다" />
 
         {/* 주 이동 + 반 선택 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <button aria-label="이전 주" onClick={() => goWeek(-1)}
-            className="p-1.5 rounded-lg bg-white shadow-sm"><ChevronLeft className="w-4 h-4" /></button>
-          <span data-testid="week-label" className="text-sm font-medium text-[#2B2B2B]">
+            className="w-9 h-9 flex items-center justify-center rounded border border-line bg-surface text-ink-soft"><ChevronLeft className="w-4 h-4" /></button>
+          <span data-testid="week-label" className="text-base font-bold text-ink">
             {weekStart} ~ {dateForWeekday(weekStart, 6)}
           </span>
           <button aria-label="다음 주" onClick={() => goWeek(1)}
-            className="p-1.5 rounded-lg bg-white shadow-sm"><ChevronRight className="w-4 h-4" /></button>
+            className="w-9 h-9 flex items-center justify-center rounded border border-line bg-surface text-ink-soft"><ChevronRight className="w-4 h-4" /></button>
 
           <select value={activeClass ?? ''} onChange={(e) => { setSelectedClass(e.target.value); setSelected(null) }}
-            className="ml-auto border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white">
+            className="ml-auto border border-line rounded px-3 py-1.5 text-sm bg-white">
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
