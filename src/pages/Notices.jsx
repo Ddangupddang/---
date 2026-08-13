@@ -62,7 +62,9 @@ export default function Notices() {
                   >
                     <div className="flex justify-between items-start mb-1">
                       <p className="font-semibold text-ink flex-1 pr-2">{n.title}</p>
-                      {n.kakaoSent && <Badge tone="warn" className="shrink-0">카카오 전송</Badge>}
+                      {/* 이미 발송이 끝난 상태라 '완료' 톤(navy)을 쓴다.
+                          warn은 이 앱에서 채점중·답변 대기처럼 "아직 안 끝났다"는 뜻이다 */}
+                      {n.kakaoSent && <Badge tone="navy" className="shrink-0">카카오 전송</Badge>}
                     </div>
                     <p className="text-sm text-ink-mute line-clamp-2 mb-2">{n.content}</p>
                   </div>
@@ -121,7 +123,8 @@ export default function Notices() {
         <div className="bg-surface border border-line rounded p-5">
           <div className="flex justify-between items-start mb-3">
             <h2 className="text-lg font-bold text-ink flex-1 pr-2">{n.title}</h2>
-            {n.kakaoSent && <Badge tone="warn" className="shrink-0">카카오 전송</Badge>}
+            {/* 목록과 같은 이유로 완료 톤(navy) */}
+            {n.kakaoSent && <Badge tone="navy" className="shrink-0">카카오 전송</Badge>}
           </div>
           <div className="flex items-center gap-2 text-xs text-ink-faint mb-4 pb-4 border-b border-line">
             <span>{n.createdAt?.slice(0, 10)}</span>

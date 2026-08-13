@@ -8,16 +8,16 @@ import MiniBar from '../ui/MiniBar'
 // 출석: (출석+지각)/전체. 지각·결석은 뒤에 별기해 감춰지지 않게 한다.
 function AttendanceCell({ att }) {
   if (!att) return <span className="text-ink-faint">-</span>
-  const notes = []
-  if (att.late > 0)   notes.push(`지${att.late}`)
-  if (att.absent > 0) notes.push(`결${att.absent}`)
   const attended = att.present + att.late
   return (
     <span>
       <span className={att.absent > 0 ? 'text-danger font-bold' : 'font-semibold'}>
         {attended}/{att.counted}
       </span>
-      {notes.length > 0 && <span className="ml-1 text-[13px] text-ink-mute">{notes.join(' ')}</span>}
+      {/* 결석이 없으면 숫자가 붉어지지 않으므로, 지각만 있는 학생은 여기서 색을 주지 않으면
+          출석 셀 어디에도 신호가 남지 않는다. 지각=warn / 결석=danger로 나눠 표시한다. */}
+      {att.late > 0   && <span className="ml-1 text-[13px] text-warn">지{att.late}</span>}
+      {att.absent > 0 && <span className="ml-1 text-[13px] text-danger">결{att.absent}</span>}
       <MiniBar value={attended} max={att.counted} tone={att.absent > 0 ? 'danger' : 'navy'} />
     </span>
   )

@@ -11,7 +11,9 @@ import Badge from '../components/ui/Badge'
 const statusBadge = {
   ready:  { label: '준비중', tone: 'neutral' },
   active: { label: '진행중', tone: 'navy' },
-  closed: { label: '종료',   tone: 'danger' },
+  // 종료는 경고가 아니라 정상적인 끝 상태다. danger로 두면 같은 카드의
+  // '미채점 N'(교사가 지금 해야 할 일)과 똑같은 붉은 뱃지가 돼 급한 게 안 보인다.
+  closed: { label: '종료',   tone: 'neutral' },
 }
 
 export default function Tests() {
