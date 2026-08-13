@@ -11,7 +11,7 @@ function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen bg-[#F4F3EE]">
+    <div className="flex min-h-screen bg-surface">
       {!isStudent && (
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       )}

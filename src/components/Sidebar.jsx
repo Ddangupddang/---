@@ -52,7 +52,7 @@ function SidebarContent({ onClose }) {
     <>
       {/* 로고 영역 — 클릭 시 대시보드로 이동 */}
       <div className="mb-7">
-        <Link to="/dashboard" onClick={onClose} className="block bg-white rounded-xl px-3 py-2.5 hover:opacity-90 transition-opacity">
+        <Link to="/dashboard" onClick={onClose} className="block px-1 py-1 hover:opacity-80 transition-opacity">
           <img src="/logo.png" alt="수문재 로고" className="w-full object-contain" style={{ maxHeight: '48px' }} />
         </Link>
       </div>
@@ -61,7 +61,7 @@ function SidebarContent({ onClose }) {
       <nav className="flex flex-col gap-4 flex-1">
         {navSections.map((section) => (
           <div key={section.label}>
-            <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-white/30 uppercase">
+            <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-ink-faint uppercase">
               {section.label}
             </p>
             <div className="flex flex-col gap-0.5">
@@ -71,10 +71,10 @@ function SidebarContent({ onClose }) {
                   to={path}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    `flex items-center gap-2.5 px-3 py-2.5 rounded text-[15px] transition-colors ${
                       isActive
-                        ? 'bg-[#5B8FD4]/20 text-white font-semibold border-l-2 border-[#5B8FD4]'
-                        : 'text-white/55 hover:text-white hover:bg-white/8'
+                        ? 'bg-navy text-white font-bold'
+                        : 'text-ink-soft hover:bg-line-soft'
                     }`
                   }
                 >
@@ -89,7 +89,7 @@ function SidebarContent({ onClose }) {
         {/* 관리자 전용 섹션 */}
         {user?.role === 'admin' && (
           <div>
-            <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-white/30 uppercase">
+            <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-ink-faint uppercase">
               {adminSection.label}
             </p>
             <div className="flex flex-col gap-0.5">
@@ -99,10 +99,10 @@ function SidebarContent({ onClose }) {
                   to={path}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    `flex items-center gap-2.5 px-3 py-2.5 rounded text-[15px] transition-colors ${
                       isActive
-                        ? 'bg-[#5B8FD4]/20 text-white font-semibold border-l-2 border-[#5B8FD4]'
-                        : 'text-white/55 hover:text-white hover:bg-white/8'
+                        ? 'bg-navy text-white font-bold'
+                        : 'text-ink-soft hover:bg-line-soft'
                     }`
                   }
                 >
@@ -116,14 +116,14 @@ function SidebarContent({ onClose }) {
       </nav>
 
       {/* 하단 사용자 정보 */}
-      <div className="border-t border-white/10 pt-3 mt-3">
-        <div className="px-3 py-1 text-white/40 text-xs mb-1">{user?.name}</div>
+      <div className="border-t border-line pt-3 mt-3">
+        <div className="px-3 py-1 text-ink-mute text-xs mb-1">{user?.name}</div>
         <NavLink
           to="/change-password"
           onClick={onClose}
           className={({ isActive }) =>
-            `w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors ${
-              isActive ? 'text-white bg-white/10' : 'text-white/40 hover:text-white hover:bg-white/8'
+            `w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded transition-colors ${
+              isActive ? 'text-ink bg-line-soft' : 'text-ink-mute hover:bg-line-soft'
             }`
           }
         >
@@ -132,7 +132,7 @@ function SidebarContent({ onClose }) {
         </NavLink>
         <button
           onClick={() => { logout(); onClose?.() }}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-white/40 hover:text-white hover:bg-white/8 rounded-lg transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-ink-mute hover:bg-line-soft rounded transition-colors"
         >
           <LogOut size={15} strokeWidth={1.8} />
           로그아웃
@@ -146,7 +146,7 @@ function Sidebar({ isOpen, onClose }) {
   return (
     <>
       {/* 데스크탑 사이드바 */}
-      <aside className="hidden md:flex flex-col w-56 min-h-screen bg-[#2B2B2B] px-3 py-5">
+      <aside className="hidden md:flex flex-col w-56 min-h-screen bg-surface-alt border-r border-line px-3 py-5">
         <SidebarContent onClose={() => {}} />
       </aside>
 
@@ -159,7 +159,7 @@ function Sidebar({ isOpen, onClose }) {
       )}
 
       {/* 모바일 드로어 */}
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-[#2B2B2B] px-3 py-5 z-50 flex flex-col md:hidden
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-surface-alt border-r border-line px-3 py-5 z-50 flex flex-col md:hidden
         transform transition-transform duration-300 ease-in-out overflow-y-auto
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >

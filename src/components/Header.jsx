@@ -23,13 +23,13 @@ function Header({ onMenuClick }) {
   const title = pageTitles[location.pathname] ?? '수문재'
 
   return (
-    <header className="flex items-center justify-between h-14 px-4 bg-white border-b border-gray-100">
+    <header className="flex items-center justify-between h-14 px-4 bg-surface border-b border-line">
       <div className="flex items-center gap-3">
         {/* 관리자/교사 모바일: 햄버거 버튼 */}
         {!isStudent && onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="md:hidden text-[#2B2B2B] hover:text-gray-600"
+            className="md:hidden text-ink hover:text-ink-soft"
           >
             <Menu size={22} strokeWidth={1.8} />
           </button>
@@ -40,26 +40,26 @@ function Header({ onMenuClick }) {
             <img src="/logo.png" alt="수문재 로고" className="h-8 object-contain hover:opacity-80 transition-opacity" />
           </Link>
         ) : (
-          <h1 className="text-base font-bold text-[#2B2B2B]">{title}</h1>
+          <h1 className="text-base font-bold text-ink">{title}</h1>
         )}
       </div>
 
       <div className="flex items-center gap-3">
         {/* 학생: 현재 페이지 타이틀을 오른쪽에 작게 표시 */}
         {isStudent && (
-          <span className="text-sm text-gray-400">{title}</span>
+          <span className="text-sm text-ink-mute">{title}</span>
         )}
-        <span className="text-sm text-gray-500">{user?.name}</span>
+        <span className="text-sm text-ink-soft">{user?.name}</span>
         {/* 학생: 비밀번호 변경 아이콘 버튼 */}
         {isStudent && (
-          <Link to="/change-password" className="text-gray-400 hover:text-gray-600">
+          <Link to="/change-password" className="text-ink-mute hover:text-ink-soft">
             <KeyRound size={16} strokeWidth={1.8} />
           </Link>
         )}
         {/* 학생은 항상 표시, 관리자/교사는 모바일에서만 표시 (PC는 사이드바에 로그아웃 있음) */}
         <button
           onClick={logout}
-          className={`text-xs text-gray-400 hover:text-gray-600 ${!isStudent ? 'md:hidden' : ''}`}
+          className={`text-xs text-ink-mute hover:text-ink-soft ${!isStudent ? 'md:hidden' : ''}`}
         >
           로그아웃
         </button>

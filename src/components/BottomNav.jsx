@@ -15,7 +15,7 @@ const tabs = [
 
 function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-14 bg-[#2B2B2B] flex items-center z-50">
+    <nav className="fixed bottom-0 left-0 right-0 h-14 bg-ink flex items-center z-50">
       {tabs.map(({ label, path, Icon }) => (
         <NavLink
           key={path}
@@ -23,7 +23,7 @@ function BottomNav() {
           style={{ flex: 1 }}
           className={({ isActive }) =>
             `flex flex-col items-center gap-0.5 py-1 transition-colors ${
-              isActive ? 'text-[#5B8FD4]' : 'text-white/45 hover:text-white/70'
+              isActive ? 'text-white' : 'text-white/45 hover:text-white/70'
             }`
           }
         >
