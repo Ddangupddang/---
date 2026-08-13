@@ -164,8 +164,8 @@ describe('TeacherHomeworkCreate (수정 모드)', () => {
     expect(screen.getByRole('checkbox')).toBeChecked()
     expect(screen.getByRole('spinbutton')).toHaveValue(2)
     // 저장된 정답이 선택된 상태로 보인다
-    expect(screen.getByTestId('cell-1-①').className).toContain('#2B2B2B')
-    expect(screen.getByTestId('cell-2-②').className).toContain('#2B2B2B')
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('cell-2-②')).toHaveAttribute('data-selected', 'true')
   })
 
   it('바꾼 게 없으면 영향 경고를 보여주지 않는다', () => {

@@ -31,12 +31,12 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
     const picked = values[number] === choice
     if (mode === 'result') {
       const correctChoice = answerKey[number]
-      if (choice === correctChoice && picked) return 'bg-green-500 text-white'        // 맞게 고름
-      if (choice === correctChoice) return 'border-2 border-green-500 text-green-600' // 실제 정답 표시
-      if (picked) return 'bg-[#C0392B] text-white'                                   // 틀리게 고름
-      return 'bg-gray-100 text-gray-400'
+      if (choice === correctChoice && picked) return 'bg-navy text-white'              // 맞게 고름
+      if (choice === correctChoice) return 'border-2 border-navy text-navy'            // 실제 정답 표시
+      if (picked) return 'bg-danger text-white'                                        // 틀리게 고름
+      return 'bg-surface-alt text-ink-faint'
     }
-    return picked ? 'bg-[#2B2B2B] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+    return picked ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
   }
 
   // 열 수는 창 너비(sm:/lg:)가 아니라 실제 들어갈 공간에 맞춘다.
@@ -62,22 +62,28 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
           >
             <span className="text-xs font-semibold text-gray-500 w-7 shrink-0">{number}번</span>
             <div className="flex gap-1">
-              {CHOICES.map((choice) => (
-                <button
-                  key={choice}
-                  type="button"
-                  data-testid={`cell-${number}-${choice}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (mode !== 'input') return
-                    setFocused(number)
-                    onChange(number, choice)
-                  }}
-                  className={`w-7 h-7 rounded-full text-sm font-medium transition-colors ${cellClass(number, choice)}`}
-                >
-                  {choice}
-                </button>
-              ))}
+              {CHOICES.map((choice) => {
+                // result 모드에서 학생이 이 선지를 골랐는데 정답이 아닌 경우 — 오답으로 고른 선지
+                const isWrong = mode === 'result' && values[number] === choice && choice !== answerKey[number]
+                return (
+                  <button
+                    key={choice}
+                    type="button"
+                    data-testid={`cell-${number}-${choice}`}
+                    data-selected={values[number] === choice}
+                    data-wrong={isWrong}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (mode !== 'input') return
+                      setFocused(number)
+                      onChange(number, choice)
+                    }}
+                    className={`w-7 h-7 rounded-full text-sm font-medium transition-colors ${cellClass(number, choice)}`}
+                  >
+                    {choice}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )

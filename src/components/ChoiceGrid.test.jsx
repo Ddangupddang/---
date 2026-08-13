@@ -33,13 +33,14 @@ describe('ChoiceGrid — input 모드', () => {
 
   it('values에 담긴 선택값이 강조 표시된다', () => {
     render(<ChoiceGrid count={1} values={{ 1: '②' }} mode="input" onChange={() => {}} />)
-    const selected = screen.getByTestId('cell-1-②')
-    expect(selected.className).toMatch(/bg-\[#2B2B2B\]/)
+    // 색이 아니라 "선택됨"이라는 의미를 단언한다 — 색은 디자인 토큰이 바뀌면 함께 바뀐다
+    expect(screen.getByTestId('cell-1-②')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-selected', 'false')
   })
 })
 
 describe('ChoiceGrid — result 모드', () => {
-  it('정답은 초록, 학생 오답은 빨강으로 표시한다', () => {
+  it('맞게 고른 선지와 틀리게 고른 선지를 구분해 표시한다', () => {
     render(
       <ChoiceGrid
         count={2}
@@ -49,10 +50,14 @@ describe('ChoiceGrid — result 모드', () => {
         onChange={() => {}}
       />
     )
-    expect(screen.getByTestId('cell-1-③').className).toMatch(/bg-green/)
-    expect(screen.getByTestId('cell-2-①').className).toMatch(/bg-red|C0392B/)
-    // 2번의 실제 정답 ④ 는 초록 테두리로 표시
-    expect(screen.getByTestId('cell-2-④').className).toMatch(/green/)
+    // 색이 아니라 "선택됨/오답임"이라는 의미를 단언한다 — 색은 디자인 토큰이 바뀌면 함께 바뀐다
+    expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-wrong', 'false')
+    expect(screen.getByTestId('cell-2-①')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('cell-2-①')).toHaveAttribute('data-wrong', 'true')
+    // 2번의 실제 정답 ④ 는 고르지 않았으므로 선택도 오답도 아니다 (테두리로만 표시)
+    expect(screen.getByTestId('cell-2-④')).toHaveAttribute('data-selected', 'false')
+    expect(screen.getByTestId('cell-2-④')).toHaveAttribute('data-wrong', 'false')
   })
 
   it('result 모드에서는 클릭해도 onChange가 호출되지 않는다', () => {
