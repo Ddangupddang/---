@@ -77,7 +77,7 @@ export default function WeeklyReport() {
             className="w-9 h-9 flex items-center justify-center rounded border border-line bg-surface text-ink-soft"><ChevronRight className="w-4 h-4" /></button>
 
           <select value={activeClass ?? ''} onChange={(e) => { setSelectedClass(e.target.value); setSelected(null) }}
-            className="ml-auto border border-line rounded px-3 py-1.5 text-sm bg-white">
+            className="ml-auto border border-line rounded px-3 py-1.5 text-sm bg-surface">
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>

@@ -1,6 +1,8 @@
 // src/components/VideoForm.jsx
 import { useState } from 'react'
 import { fetchVideoMeta, extractVideoId, getThumbnailUrl } from '../utils/youtube'
+import Button from './ui/Button'
+import Alert from './ui/Alert'
 
 /** 영상 등록 폼
  *  Props:
@@ -49,50 +51,45 @@ export default function VideoForm({ classes, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-lg font-bold text-[#2B2B2B]">영상 등록</h2>
+      <h2 className="text-lg font-bold text-ink">영상 등록</h2>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">YouTube URL</label>
+        <label className="block text-sm font-medium text-ink-soft mb-1">YouTube URL</label>
         <div className="flex gap-2">
           <input
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://youtu.be/..."
-            className="flex-1 border rounded-lg px-3 py-2 text-sm"
+            className="flex-1 border border-line rounded px-3 py-2 text-sm"
           />
-          <button
-            type="button"
-            onClick={handleFetch}
-            disabled={!url || loading}
-            className="px-4 py-2 bg-[#5B8FD4] text-white rounded-lg text-sm disabled:opacity-50"
-          >
+          <Button type="button" variant="accent" onClick={handleFetch} disabled={!url || loading}>
             {loading ? '불러오는 중...' : '가져오기'}
-          </button>
+          </Button>
         </div>
       </div>
 
       {thumbnail && (
-        <img src={thumbnail} alt="썸네일 미리보기" className="w-full max-w-xs rounded-lg" />
+        <img src={thumbnail} alt="썸네일 미리보기" className="w-full max-w-xs rounded" />
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
+        <label className="block text-sm font-medium text-ink-soft mb-1">제목</label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="강의 제목"
-          className="w-full border rounded-lg px-3 py-2 text-sm"
+          className="w-full border border-line rounded px-3 py-2 text-sm"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">반 선택</label>
+        <label className="block text-sm font-medium text-ink-soft mb-1">반 선택</label>
         <select
           value={classId}
           onChange={(e) => setClassId(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 text-sm"
+          className="w-full border border-line rounded px-3 py-2 text-sm"
         >
           <option value="">반을 선택해주세요</option>
           {classes.map((c) => (
@@ -101,22 +98,11 @@ export default function VideoForm({ classes, onSubmit, onCancel }) {
         </select>
       </div>
 
-      {error && <p className="text-sm text-[#C0392B]">{error}</p>}
+      {error && <Alert tone="danger">{error}</Alert>}
 
       <div className="flex gap-2 justify-end">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border rounded-lg text-sm text-gray-600"
-        >
-          취소
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-[#2B2B2B] text-white rounded-lg text-sm"
-        >
-          등록
-        </button>
+        <Button type="button" variant="ghost" onClick={onCancel}>취소</Button>
+        <Button type="submit">등록</Button>
       </div>
     </form>
   )

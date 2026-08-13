@@ -34,12 +34,12 @@ export default function ReportHomeworkChecks({ date, students, checks, onChange 
   const revert = (row) => write(row.student.id, { done: row.auto?.done ?? false, manual: false })
 
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm">
+    <div className="bg-surface border border-line rounded p-5">
       <div className="flex justify-between items-center mb-1">
-        <p className="text-sm font-semibold text-gray-700">과제 수행 현황</p>
-        <span className="text-sm font-bold text-[#2B2B2B]">{doneCount} / {students.length}명</span>
+        <p className="text-sm font-semibold text-ink-soft">과제 수행 현황</p>
+        <span className="text-sm font-bold text-ink">{doneCount} / {students.length}명</span>
       </div>
-      <p className="text-xs text-gray-400 mb-4">
+      <p className="text-xs text-ink-faint mb-4">
         {hasAuto
           ? '과제 제출 기록으로 자동 표시됩니다. 이름을 누르면 직접 고칠 수 있습니다.'
           : '이 날짜에 등록된 온라인 과제가 없어 직접 체크합니다.'}
@@ -51,14 +51,14 @@ export default function ReportHomeworkChecks({ date, students, checks, onChange 
             key={row.student.id}
             data-testid={`check-${row.student.id}`}
             onClick={() => toggle(row)}
-            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-              row.value ? 'bg-green-50' : 'bg-gray-50 hover:bg-gray-100'
+            className={`flex items-center justify-between p-3 rounded cursor-pointer transition-colors ${
+              row.value ? 'bg-navy-soft' : 'bg-surface-alt hover:bg-line-soft'
             }`}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-sm font-medium text-[#2B2B2B]">{row.student.name}</span>
+              <span className="text-sm font-medium text-ink">{row.student.name}</span>
               {row.auto && (
-                <span className="text-xs text-gray-400 shrink-0">
+                <span className="text-xs text-ink-faint shrink-0">
                   {row.auto.submitted === 0
                     ? '미제출'
                     : `${row.auto.submitted}/${row.auto.total} 제출`}
@@ -66,18 +66,18 @@ export default function ReportHomeworkChecks({ date, students, checks, onChange 
               )}
               {row.source === 'manual' && (
                 <>
-                  <span className="text-xs bg-[#5B8FD4]/15 text-[#5B8FD4] px-1.5 py-0.5 rounded shrink-0">수정됨</span>
+                  <span className="text-xs bg-navy-soft text-navy px-1.5 py-0.5 rounded shrink-0">수정됨</span>
                   {row.auto && (
                     <button
                       onClick={(e) => { e.stopPropagation(); revert(row) }}
-                      className="text-xs text-gray-400 hover:text-gray-600 underline shrink-0"
+                      className="text-xs text-ink-faint hover:text-ink-soft underline shrink-0"
                     >되돌리기</button>
                   )}
                 </>
               )}
             </div>
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${
-              row.value ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+              row.value ? 'bg-navy text-white' : 'bg-line text-ink-faint'
             }`}>
               {row.value ? '✓' : ''}
             </div>

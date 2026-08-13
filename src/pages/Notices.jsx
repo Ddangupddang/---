@@ -3,6 +3,9 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
+import PageTitle from '../components/ui/PageTitle'
+import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
 
 export default function Notices() {
   const { user } = useAuth()
@@ -26,20 +29,15 @@ export default function Notices() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-bold text-[#2B2B2B]">공지사항</h1>
+        <div className="flex justify-between items-center mb-4">
+          <PageTitle title="공지사항" />
           {isTeacherOrAdmin && (
-            <button
-              onClick={() => setView('create')}
-              className="px-4 py-2 bg-[#2B2B2B] text-white rounded-lg text-sm"
-            >
-              + 공지 작성
-            </button>
+            <Button onClick={() => setView('create')}>+ 공지 작성</Button>
           )}
         </div>
 
         {visibleNotices.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">공지사항이 없습니다.</p>
+          <p className="text-center text-ink-faint py-12">공지사항이 없습니다.</p>
         ) : (
           <div className="flex flex-col gap-3">
             {visibleNotices.map((n) => {
@@ -56,26 +54,22 @@ export default function Notices() {
               return (
                 <div
                   key={n.id}
-                  className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-surface border border-line rounded p-4 hover:bg-surface-alt transition-colors"
                 >
                   <div
                     onClick={() => { setSelected(n); setView('detail') }}
                     className="cursor-pointer"
                   >
                     <div className="flex justify-between items-start mb-1">
-                      <p className="font-semibold text-[#2B2B2B] flex-1 pr-2">{n.title}</p>
-                      {n.kakaoSent && (
-                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full shrink-0">
-                          카카오 전송
-                        </span>
-                      )}
+                      <p className="font-semibold text-ink flex-1 pr-2">{n.title}</p>
+                      {n.kakaoSent && <Badge tone="warn" className="shrink-0">카카오 전송</Badge>}
                     </div>
-                    <p className="text-sm text-gray-500 line-clamp-2 mb-2">{n.content}</p>
+                    <p className="text-sm text-ink-mute line-clamp-2 mb-2">{n.content}</p>
                   </div>
                   <div className="flex items-center justify-between">
                     <div
                       onClick={() => { setSelected(n); setView('detail') }}
-                      className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer"
+                      className="flex items-center gap-2 text-xs text-ink-faint cursor-pointer"
                     >
                       <span>{n.createdAt?.slice(0, 10)}</span>
                       <span>·</span>
@@ -88,7 +82,7 @@ export default function Notices() {
                         onClick={() => {
                           if (confirm('공지를 삭제하시겠습니까?')) deleteNotice(n.id)
                         }}
-                        className="text-xs text-gray-300 hover:text-[#C0392B] transition-colors ml-2 shrink-0"
+                        className="text-xs text-ink-faint hover:text-danger transition-colors ml-2 shrink-0"
                       >
                         삭제
                       </button>
@@ -119,30 +113,24 @@ export default function Notices() {
     return (
       <Layout>
       <div>
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView('list')} className="text-sm text-gray-500 hover:text-gray-700">
-            ← 목록
-          </button>
-          <h1 className="text-xl font-bold text-[#2B2B2B]">공지사항</h1>
-        </div>
+        <button onClick={() => setView('list')} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">
+          ← 목록
+        </button>
+        <PageTitle title="공지사항" />
 
-        <div className="bg-white rounded-xl p-5 shadow-sm">
+        <div className="bg-surface border border-line rounded p-5">
           <div className="flex justify-between items-start mb-3">
-            <h2 className="text-lg font-bold text-[#2B2B2B] flex-1 pr-2">{n.title}</h2>
-            {n.kakaoSent && (
-              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full shrink-0">
-                카카오 전송
-              </span>
-            )}
+            <h2 className="text-lg font-bold text-ink flex-1 pr-2">{n.title}</h2>
+            {n.kakaoSent && <Badge tone="warn" className="shrink-0">카카오 전송</Badge>}
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400 mb-4 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-2 text-xs text-ink-faint mb-4 pb-4 border-b border-line">
             <span>{n.createdAt?.slice(0, 10)}</span>
             <span>·</span>
             <span>{author?.name}</span>
             <span>·</span>
             <span>{targetLabel}</span>
           </div>
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{n.content}</p>
+          <p className="text-sm text-ink-soft leading-relaxed whitespace-pre-wrap">{n.content}</p>
         </div>
       </div>
       </Layout>
@@ -212,42 +200,40 @@ function CreateView({ user, onSubmit, onCancel }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-700">
-          ← 목록
-        </button>
-        <h1 className="text-xl font-bold text-[#2B2B2B]">공지 작성</h1>
-      </div>
+      <button onClick={onCancel} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">
+        ← 목록
+      </button>
+      <PageTitle title="공지 작성" />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* 제목 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
+          <label className="block text-sm font-medium text-ink-soft mb-1">제목</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="공지 제목을 입력하세요"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
             required
           />
         </div>
 
         {/* 내용 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">내용</label>
+          <label className="block text-sm font-medium text-ink-soft mb-1">내용</label>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="공지 내용을 입력하세요"
             rows={6}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4] resize-none"
+            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none"
             required
           />
         </div>
 
         {/* 대상 반 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">대상 반</label>
+          <label className="block text-sm font-medium text-ink-soft mb-2">대상 반</label>
           <div className="flex gap-2 flex-wrap">
             <button
               type="button"
@@ -258,8 +244,8 @@ function CreateView({ user, onSubmit, onCancel }) {
               }
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 selectedClasses.length === classes.length
-                  ? 'bg-[#2B2B2B] text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-ink text-white'
+                  : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
               }`}
             >
               전체
@@ -271,8 +257,8 @@ function CreateView({ user, onSubmit, onCancel }) {
                 onClick={() => toggleClass(c.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   selectedClasses.includes(c.id)
-                    ? 'bg-[#5B8FD4] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-navy text-white'
+                    : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
                 }`}
               >
                 {c.name}
@@ -280,16 +266,16 @@ function CreateView({ user, onSubmit, onCancel }) {
             ))}
           </div>
           {selectedClasses.length === 0 && (
-            <p className="text-xs text-[#C0392B] mt-1">대상 반을 하나 이상 선택해주세요.</p>
+            <p className="text-xs text-danger mt-1">대상 반을 하나 이상 선택해주세요.</p>
           )}
         </div>
 
-        {/* 카카오톡 알림톡 전송 */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        {/* 카카오톡 알림톡 전송 — 팔레트에 카카오 고유 노랑이 없어 warn(주의) 톤으로 대응한다 */}
+        <div className="bg-warn-soft border border-line rounded p-4">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <p className="text-sm font-medium text-gray-800">카카오톡 알림톡 전송</p>
-              <p className="text-xs text-gray-500">학생/학부모에게 카카오톡으로 공지를 발송합니다.</p>
+              <p className="text-sm font-medium text-ink-soft">카카오톡 알림톡 전송</p>
+              <p className="text-xs text-ink-mute">학생/학부모에게 카카오톡으로 공지를 발송합니다.</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -298,8 +284,8 @@ function CreateView({ user, onSubmit, onCancel }) {
                 onChange={(e) => { setSendKakao(e.target.checked); setKakaoSent(false) }}
                 className="sr-only"
               />
-              <div className={`w-10 h-6 rounded-full transition-colors ${sendKakao ? 'bg-yellow-500' : 'bg-gray-300'}`}>
-                <div className={`w-4 h-4 bg-white rounded-full m-1 transition-transform ${sendKakao ? 'translate-x-4' : ''}`} />
+              <div className={`w-10 h-6 rounded-full transition-colors ${sendKakao ? 'bg-warn' : 'bg-line'}`}>
+                <div className={`w-4 h-4 bg-surface rounded-full m-1 transition-transform ${sendKakao ? 'translate-x-4' : ''}`} />
               </div>
             </label>
           </div>
@@ -308,12 +294,12 @@ function CreateView({ user, onSubmit, onCancel }) {
               type="button"
               onClick={handleKakaoSend}
               disabled={kakaoSending || kakaoSent || !title.trim() || !content.trim()}
-              className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full py-2 rounded text-sm font-medium transition-colors ${
                 kakaoSent
-                  ? 'bg-green-500 text-white cursor-default'
+                  ? 'bg-navy text-white cursor-default'
                   : kakaoSending
-                  ? 'bg-yellow-300 text-yellow-800 cursor-wait'
-                  : 'bg-yellow-500 text-white hover:bg-yellow-600 disabled:opacity-40'
+                  ? 'bg-warn-soft text-warn cursor-wait'
+                  : 'bg-warn text-white hover:opacity-90 disabled:opacity-40'
               }`}
             >
               {kakaoSent ? '✓ 전송 완료' : kakaoSending ? '전송 중...' : '카카오톡 전송하기'}
@@ -321,13 +307,9 @@ function CreateView({ user, onSubmit, onCancel }) {
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={!title.trim() || !content.trim() || selectedClasses.length === 0 || submitting}
-          className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40"
-        >
+        <Button type="submit" disabled={!title.trim() || !content.trim() || selectedClasses.length === 0 || submitting} className="w-full">
           {submitting ? '저장 중...' : '공지 저장'}
-        </button>
+        </Button>
       </form>
     </div>
   )

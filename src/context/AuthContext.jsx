@@ -125,10 +125,10 @@ export function AuthProvider({ children }) {
   // 세션 확인 중에는 빈 화면 (깜빡임 방지)
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F4F3EE]">
+      <div className="min-h-screen flex items-center justify-center bg-surface-alt">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-[#5B8FD4] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-400">불러오는 중...</p>
+          <div className="w-8 h-8 border-2 border-navy border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-ink-faint">불러오는 중...</p>
         </div>
       </div>
     )

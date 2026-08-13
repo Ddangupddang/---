@@ -3,12 +3,14 @@ import { useState } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
+import Button from '../components/ui/Button'
 // ────────── SVG 꺾은선 그래프 ──────────
 // data: [{ label: 'MM-DD', value: 점수, max: 만점 }]
-function LineChart({ data, color = '#5B8FD4', height = 140 }) {
+// color는 SVG 속성이라 클래스가 아닌 CSS 변수(var(--color-*))로 토큰을 참조한다
+function LineChart({ data, color = 'var(--color-navy)', height = 140 }) {
   if (!data || data.length < 2) {
     return (
-      <div className="flex items-center justify-center text-xs text-gray-400" style={{ height }}>
+      <div className="flex items-center justify-center text-xs text-ink-faint" style={{ height }}>
         데이터가 2개 이상 있어야 그래프를 표시할 수 있습니다.
       </div>
     )
@@ -52,11 +54,11 @@ function LineChart({ data, color = '#5B8FD4', height = 140 }) {
           <line
             x1={PAD.left} y1={yAt(v).toFixed(1)}
             x2={W - PAD.right} y2={yAt(v).toFixed(1)}
-            stroke="#f0f0ef" strokeWidth="1"
+            stroke="var(--color-line-soft)" strokeWidth="1"
           />
           <text
             x={PAD.left - 4} y={yAt(v) + 4}
-            textAnchor="end" fontSize="9" fill="#b0b0a8"
+            textAnchor="end" fontSize="9" fill="var(--color-ink-faint)"
           >
             {v}
           </text>
@@ -79,7 +81,7 @@ function LineChart({ data, color = '#5B8FD4', height = 140 }) {
           {/* 날짜 X축 */}
           <text
             x={p.x} y={H - 4}
-            textAnchor="middle" fontSize="8" fill="#b0b0a8"
+            textAnchor="middle" fontSize="8" fill="var(--color-ink-faint)"
           >
             {p.label}
           </text>
@@ -94,7 +96,7 @@ function LineChart({ data, color = '#5B8FD4', height = 140 }) {
 
           {/* 원 */}
           <circle cx={p.x} cy={p.y} r="3.5" fill={color} />
-          <circle cx={p.x} cy={p.y} r="2"   fill="white" />
+          <circle cx={p.x} cy={p.y} r="2"   fill="var(--color-surface)" />
         </g>
       ))}
     </svg>
@@ -168,13 +170,13 @@ function Grades() {
     return (
       <Layout>
         {/* 탭 */}
-        <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm w-fit">
+        <div className="flex gap-1 mb-4 bg-surface border border-line rounded p-1 w-fit">
           {typeTabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveType(tab.key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeType === tab.key ? 'bg-[#2B2B2B] text-white' : 'text-gray-500'
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                activeType === tab.key ? 'bg-ink text-white' : 'text-ink-mute'
               }`}
             >
               {tab.label}
@@ -183,36 +185,36 @@ function Grades() {
         </div>
 
         {/* 성적 추이 그래프 */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">성적 추이</h2>
+        <div className="bg-surface border border-line rounded p-4 mb-4">
+          <h2 className="text-sm font-semibold text-ink-soft mb-3">성적 추이</h2>
           {myGrades.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">성적 기록이 없습니다.</p>
+            <p className="text-sm text-ink-faint text-center py-6">성적 기록이 없습니다.</p>
           ) : (
-            <LineChart data={chartData} color="#5B8FD4" />
+            <LineChart data={chartData} color="var(--color-navy)" />
           )}
         </div>
 
-        {/* 강점/약점 파트 */}
+        {/* 강점/약점 파트 — 팔레트에 초록이 없어 강점=navy(긍정)로 대응한다 */}
         {partAvgs.length > 0 && (
           <div className="flex gap-3 mb-4">
             {strong.length > 0 && (
-              <div className="flex-1 bg-green-50 border border-green-100 rounded-xl p-3">
-                <p className="text-xs font-semibold text-green-700 mb-2">💪 강점 파트</p>
+              <div className="flex-1 bg-navy-soft border border-line rounded p-3">
+                <p className="text-xs font-semibold text-navy mb-2">💪 강점 파트</p>
                 {strong.map((p) => (
                   <div key={p.part} className="flex justify-between items-center">
-                    <span className="text-xs text-gray-700">{p.part}</span>
-                    <span className="text-xs font-bold text-green-600">{p.avg}%</span>
+                    <span className="text-xs text-ink-soft">{p.part}</span>
+                    <span className="text-xs font-bold text-navy">{p.avg}%</span>
                   </div>
                 ))}
               </div>
             )}
             {weak.length > 0 && (
-              <div className="flex-1 bg-red-50 border border-red-100 rounded-xl p-3">
-                <p className="text-xs font-semibold text-[#C0392B] mb-2">📚 보완 파트</p>
+              <div className="flex-1 bg-danger-soft border border-line rounded p-3">
+                <p className="text-xs font-semibold text-danger mb-2">📚 보완 파트</p>
                 {weak.map((p) => (
                   <div key={p.part} className="flex justify-between items-center">
-                    <span className="text-xs text-gray-700">{p.part}</span>
-                    <span className="text-xs font-bold text-[#C0392B]">{p.avg}%</span>
+                    <span className="text-xs text-ink-soft">{p.part}</span>
+                    <span className="text-xs font-bold text-danger">{p.avg}%</span>
                   </div>
                 ))}
               </div>
@@ -221,29 +223,29 @@ function Grades() {
         )}
 
         {/* 성적 목록 */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-surface border border-line rounded overflow-hidden">
           {myGrades.length === 0 ? (
-            <div className="py-8 text-center text-gray-400 text-sm">성적 기록이 없습니다.</div>
+            <div className="py-8 text-center text-ink-faint text-sm">성적 기록이 없습니다.</div>
           ) : (
             [...myGrades].reverse().map((g) => ( // 최신순으로 역정렬해서 표시
               <div
                 key={g.id}
-                className="flex justify-between items-center px-4 py-3 border-b border-gray-50 last:border-0"
+                className="flex justify-between items-center px-4 py-3 border-b border-line-soft last:border-0"
               >
                 <div>
                   <span className="text-sm font-medium">{g.subject}</span>
-                  <span className="text-xs text-gray-400 ml-2">{g.part}</span>
-                  <div className="text-xs text-gray-400 mt-0.5">{g.date}</div>
+                  <span className="text-xs text-ink-faint ml-2">{g.part}</span>
+                  <div className="text-xs text-ink-faint mt-0.5">{g.date}</div>
                 </div>
                 <div className="text-right">
                   <div className={`text-lg font-bold ${
-                    (g.score / g.total) * 100 >= 80 ? 'text-[#5B8FD4]'
-                    : (g.score / g.total) * 100 >= 60 ? 'text-[#f39c12]'
-                    : 'text-[#C0392B]'
+                    (g.score / g.total) * 100 >= 80 ? 'text-navy'
+                    : (g.score / g.total) * 100 >= 60 ? 'text-warn'
+                    : 'text-danger'
                   }`}>
                     {g.score}점
                   </div>
-                  <div className="text-xs text-gray-400">/ {g.total}점</div>
+                  <div className="text-xs text-ink-faint">/ {g.total}점</div>
                 </div>
               </div>
             ))
@@ -283,13 +285,13 @@ function Grades() {
   return (
     <Layout>
       {/* 탭 */}
-      <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm w-fit">
+      <div className="flex gap-1 mb-4 bg-surface border border-line rounded p-1 w-fit">
         {typeTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveType(tab.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeType === tab.key ? 'bg-[#2B2B2B] text-white' : 'text-gray-500'
+            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+              activeType === tab.key ? 'bg-ink text-white' : 'text-ink-mute'
             }`}
           >
             {tab.label}
@@ -307,41 +309,38 @@ function Grades() {
                 onClick={() => setSelectedClass(cls.id)}
                 className={`px-3 py-1 rounded-full text-xs font-medium ${
                   activeClass === cls.id
-                    ? 'bg-[#2B2B2B] text-white'
-                    : 'bg-white text-gray-500 border border-gray-200'
+                    ? 'bg-ink text-white'
+                    : 'bg-surface text-ink-mute border border-line'
                 }`}
               >
                 {cls.name}
               </button>
             ))}
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="ml-auto px-4 py-2 bg-[#5B8FD4] text-white text-sm rounded-lg hover:bg-[#4a7ec3]"
-          >
+          <Button variant="accent" onClick={() => setShowForm(true)} className="ml-auto">
             + 성적 입력
-          </button>
+          </Button>
         </div>
 
         {/* 반 평균 추이 그래프 */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">
+        <div className="bg-surface border border-line rounded p-4">
+          <h2 className="text-sm font-semibold text-ink-soft mb-3">
             {classes.find((c) => c.id === activeClass)?.name} 평균 추이
           </h2>
           {avgChartData.length < 2 ? (
-            <p className="text-sm text-gray-400 text-center py-6">
+            <p className="text-sm text-ink-faint text-center py-6">
               데이터가 부족합니다. 성적을 더 입력하면 그래프가 표시됩니다.
             </p>
           ) : (
-            <LineChart data={avgChartData} color="#2B2B2B" />
+            <LineChart data={avgChartData} color="var(--color-ink)" />
           )}
         </div>
 
         {/* 학생별 성적 테이블 */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-surface border border-line rounded overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-gray-500 text-xs">
+              <tr className="border-b border-line text-ink-mute text-xs">
                 <th className="text-left px-4 py-3 font-medium">학생</th>
                 <th className="text-left px-4 py-3 font-medium">과목</th>
                 <th className="text-left px-4 py-3 font-medium hidden md:table-cell">파트</th>
@@ -358,27 +357,27 @@ function Grades() {
                   <tr
                     key={student.id}
                     onClick={() => setHistoryStudent(student)}
-                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer"
+                    className="border-b border-line-soft last:border-0 hover:bg-surface-alt cursor-pointer"
                   >
                     <td className="px-4 py-3 font-medium">{student.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{g?.subject ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-400 hidden md:table-cell text-xs">{g?.part ?? '—'}</td>
+                    <td className="px-4 py-3 text-ink-mute">{g?.subject ?? '—'}</td>
+                    <td className="px-4 py-3 text-ink-faint hidden md:table-cell text-xs">{g?.part ?? '—'}</td>
                     <td className="px-4 py-3">
                       {g ? (
                         <span className={`font-bold ${
-                          pct >= 80 ? 'text-green-600'
-                          : pct >= 60 ? 'text-[#f39c12]'
-                          : 'text-[#C0392B]'
+                          pct >= 80 ? 'text-navy'
+                          : pct >= 60 ? 'text-warn'
+                          : 'text-danger'
                         }`}>
                           {g.score}점
                         </span>
                       ) : (
-                        <span className="text-gray-300">미입력</span>
+                        <span className="text-ink-faint">미입력</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 hidden md:table-cell text-xs">
+                    <td className="px-4 py-3 text-ink-faint hidden md:table-cell text-xs">
                       {g?.date ?? '—'}
-                      {gradeCount > 1 && <span className="ml-1 text-[#5B8FD4]">+{gradeCount - 1}</span>}
+                      {gradeCount > 1 && <span className="ml-1 text-navy">+{gradeCount - 1}</span>}
                     </td>
                   </tr>
                 )
@@ -386,7 +385,7 @@ function Grades() {
             </tbody>
           </table>
           {classStudents.length === 0 && (
-            <div className="py-8 text-center text-gray-400 text-sm">해당 반에 학생이 없습니다.</div>
+            <div className="py-8 text-center text-ink-faint text-sm">해당 반에 학생이 없습니다.</div>
           )}
         </div>
       </div>
@@ -394,10 +393,10 @@ function Grades() {
       {/* 성적 기록 모달 (학생 행 클릭) */}
       {historyStudent && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[80vh] flex flex-col">
+          <div className="bg-surface rounded p-6 w-full max-w-sm max-h-[80vh] flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-[#2B2B2B]">{historyStudent.name} 성적 기록</h2>
-              <button onClick={() => setHistoryStudent(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+              <h2 className="font-bold text-ink">{historyStudent.name} 성적 기록</h2>
+              <button onClick={() => setHistoryStudent(null)} className="text-ink-faint hover:text-ink-mute text-lg">✕</button>
             </div>
             <div className="overflow-y-auto flex-1">
               {displayGrades
@@ -406,20 +405,20 @@ function Grades() {
                 .map((g) => {
                   const pct = Math.round((g.score / g.total) * 100)
                   return (
-                    <div key={g.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                    <div key={g.id} className="flex items-center justify-between py-3 border-b border-line-soft last:border-0">
                       <div>
-                        <p className="text-sm font-medium">{g.subject} {g.part && <span className="text-xs text-gray-400">· {g.part}</span>}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{g.date}</p>
+                        <p className="text-sm font-medium">{g.subject} {g.part && <span className="text-xs text-ink-faint">· {g.part}</span>}</p>
+                        <p className="text-xs text-ink-faint mt-0.5">{g.date}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`font-bold text-sm ${pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-[#f39c12]' : 'text-[#C0392B]'}`}>
+                        <span className={`font-bold text-sm ${pct >= 80 ? 'text-navy' : pct >= 60 ? 'text-warn' : 'text-danger'}`}>
                           {g.score}/{g.total}점
                         </span>
                         <button
                           onClick={() => {
                             if (confirm('이 성적을 삭제하시겠습니까?')) deleteGrade(g.id)
                           }}
-                          className="text-xs text-gray-300 hover:text-[#C0392B] transition-colors"
+                          className="text-xs text-ink-faint hover:text-danger transition-colors"
                         >
                           삭제
                         </button>
@@ -428,7 +427,7 @@ function Grades() {
                   )
                 })}
               {displayGrades.filter((g) => g.studentId === historyStudent.id).length === 0 && (
-                <p className="text-center text-gray-400 text-sm py-6">성적 기록이 없습니다.</p>
+                <p className="text-center text-ink-faint text-sm py-6">성적 기록이 없습니다.</p>
               )}
             </div>
           </div>
@@ -438,14 +437,14 @@ function Grades() {
       {/* 성적 입력 모달 */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <h2 className="font-bold text-[#2B2B2B] mb-4">성적 입력</h2>
+          <div className="bg-surface rounded p-6 w-full max-w-sm">
+            <h2 className="font-bold text-ink mb-4">성적 입력</h2>
             <form onSubmit={handleAdd} className="flex flex-col gap-3">
               <select
                 required
                 value={form.studentId}
                 onChange={(e) => setForm({ ...form, studentId: e.target.value })}
-                className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none"
+                className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none"
               >
                 <option value="">학생 선택</option>
                 {classStudents.map((s) => (
@@ -456,47 +455,38 @@ function Grades() {
                 required placeholder="과목 (예: 독서)"
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none"
+                className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none"
               />
               <input
                 placeholder="파트 (예: 현대문학)"
                 value={form.part}
                 onChange={(e) => setForm({ ...form, part: e.target.value })}
-                className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none"
+                className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none"
               />
               <div className="flex gap-2">
                 <input
                   required type="number" placeholder="점수" min="0"
                   value={form.score}
                   onChange={(e) => setForm({ ...form, score: e.target.value })}
-                  className="flex-1 h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none"
+                  className="flex-1 h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none"
                 />
                 <input
                   required type="number" placeholder="만점"
                   value={form.total}
                   onChange={(e) => setForm({ ...form, total: e.target.value })}
-                  className="w-20 h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none"
+                  className="w-20 h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none"
                 />
               </div>
               <input
                 type="date" value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none"
+                className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none"
               />
               <div className="flex gap-2 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="flex-1 h-11 border border-gray-200 rounded-lg text-sm text-gray-500"
-                >
+                <Button type="button" variant="ghost" onClick={() => setShowForm(false)} className="flex-1">
                   취소
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 h-11 bg-[#2B2B2B] text-white rounded-lg text-sm font-semibold"
-                >
-                  저장
-                </button>
+                </Button>
+                <Button type="submit" className="flex-1">저장</Button>
               </div>
             </form>
           </div>

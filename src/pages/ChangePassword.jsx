@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
+import Alert from '../components/ui/Alert'
+import Button from '../components/ui/Button'
 
 function ChangePassword() {
   const { user, changePassword } = useAuth()
@@ -50,85 +52,70 @@ function ChangePassword() {
   return (
     <Layout>
       <div className="max-w-sm mx-auto mt-6">
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h1 className="font-bold text-[#2B2B2B] text-lg mb-1">비밀번호 변경</h1>
+        <div className="bg-surface border border-line rounded p-6">
+          <h1 className="font-bold text-ink text-lg mb-1">비밀번호 변경</h1>
 
           {isFirstLogin && (
-            <div className="mb-4 px-3 py-2 bg-[#5B8FD4]/10 rounded-lg text-sm text-[#5B8FD4]">
+            <Alert tone="info" className="mb-4">
               처음 로그인하셨습니다. 보안을 위해 비밀번호를 변경해주세요.
-            </div>
+            </Alert>
           )}
 
           {done ? (
             <div className="flex flex-col items-center gap-4 py-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">✓</div>
-              <p className="text-sm text-gray-600 text-center">비밀번호가 성공적으로 변경됐습니다.</p>
-              <button
-                onClick={handleDone}
-                className="w-full h-11 bg-[#2B2B2B] text-white rounded-xl text-sm font-semibold"
-              >
-                대시보드로 이동
-              </button>
+              <div className="w-12 h-12 bg-navy-soft rounded-full flex items-center justify-center text-2xl text-navy">✓</div>
+              <p className="text-sm text-ink-soft text-center">비밀번호가 성공적으로 변경됐습니다.</p>
+              <Button onClick={handleDone} className="w-full">대시보드로 이동</Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3 mt-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">현재 비밀번호</label>
+                <label className="block text-xs font-medium text-ink-mute mb-1">현재 비밀번호</label>
                 <input
                   required
                   type="password"
                   value={form.current}
                   onChange={(e) => setForm({ ...form, current: e.target.value })}
-                  className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+                  className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none focus:ring-2 focus:ring-navy"
                   autoComplete="current-password"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">새 비밀번호 (6자 이상)</label>
+                <label className="block text-xs font-medium text-ink-mute mb-1">새 비밀번호 (6자 이상)</label>
                 <input
                   required
                   type="password"
                   minLength={6}
                   value={form.next}
                   onChange={(e) => setForm({ ...form, next: e.target.value })}
-                  className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+                  className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none focus:ring-2 focus:ring-navy"
                   autoComplete="new-password"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">새 비밀번호 확인</label>
+                <label className="block text-xs font-medium text-ink-mute mb-1">새 비밀번호 확인</label>
                 <input
                   required
                   type="password"
                   minLength={6}
                   value={form.confirm}
                   onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-                  className="w-full h-11 px-3 bg-[#F4F3EE] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+                  className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none focus:ring-2 focus:ring-navy"
                   autoComplete="new-password"
                 />
               </div>
 
-              {error && (
-                <p className="text-sm text-[#C0392B]">{error}</p>
-              )}
+              {error && <Alert tone="danger">{error}</Alert>}
 
               <div className="flex gap-2 mt-1">
                 {!isFirstLogin && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className="flex-1 h-11 border border-gray-200 rounded-xl text-sm text-gray-500 hover:bg-gray-50"
-                  >
+                  <Button type="button" variant="ghost" onClick={() => navigate(-1)} className="flex-1">
                     취소
-                  </button>
+                  </Button>
                 )}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 h-11 bg-[#2B2B2B] text-white rounded-xl text-sm font-semibold disabled:opacity-40"
-                >
+                <Button type="submit" disabled={loading} className="flex-1">
                   {loading ? '변경 중...' : '비밀번호 변경'}
-                </button>
+                </Button>
               </div>
             </form>
           )}

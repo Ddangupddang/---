@@ -73,11 +73,11 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
             key={number}
             data-testid={`cell-${number}`}
             onClick={() => mode === 'input' && setFocused(number)}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${
-              isFocused ? 'ring-2 ring-[#5B8FD4] bg-[#5B8FD4]/5' : ''
+            className={`flex items-center gap-2 px-2 py-1.5 rounded ${
+              isFocused ? 'ring-2 ring-navy bg-navy-soft' : ''
             }`}
           >
-            <span className="text-xs font-semibold text-gray-500 w-7 shrink-0">{number}번</span>
+            <span className="text-xs font-semibold text-ink-mute w-7 shrink-0">{number}번</span>
             <div className="flex gap-1">
               {CHOICES.map((choice) => (
                 <button

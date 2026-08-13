@@ -7,6 +7,8 @@ import VideoPlayer from '../components/VideoPlayer'
 import VideoForm from '../components/VideoForm'
 import { extractVideoId, getThumbnailUrl } from '../utils/youtube'
 import Layout from '../components/Layout'
+import PageTitle from '../components/ui/PageTitle'
+import Button from '../components/ui/Button'
 
 export default function Videos() {
   const { user } = useAuth()
@@ -84,22 +86,17 @@ export default function Videos() {
     <Layout>
     <div>
       {/* 헤더 */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold text-[#2B2B2B]">영상 관리</h1>
+      <div className="flex justify-between items-center mb-4">
+        <PageTitle title="영상 관리" />
         {(user.role === 'teacher' || user.role === 'admin') && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-[#2B2B2B] text-white rounded-lg text-sm"
-          >
-            + 영상 등록
-          </button>
+          <Button onClick={() => setShowForm(true)}>+ 영상 등록</Button>
         )}
       </div>
 
       {/* 영상 등록 모달 */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface rounded p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <VideoForm
               classes={accessibleClasses}
               onSubmit={handleAddVideo}
@@ -116,8 +113,8 @@ export default function Videos() {
             onClick={() => setSelectedClassId('all')}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               selectedClassId === 'all'
-                ? 'bg-[#2B2B2B] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-ink text-white'
+                : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
             }`}
           >
             전체
@@ -129,8 +126,8 @@ export default function Videos() {
             onClick={() => setSelectedClassId(String(c.id))}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               selectedClassId === String(c.id)
-                ? 'bg-[#2B2B2B] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-ink text-white'
+                : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
             }`}
           >
             {c.name}
@@ -140,7 +137,7 @@ export default function Videos() {
 
       {/* 영상 그리드 */}
       {filteredVideos.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">등록된 영상이 없어요.</p>
+        <p className="text-center text-ink-faint py-12">등록된 영상이 없어요.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredVideos.map((video) => {

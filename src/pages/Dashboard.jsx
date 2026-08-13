@@ -4,6 +4,7 @@ import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import StudentHomeworkCard from '../components/homework/StudentHomeworkCard'
+import PageTitle from '../components/ui/PageTitle'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -60,37 +61,37 @@ function AdminTeacherDashboard({ user }) {
 
       {/* 요약 통계 그리드 — 항상 표시 */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl p-4 shadow-sm text-center">
-          <p className="text-2xl font-bold text-[#2B2B2B]">{totalStudents}</p>
-          <p className="text-xs text-gray-400 mt-0.5">전체 학생</p>
+        <div className="bg-surface border border-line rounded p-4 text-center">
+          <p className="text-2xl font-bold text-ink">{totalStudents}</p>
+          <p className="text-xs text-ink-faint mt-0.5">전체 학생</p>
         </div>
         <button
           onClick={() => navigate('/tests')}
-          className={`rounded-xl p-4 shadow-sm text-center transition-colors ${
+          className={`rounded p-4 text-center border transition-colors ${
             ungradedCount > 0
-              ? 'bg-[#C0392B]/10 hover:bg-[#C0392B]/15'
-              : 'bg-white hover:bg-gray-50'
+              ? 'bg-danger-soft border-line hover:opacity-90'
+              : 'bg-surface border-line hover:bg-surface-alt'
           }`}
         >
-          <p className={`text-2xl font-bold ${ungradedCount > 0 ? 'text-[#C0392B]' : 'text-[#2B2B2B]'}`}>
+          <p className={`text-2xl font-bold ${ungradedCount > 0 ? 'text-danger' : 'text-ink'}`}>
             {ungradedCount}
           </p>
-          <p className={`text-xs mt-0.5 ${ungradedCount > 0 ? 'text-[#C0392B]/70' : 'text-gray-400'}`}>
+          <p className={`text-xs mt-0.5 ${ungradedCount > 0 ? 'text-danger' : 'text-ink-faint'}`}>
             미채점
           </p>
         </button>
         <button
           onClick={() => navigate('/qna')}
-          className={`rounded-xl p-4 shadow-sm text-center transition-colors ${
+          className={`rounded p-4 text-center border transition-colors ${
             unansweredQna > 0
-              ? 'bg-[#f39c12]/10 hover:bg-[#f39c12]/15'
-              : 'bg-white hover:bg-gray-50'
+              ? 'bg-warn-soft border-line hover:opacity-90'
+              : 'bg-surface border-line hover:bg-surface-alt'
           }`}
         >
-          <p className={`text-2xl font-bold ${unansweredQna > 0 ? 'text-[#f39c12]' : 'text-[#2B2B2B]'}`}>
+          <p className={`text-2xl font-bold ${unansweredQna > 0 ? 'text-warn' : 'text-ink'}`}>
             {unansweredQna}
           </p>
-          <p className={`text-xs mt-0.5 ${unansweredQna > 0 ? 'text-[#f39c12]/70' : 'text-gray-400'}`}>
+          <p className={`text-xs mt-0.5 ${unansweredQna > 0 ? 'text-warn' : 'text-ink-faint'}`}>
             미답변 Q&A
           </p>
         </button>
@@ -98,11 +99,11 @@ function AdminTeacherDashboard({ user }) {
 
       {/* 오늘 출결 현황 */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-500 mb-2">
-          오늘 출결 · <span className="text-[#2B2B2B]">{today}</span>
+        <h2 className="text-sm font-semibold text-ink-mute mb-2">
+          오늘 출결 · <span className="text-ink">{today}</span>
         </h2>
         {myClasses.length === 0 ? (
-          <div className="bg-white rounded-xl p-6 text-center text-gray-400 text-sm">
+          <div className="bg-surface border border-line rounded p-6 text-center text-ink-faint text-sm">
             담당 반이 없습니다.
           </div>
         ) : (
@@ -121,30 +122,30 @@ function AdminTeacherDashboard({ user }) {
                 <button
                   key={cls.id}
                   onClick={() => navigate('/attendance')}
-                  className="bg-white rounded-xl p-4 shadow-sm text-left hover:shadow-md transition-shadow"
+                  className="bg-surface border border-line rounded p-4 text-left hover:bg-surface-alt transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-[#2B2B2B]">{cls.name}</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">학생 {total}명</p>
+                      <h3 className="font-bold text-ink">{cls.name}</h3>
+                      <p className="text-xs text-ink-faint mt-0.5">학생 {total}명</p>
                     </div>
                     <div className="flex gap-4">
                       <div className="text-center">
-                        <div className="text-xl font-bold text-[#27ae60]">{present}</div>
-                        <div className="text-xs text-gray-400">출석</div>
+                        <div className="text-xl font-bold text-navy">{present}</div>
+                        <div className="text-xs text-ink-faint">출석</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-xl font-bold text-[#C0392B]">{absent}</div>
-                        <div className="text-xs text-gray-400">결석</div>
+                        <div className="text-xl font-bold text-danger">{absent}</div>
+                        <div className="text-xs text-ink-faint">결석</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-xl font-bold text-[#f39c12]">{late}</div>
-                        <div className="text-xs text-gray-400">지각</div>
+                        <div className="text-xl font-bold text-warn">{late}</div>
+                        <div className="text-xs text-ink-faint">지각</div>
                       </div>
                     </div>
                   </div>
                   {todayRecs.length === 0 && (
-                    <p className="mt-2 text-xs text-gray-400 italic">오늘 출결 미기록</p>
+                    <p className="mt-2 text-xs text-ink-faint italic">오늘 출결 미기록</p>
                   )}
                 </button>
               )
@@ -156,16 +157,16 @@ function AdminTeacherDashboard({ user }) {
       {/* 최근 테스트 */}
       <section>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-sm font-semibold text-gray-500">최근 테스트</h2>
+          <h2 className="text-sm font-semibold text-ink-mute">최근 테스트</h2>
           <button
             onClick={() => navigate('/tests')}
-            className="text-xs text-[#5B8FD4] hover:underline"
+            className="text-xs text-navy hover:underline"
           >
             전체 보기
           </button>
         </div>
         {recentTests.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">테스트가 없습니다.</p>
+          <p className="text-sm text-ink-faint text-center py-4">테스트가 없습니다.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {recentTests.map((test) => {
@@ -177,24 +178,24 @@ function AdminTeacherDashboard({ user }) {
                 <button
                   key={test.id}
                   onClick={() => navigate('/tests')}
-                  className="bg-white rounded-xl p-3 shadow-sm text-left hover:shadow-md transition-shadow flex justify-between items-center"
+                  className="bg-surface border border-line rounded p-3 text-left hover:bg-surface-alt transition-colors flex justify-between items-center"
                 >
                   <div>
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs text-gray-400">{cls?.name}</span>
-                      <span className="text-xs text-gray-300">·</span>
-                      <span className="text-xs text-gray-400">{test.date}</span>
+                      <span className="text-xs text-ink-faint">{cls?.name}</span>
+                      <span className="text-xs text-ink-faint">·</span>
+                      <span className="text-xs text-ink-faint">{test.date}</span>
                     </div>
-                    <p className="text-sm font-medium text-[#2B2B2B]">{test.title}</p>
+                    <p className="text-sm font-medium text-ink">{test.title}</p>
                   </div>
                   <div className="text-right ml-3 shrink-0">
                     {avg ? (
                       <>
-                        <p className="text-sm font-bold text-[#5B8FD4]">{avg.avg}점</p>
-                        <p className="text-xs text-gray-400">평균 / {avg.total}점</p>
+                        <p className="text-sm font-bold text-navy">{avg.avg}점</p>
+                        <p className="text-xs text-ink-faint">평균 / {avg.total}점</p>
                       </>
                     ) : (
-                      <span className="text-xs text-gray-400">{badge[test.status]}</span>
+                      <span className="text-xs text-ink-faint">{badge[test.status]}</span>
                     )}
                   </div>
                 </button>
@@ -207,26 +208,26 @@ function AdminTeacherDashboard({ user }) {
       {/* 최근 공지사항 */}
       <section>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-sm font-semibold text-gray-500">최근 공지사항</h2>
+          <h2 className="text-sm font-semibold text-ink-mute">최근 공지사항</h2>
           <button
             onClick={() => navigate('/notices')}
-            className="text-xs text-[#5B8FD4] hover:underline"
+            className="text-xs text-navy hover:underline"
           >
             전체 보기
           </button>
         </div>
         {recentNotices.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">공지사항이 없습니다.</p>
+          <p className="text-sm text-ink-faint text-center py-4">공지사항이 없습니다.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {recentNotices.map((n) => (
               <button
                 key={n.id}
                 onClick={() => navigate('/notices')}
-                className="bg-white rounded-xl p-3 shadow-sm text-left hover:shadow-md transition-shadow flex justify-between items-center"
+                className="bg-surface border border-line rounded p-3 text-left hover:bg-surface-alt transition-colors flex justify-between items-center"
               >
-                <p className="text-sm font-medium text-[#2B2B2B] line-clamp-1 flex-1">{n.title}</p>
-                <span className="text-xs text-gray-400 ml-3 shrink-0">{n.createdAt.slice(0, 10)}</span>
+                <p className="text-sm font-medium text-ink line-clamp-1 flex-1">{n.title}</p>
+                <span className="text-xs text-ink-faint ml-3 shrink-0">{n.createdAt.slice(0, 10)}</span>
               </button>
             ))}
           </div>
@@ -291,27 +292,27 @@ function StudentDashboard({ user }) {
       {/* 이번 달 출결 */}
       <button
         onClick={() => navigate('/attendance')}
-        className="bg-white rounded-xl p-4 shadow-sm text-left hover:shadow-md transition-shadow"
+        className="bg-surface border border-line rounded p-4 text-left hover:bg-surface-alt transition-colors"
       >
         <div className="flex justify-between items-center mb-3">
-          <h3 className="font-bold text-[#2B2B2B]">이번 달 출결</h3>
-          <span className="text-2xl font-bold text-[#5B8FD4]">{rate}%</span>
+          <h3 className="font-bold text-ink">이번 달 출결</h3>
+          <span className="text-2xl font-bold text-navy">{rate}%</span>
         </div>
         {total === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-1">이번 달 출결 기록이 없습니다.</p>
+          <p className="text-sm text-ink-faint text-center py-1">이번 달 출결 기록이 없습니다.</p>
         ) : (
           <div className="flex justify-around">
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#27ae60]">{present}</div>
-              <div className="text-xs text-gray-400">출석</div>
+              <div className="text-2xl font-bold text-navy">{present}</div>
+              <div className="text-xs text-ink-faint">출석</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#C0392B]">{absent}</div>
-              <div className="text-xs text-gray-400">결석</div>
+              <div className="text-2xl font-bold text-danger">{absent}</div>
+              <div className="text-xs text-ink-faint">결석</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-[#f39c12]">{late}</div>
-              <div className="text-xs text-gray-400">지각</div>
+              <div className="text-2xl font-bold text-warn">{late}</div>
+              <div className="text-xs text-ink-faint">지각</div>
             </div>
           </div>
         )}
@@ -320,13 +321,13 @@ function StudentDashboard({ user }) {
       {/* 최근 테스트 결과 */}
       <section>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-sm font-semibold text-gray-500">최근 테스트 결과</h2>
-          <button onClick={() => navigate('/tests')} className="text-xs text-[#5B8FD4] hover:underline">
+          <h2 className="text-sm font-semibold text-ink-mute">최근 테스트 결과</h2>
+          <button onClick={() => navigate('/tests')} className="text-xs text-navy hover:underline">
             전체 보기
           </button>
         </div>
         {myTestResults.length === 0 ? (
-          <div className="bg-white rounded-xl p-4 text-center text-sm text-gray-400">
+          <div className="bg-surface border border-line rounded p-4 text-center text-sm text-ink-faint">
             채점된 테스트 결과가 없습니다.
           </div>
         ) : (
@@ -335,15 +336,15 @@ function StudentDashboard({ user }) {
               <button
                 key={test?.id}
                 onClick={() => navigate('/tests')}
-                className="bg-white rounded-xl p-3 shadow-sm text-left hover:shadow-md transition-shadow flex justify-between items-center"
+                className="bg-surface border border-line rounded p-3 text-left hover:bg-surface-alt transition-colors flex justify-between items-center"
               >
                 <div>
-                  <p className="text-sm font-medium text-[#2B2B2B]">{test?.title}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{submittedAt.slice(0, 10)}</p>
+                  <p className="text-sm font-medium text-ink">{test?.title}</p>
+                  <p className="text-xs text-ink-faint mt-0.5">{submittedAt.slice(0, 10)}</p>
                 </div>
                 <div className="text-right ml-3 shrink-0">
-                  <p className="text-sm font-bold text-[#5B8FD4]">{myScore}점</p>
-                  <p className="text-xs text-gray-400">/ {totalPoints}점</p>
+                  <p className="text-sm font-bold text-navy">{myScore}점</p>
+                  <p className="text-xs text-ink-faint">/ {totalPoints}점</p>
                 </div>
               </button>
             ))}
@@ -354,26 +355,26 @@ function StudentDashboard({ user }) {
       {/* 최근 내신 성적 */}
       <section>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-sm font-semibold text-gray-500">최근 성적</h2>
-          <button onClick={() => navigate('/grades')} className="text-xs text-[#5B8FD4] hover:underline">
+          <h2 className="text-sm font-semibold text-ink-mute">최근 성적</h2>
+          <button onClick={() => navigate('/grades')} className="text-xs text-navy hover:underline">
             전체 보기
           </button>
         </div>
         {myGrades.length === 0 ? (
-          <div className="bg-white rounded-xl p-4 text-center text-sm text-gray-400">
+          <div className="bg-surface border border-line rounded p-4 text-center text-sm text-ink-faint">
             등록된 성적이 없습니다.
           </div>
         ) : (
-          <div className="bg-white rounded-xl p-3 shadow-sm flex flex-col gap-2">
+          <div className="bg-surface border border-line rounded p-3 flex flex-col gap-2">
             {myGrades.map((g) => (
               <div key={g.id} className="flex justify-between items-center">
                 <div>
-                  <span className="text-sm font-medium text-[#2B2B2B]">{g.subject}</span>
-                  <span className="text-xs text-gray-400 ml-2">{g.part}</span>
+                  <span className="text-sm font-medium text-ink">{g.subject}</span>
+                  <span className="text-xs text-ink-faint ml-2">{g.part}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-[#5B8FD4]">{g.score}점</span>
-                  <span className="text-xs text-gray-400">{g.date}</span>
+                  <span className="text-sm font-bold text-navy">{g.score}점</span>
+                  <span className="text-xs text-ink-faint">{g.date}</span>
                 </div>
               </div>
             ))}
@@ -384,13 +385,13 @@ function StudentDashboard({ user }) {
       {/* 답변받은 Q&A */}
       <section>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-sm font-semibold text-gray-500">Q&A 답변</h2>
-          <button onClick={() => navigate('/qna')} className="text-xs text-[#5B8FD4] hover:underline">
+          <h2 className="text-sm font-semibold text-ink-mute">Q&A 답변</h2>
+          <button onClick={() => navigate('/qna')} className="text-xs text-navy hover:underline">
             전체 보기
           </button>
         </div>
         {answeredQna.length === 0 ? (
-          <div className="bg-white rounded-xl p-4 text-center text-sm text-gray-400">
+          <div className="bg-surface border border-line rounded p-4 text-center text-sm text-ink-faint">
             받은 Q&A 답변이 없습니다.
           </div>
         ) : (
@@ -401,12 +402,12 @@ function StudentDashboard({ user }) {
                 <button
                   key={q.id}
                   onClick={() => navigate('/qna')}
-                  className="bg-[#5B8FD4]/10 border border-[#5B8FD4]/20 rounded-xl p-3 text-left hover:bg-[#5B8FD4]/15 transition-colors"
+                  className="bg-navy-soft border border-line rounded p-3 text-left hover:opacity-90 transition-opacity"
                 >
-                  <p className="text-xs text-[#5B8FD4] font-medium mb-1">
+                  <p className="text-xs text-navy font-medium mb-1">
                     답변 완료 · {test?.title ?? 'Q&A'}
                   </p>
-                  <p className="text-sm text-[#2B2B2B] line-clamp-1">{q.content}</p>
+                  <p className="text-sm text-ink line-clamp-1">{q.content}</p>
                 </button>
               )
             })}
@@ -417,13 +418,13 @@ function StudentDashboard({ user }) {
       {/* 최근 공지사항 */}
       <section>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-sm font-semibold text-gray-500">공지사항</h2>
-          <button onClick={() => navigate('/notices')} className="text-xs text-[#5B8FD4] hover:underline">
+          <h2 className="text-sm font-semibold text-ink-mute">공지사항</h2>
+          <button onClick={() => navigate('/notices')} className="text-xs text-navy hover:underline">
             전체 보기
           </button>
         </div>
         {recentNotices.length === 0 ? (
-          <div className="bg-white rounded-xl p-4 text-center text-sm text-gray-400">
+          <div className="bg-surface border border-line rounded p-4 text-center text-sm text-ink-faint">
             공지사항이 없습니다.
           </div>
         ) : (
@@ -432,10 +433,10 @@ function StudentDashboard({ user }) {
               <button
                 key={n.id}
                 onClick={() => navigate('/notices')}
-                className="bg-white rounded-xl p-3 shadow-sm text-left hover:shadow-md transition-shadow flex justify-between items-center"
+                className="bg-surface border border-line rounded p-3 text-left hover:bg-surface-alt transition-colors flex justify-between items-center"
               >
-                <p className="text-sm font-medium text-[#2B2B2B] line-clamp-1 flex-1">{n.title}</p>
-                <span className="text-xs text-gray-400 ml-3 shrink-0">
+                <p className="text-sm font-medium text-ink line-clamp-1 flex-1">{n.title}</p>
+                <span className="text-xs text-ink-faint ml-3 shrink-0">
                   {n.createdAt.slice(0, 10)}
                 </span>
               </button>
@@ -453,9 +454,7 @@ function Dashboard() {
 
   return (
     <Layout>
-      <h1 className="text-xl font-bold text-[#2B2B2B] mb-5">
-        {user?.role === 'student' ? `안녕하세요, ${user.name}님` : '대시보드'}
-      </h1>
+      <PageTitle title={user?.role === 'student' ? `안녕하세요, ${user.name}님` : '대시보드'} />
       {user?.role === 'student'
         ? <StudentDashboard user={user} />
         : <AdminTeacherDashboard user={user} />

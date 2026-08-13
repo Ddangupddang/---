@@ -29,7 +29,7 @@ export default function VideoPlayer({
     <div>
       <button
         onClick={onBack}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#2B2B2B] mb-4 transition-colors"
+        className="flex items-center gap-1 text-sm text-ink-mute hover:text-ink mb-4 transition-colors"
       >
         ← 목록으로
       </button>
@@ -38,7 +38,7 @@ export default function VideoPlayer({
       <div className="flex flex-col lg:flex-row gap-6">
         {/* 플레이어 영역 */}
         <div className="lg:w-2/3">
-          <div className="aspect-video w-full bg-black rounded-xl overflow-hidden">
+          <div className="aspect-video w-full bg-black rounded overflow-hidden">
             <iframe
               src={`https://www.youtube.com/embed/${video.videoId}`}
               title={video.title}
@@ -47,7 +47,7 @@ export default function VideoPlayer({
               className="w-full h-full"
             />
           </div>
-          <h2 className="mt-3 text-lg font-bold text-[#2B2B2B]">{video.title}</h2>
+          <h2 className="mt-3 text-lg font-bold text-ink">{video.title}</h2>
         </div>
 
         {/* 댓글 영역 */}

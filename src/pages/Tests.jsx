@@ -3,12 +3,15 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
+import PageTitle from '../components/ui/PageTitle'
+import Button from '../components/ui/Button'
+import Badge from '../components/ui/Badge'
 
-// 상태 배지 색상
+// 상태 배지 톤 — 팔레트에 초록이 없어 진행중=navy(긍정)로 대응한다
 const statusBadge = {
-  ready:  { label: '준비중', color: 'bg-gray-100 text-gray-600' },
-  active: { label: '진행중', color: 'bg-green-100 text-green-700' },
-  closed: { label: '종료',   color: 'bg-red-100 text-red-600' },
+  ready:  { label: '준비중', tone: 'neutral' },
+  active: { label: '진행중', tone: 'navy' },
+  closed: { label: '종료',   tone: 'danger' },
 }
 
 export default function Tests() {
@@ -64,15 +67,10 @@ export default function Tests() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-bold text-[#2B2B2B]">테스트</h1>
+        <div className="flex justify-between items-center mb-4">
+          <PageTitle title="테스트" />
           {(user.role === 'teacher' || user.role === 'admin') && (
-            <button
-              onClick={() => setView('create')}
-              className="px-4 py-2 bg-[#2B2B2B] text-white rounded-lg text-sm"
-            >
-              + 테스트 만들기
-            </button>
+            <Button onClick={() => setView('create')}>+ 테스트 만들기</Button>
           )}
         </div>
 
@@ -83,8 +81,8 @@ export default function Tests() {
               onClick={() => setFilterClassId('all')}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 filterClassId === 'all'
-                  ? 'bg-[#2B2B2B] text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-ink text-white'
+                  : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
               }`}
             >
               전체
@@ -95,8 +93,8 @@ export default function Tests() {
                 onClick={() => setFilterClassId(String(c.id))}
                 className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                   filterClassId === String(c.id)
-                    ? 'bg-[#2B2B2B] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-ink text-white'
+                    : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
                 }`}
               >
                 {c.name}
@@ -107,7 +105,7 @@ export default function Tests() {
 
         {/* 테스트 목록 */}
         {filteredTests.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">테스트가 없습니다.</p>
+          <p className="text-center text-ink-faint py-12">테스트가 없습니다.</p>
         ) : (
           <div className="flex flex-col gap-3">
             {filteredTests.map((test) => {
@@ -131,18 +129,16 @@ export default function Tests() {
                       setView('submissions')
                     }
                   }}
-                  className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                  className="bg-surface border border-line rounded p-4 cursor-pointer hover:bg-surface-alt transition-colors"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
-                          {badge.label}
-                        </span>
-                        <span className="text-xs text-gray-400">{cls?.name}</span>
+                        <Badge tone={badge.tone}>{badge.label}</Badge>
+                        <span className="text-xs text-ink-faint">{cls?.name}</span>
                       </div>
-                      <p className="font-semibold text-[#2B2B2B]">{test.title}</p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="font-semibold text-ink">{test.title}</p>
+                      <p className="text-xs text-ink-faint mt-1">
                         {test.date} · {test.questions.length}문항 ·{' '}
                         {test.timeLimit ? `${test.timeLimit}분` : '시간 제한 없음'}
                       </p>
@@ -151,7 +147,7 @@ export default function Tests() {
                     {user.role !== 'student' && (
                       <div className="flex flex-col items-end gap-2 ml-3">
                         {ungraded > 0 && (
-                          <span className="text-xs bg-[#C0392B] text-white px-2 py-0.5 rounded-full">
+                          <span className="text-xs bg-danger text-white px-2 py-0.5 rounded-full">
                             미채점 {ungraded}
                           </span>
                         )}
@@ -161,7 +157,7 @@ export default function Tests() {
                               e.stopPropagation()
                               updateTestStatus(test.id, 'active', new Date().toISOString())
                             }}
-                            className="text-xs px-3 py-1 bg-green-600 text-white rounded-lg"
+                            className="text-xs px-3 py-1 bg-navy text-white rounded"
                           >
                             시작
                           </button>
@@ -172,7 +168,7 @@ export default function Tests() {
                               e.stopPropagation()
                               updateTestStatus(test.id, 'closed')
                             }}
-                            className="text-xs px-3 py-1 bg-[#C0392B] text-white rounded-lg"
+                            className="text-xs px-3 py-1 bg-danger text-white rounded"
                           >
                             종료
                           </button>
@@ -185,7 +181,7 @@ export default function Tests() {
                                 deleteTest(test.id)
                               }
                             }}
-                            className="text-xs px-3 py-1 text-gray-400 hover:text-[#C0392B] hover:bg-red-50 rounded-lg transition-colors"
+                            className="text-xs px-3 py-1 text-ink-faint hover:text-danger hover:bg-danger-soft rounded transition-colors"
                           >
                             삭제
                           </button>
@@ -194,7 +190,7 @@ export default function Tests() {
                     )}
 
                     {user.role === 'student' && (
-                      <div className="ml-3 text-xs text-gray-400">
+                      <div className="ml-3 text-xs text-ink-faint">
                         {mySub
                           ? mySub.scores.length > 0 ? '✅ 채점 완료' : '📝 제출 완료'
                           : test.status === 'active' ? '▶ 응시 가능' : '-'}
@@ -238,16 +234,13 @@ export default function Tests() {
     return (
       <Layout>
       <div>
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView('list')} className="text-sm text-gray-500 hover:text-gray-700">
-            ← 목록
-          </button>
-          <h1 className="text-xl font-bold text-[#2B2B2B]">{selectedTest.title}</h1>
-        </div>
-        <h2 className="text-base font-semibold text-gray-700 mb-4">제출 목록</h2>
+        <button onClick={() => setView('list')} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">
+          ← 목록
+        </button>
+        <PageTitle title={selectedTest.title} lead="제출 목록" />
 
         {testSubs.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">제출한 학생이 없습니다.</p>
+          <p className="text-center text-ink-faint py-12">제출한 학생이 없습니다.</p>
         ) : (
           <div className="flex flex-col gap-3">
             {testSubs.map((sub) => {
@@ -262,22 +255,22 @@ export default function Tests() {
                     setSelectedSubmission(sub)
                     setView('grade')
                   }}
-                  className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow flex justify-between items-center"
+                  className="bg-surface border border-line rounded p-4 cursor-pointer hover:bg-surface-alt transition-colors flex justify-between items-center"
                 >
                   <div>
-                    <p className="font-medium text-[#2B2B2B]">{student?.name ?? '알 수 없음'}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="font-medium text-ink">{student?.name ?? '알 수 없음'}</p>
+                    <p className="text-xs text-ink-faint mt-0.5">
                       {sub.submittedAt?.slice(0, 16).replace('T', ' ')}
                     </p>
                   </div>
                   <div className="text-right">
                     {isGraded ? (
                       <>
-                        <p className="font-bold text-[#2B2B2B]">{totalScore}점</p>
-                        <p className="text-xs text-gray-400">/ {totalPoints}점</p>
+                        <p className="font-bold text-ink">{totalScore}점</p>
+                        <p className="text-xs text-ink-faint">/ {totalPoints}점</p>
                       </>
                     ) : (
-                      <span className="text-xs bg-[#C0392B] text-white px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-danger text-white px-2 py-0.5 rounded-full">
                         미채점
                       </span>
                     )}
@@ -409,16 +402,16 @@ function TakeView({ test, onSubmit, onBack }) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <div>
-          <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700 mb-1 block">
+          <button onClick={onBack} className="text-sm text-ink-mute hover:text-ink-soft mb-1 block">
             ← 목록
           </button>
-          <h1 className="text-xl font-bold text-[#2B2B2B]">{test.title}</h1>
+          <PageTitle title={test.title} />
         </div>
         {timeLeft !== null && (
-          <div className={`text-xl font-mono font-bold px-4 py-2 rounded-xl ${
-            timeLeft <= 60 ? 'bg-red-100 text-[#C0392B]' : 'bg-gray-100 text-[#2B2B2B]'
+          <div className={`text-xl font-mono font-bold px-4 py-2 rounded ${
+            timeLeft <= 60 ? 'bg-danger-soft text-danger' : 'bg-surface-alt text-ink'
           }`}>
             {formatTime(timeLeft)}
           </div>
@@ -429,12 +422,12 @@ function TakeView({ test, onSubmit, onBack }) {
         {test.questions.map((q, idx) => {
           const myAnswer = answers.find((a) => a.questionId === q.id)?.answer ?? ''
           return (
-            <div key={q.id} className="bg-white rounded-xl p-4 shadow-sm">
+            <div key={q.id} className="bg-surface border border-line rounded p-4">
               <div className="flex justify-between items-center mb-3">
-                <span className="font-semibold text-[#2B2B2B]">
+                <span className="font-semibold text-ink">
                   {idx + 1}번{q.content ? ` — ${q.content}` : ''}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-ink-faint">
                   {q.points}점 · {q.type === 'mc' ? '객관식' : '주관식'}
                 </span>
               </div>
@@ -447,8 +440,8 @@ function TakeView({ test, onSubmit, onBack }) {
                       onClick={() => setAnswer(q.id, c)}
                       className={`w-10 h-10 rounded-full text-base font-medium transition-colors ${
                         myAnswer === c
-                          ? 'bg-[#2B2B2B] text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'bg-ink text-white'
+                          : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
                       }`}
                     >
                       {c}
@@ -461,7 +454,7 @@ function TakeView({ test, onSubmit, onBack }) {
                   onChange={(e) => setAnswer(q.id, e.target.value)}
                   placeholder="답안을 입력하세요"
                   rows={3}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4] resize-none"
+                  className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none"
                 />
               )}
             </div>
@@ -469,13 +462,9 @@ function TakeView({ test, onSubmit, onBack }) {
         })}
       </div>
 
-      <button
-        onClick={handleSubmit}
-        disabled={submitting}
-        className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40"
-      >
+      <Button onClick={handleSubmit} disabled={submitting} className="w-full">
         {submitting ? '제출 중...' : '제출하기'}
-      </button>
+      </Button>
     </div>
   )
 }
@@ -528,29 +517,27 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-700">← 목록</button>
-        <h1 className="text-xl font-bold text-[#2B2B2B]">테스트 만들기</h1>
-      </div>
+      <button onClick={onCancel} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">← 목록</button>
+      <PageTitle title="테스트 만들기" />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
+          <label className="block text-sm font-medium text-ink-soft mb-1">제목</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="예: 4월 2주차 독서 테스트"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">대상 반</label>
+          <label className="block text-sm font-medium text-ink-soft mb-1">대상 반</label>
           <select
             value={classId}
             onChange={(e) => setClassId(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
           >
             {classes.map((c) => (
               <option key={c.id} value={String(c.id)}>{c.name}</option>
@@ -560,60 +547,60 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
 
         <div className="flex gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">날짜</label>
+            <label className="block text-sm font-medium text-ink-soft mb-1">날짜</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+              className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">시간 제한 (분)</label>
+            <label className="block text-sm font-medium text-ink-soft mb-1">시간 제한 (분)</label>
             <input
               type="number"
               value={timeLimit}
               onChange={(e) => setTimeLimit(e.target.value)}
               min="1"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5B8FD4]"
+              className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
             />
           </div>
         </div>
 
         <div>
           <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-gray-700">문항</label>
+            <label className="text-sm font-medium text-ink-soft">문항</label>
             <div className="flex gap-2">
-              <button type="button" onClick={() => addQuestion('mc')} className="text-xs px-3 py-1 bg-[#5B8FD4] text-white rounded-lg">+ 객관식</button>
-              <button type="button" onClick={() => addQuestion('sa')} className="text-xs px-3 py-1 bg-gray-600 text-white rounded-lg">+ 주관식</button>
+              <button type="button" onClick={() => addQuestion('mc')} className="text-xs px-3 py-1 bg-navy text-white rounded">+ 객관식</button>
+              <button type="button" onClick={() => addQuestion('sa')} className="text-xs px-3 py-1 bg-ink text-white rounded">+ 주관식</button>
             </div>
           </div>
 
           {questions.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-6 border border-dashed border-gray-200 rounded-lg">
+            <p className="text-sm text-ink-faint text-center py-6 border border-dashed border-line rounded">
               문항을 추가해주세요.
             </p>
           )}
 
           {questions.map((q, idx) => (
-            <div key={idx} className="bg-gray-50 rounded-lg p-3 mb-3">
+            <div key={idx} className="bg-surface-alt rounded p-3 mb-3">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-medium text-gray-500">
+                <span className="text-xs font-medium text-ink-mute">
                   {idx + 1}번 · {q.type === 'mc' ? '객관식' : '주관식'}
                 </span>
-                <button type="button" onClick={() => removeQuestion(idx)} className="text-xs text-red-400 hover:text-red-600">삭제</button>
+                <button type="button" onClick={() => removeQuestion(idx)} className="text-xs text-danger hover:opacity-80">삭제</button>
               </div>
 
               <input
                 value={q.content}
                 onChange={(e) => updateQuestion(idx, 'content', e.target.value)}
                 placeholder={`${idx + 1}번 문항 내용 (참고용)`}
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-[#5B8FD4]"
+                className="w-full border border-line rounded px-2 py-1.5 text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-navy"
               />
 
               {q.type === 'mc' && (
                 <div className="flex gap-2 mb-2 flex-wrap">
-                  <span className="text-xs text-gray-500 self-center">정답:</span>
+                  <span className="text-xs text-ink-mute self-center">정답:</span>
                   {q.choices.map((c) => (
                     <button
                       key={c}
@@ -621,8 +608,8 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
                       onClick={() => updateQuestion(idx, 'answer', c)}
                       className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
                         q.answer === c
-                          ? 'bg-[#2B2B2B] text-white'
-                          : 'bg-white border border-gray-300 text-gray-600 hover:border-[#5B8FD4]'
+                          ? 'bg-ink text-white'
+                          : 'bg-surface border border-line text-ink-soft hover:border-navy'
                       }`}
                     >
                       {c}
@@ -632,28 +619,24 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
               )}
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">배점:</span>
+                <span className="text-xs text-ink-mute">배점:</span>
                 <input
                   type="number"
                   value={q.points}
                   onChange={(e) => updateQuestion(idx, 'points', Number(e.target.value))}
                   min="0.1"
                   step="0.1"
-                  className="w-16 border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#5B8FD4]"
+                  className="w-16 border border-line rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-navy"
                 />
-                <span className="text-xs text-gray-500">점</span>
+                <span className="text-xs text-ink-mute">점</span>
               </div>
             </div>
           ))}
         </div>
 
-        <button
-          type="submit"
-          disabled={!title.trim() || questions.length === 0 || saving}
-          className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40"
-        >
+        <Button type="submit" disabled={!title.trim() || questions.length === 0 || saving} className="w-full">
           {saving ? '저장 중...' : '저장'}
-        </button>
+        </Button>
       </form>
     </div>
   )
@@ -669,12 +652,10 @@ function ResultView({ test, user, submissions, onBack }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700">← 목록</button>
-        <h1 className="text-xl font-bold text-[#2B2B2B]">{test.title} — 결과</h1>
-      </div>
+      <button onClick={onBack} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">← 목록</button>
+      <PageTitle title={`${test.title} — 결과`} />
 
-      <div className="bg-[#2B2B2B] text-white rounded-2xl p-6 text-center mb-6">
+      <div className="bg-ink text-white rounded p-6 text-center mb-6">
         <p className="text-sm text-white/60 mb-1">총점</p>
         <p className="text-4xl font-bold">{totalScore}점</p>
         <p className="text-sm text-white/60 mt-1">/ {totalPoints}점</p>
@@ -688,24 +669,24 @@ function ResultView({ test, user, submissions, onBack }) {
           const isCorrect  = q.type === 'mc' ? ans === q.answer : null
 
           return (
-            <div key={q.id} className="bg-white rounded-xl p-4 shadow-sm">
+            <div key={q.id} className="bg-surface border border-line rounded p-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-[#2B2B2B]">{idx + 1}번</span>
+                <span className="font-semibold text-ink">{idx + 1}번</span>
                 <span className={`text-sm font-bold ${
-                  score === null ? 'text-gray-400'
-                  : score === q.points ? 'text-green-600'
-                  : score > 0 ? 'text-[#5B8FD4]'
-                  : 'text-[#C0392B]'
+                  score === null ? 'text-ink-faint'
+                  : score === q.points ? 'text-navy'
+                  : score > 0 ? 'text-warn'
+                  : 'text-danger'
                 }`}>
                   {score === null ? '채점 대기' : `${score} / ${q.points}점`}
                 </span>
               </div>
-              <p className="text-sm text-gray-500">
-                내 답: <span className="text-[#2B2B2B] font-medium">{ans || '(미입력)'}</span>
+              <p className="text-sm text-ink-mute">
+                내 답: <span className="text-ink font-medium">{ans || '(미입력)'}</span>
               </p>
               {q.type === 'mc' && (
-                <p className="text-sm text-gray-500">
-                  정답: <span className="text-green-600 font-medium">{q.answer}</span>
+                <p className="text-sm text-ink-mute">
+                  정답: <span className="text-navy font-medium">{q.answer}</span>
                   <span className="ml-2">{isCorrect ? '✓' : '✗'}</span>
                 </p>
               )}
@@ -739,11 +720,8 @@ function GradeView({ test, submission, students, onSave, onBack }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-2">
-        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-700">← 제출 목록</button>
-      </div>
-      <h1 className="text-xl font-bold text-[#2B2B2B] mb-1">채점</h1>
-      <p className="text-sm text-gray-500 mb-6">{student?.name} · {test.title}</p>
+      <button onClick={onBack} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">← 제출 목록</button>
+      <PageTitle title="채점" lead={`${student?.name} · ${test.title}`} />
 
       <div className="flex flex-col gap-4 mb-6">
         {test.questions.map((q, idx) => {
@@ -752,28 +730,28 @@ function GradeView({ test, submission, students, onSave, onBack }) {
           const isCorrect  = q.type === 'mc' && ans === q.answer
 
           return (
-            <div key={q.id} className="bg-white rounded-xl p-4 shadow-sm">
+            <div key={q.id} className="bg-surface border border-line rounded p-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-[#2B2B2B]">
+                <span className="font-semibold text-ink">
                   {idx + 1}번{q.content ? ` — ${q.content}` : ''}
                 </span>
-                <span className="text-xs text-gray-400">{q.points}점</span>
+                <span className="text-xs text-ink-faint">{q.points}점</span>
               </div>
 
-              <p className="text-sm text-gray-600 mb-2">
-                제출 답안: <span className="font-medium text-[#2B2B2B]">{ans || '(미입력)'}</span>
+              <p className="text-sm text-ink-soft mb-2">
+                제출 답안: <span className="font-medium text-ink">{ans || '(미입력)'}</span>
               </p>
 
               {q.type === 'mc' ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">정답: {q.answer}</span>
-                  <span className={`text-xs font-bold ${isCorrect ? 'text-green-600' : 'text-[#C0392B]'}`}>
+                  <span className="text-xs text-ink-mute">정답: {q.answer}</span>
+                  <span className={`text-xs font-bold ${isCorrect ? 'text-navy' : 'text-danger'}`}>
                     {isCorrect ? `✓ ${q.points}점` : '✗ 0점'}
                   </span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">점수 입력:</span>
+                  <span className="text-xs text-ink-mute">점수 입력:</span>
                   <input
                     type="number"
                     min="0"
@@ -786,9 +764,9 @@ function GradeView({ test, submission, students, onSave, onBack }) {
                           : s
                       ))
                     }
-                    className="w-16 border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#5B8FD4]"
+                    className="w-16 border border-line rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-navy"
                   />
-                  <span className="text-xs text-gray-500">/ {q.points}점</span>
+                  <span className="text-xs text-ink-mute">/ {q.points}점</span>
                 </div>
               )}
             </div>
@@ -796,18 +774,18 @@ function GradeView({ test, submission, students, onSave, onBack }) {
         })}
       </div>
 
-      <div className="flex justify-between items-center bg-white rounded-xl p-4 shadow-sm mb-4">
-        <span className="font-semibold text-gray-700">총점</span>
-        <span className="text-xl font-bold text-[#2B2B2B]">{totalScore} / {totalPoints}점</span>
+      <div className="flex justify-between items-center bg-surface border border-line rounded p-4 mb-4">
+        <span className="font-semibold text-ink-soft">총점</span>
+        <span className="text-xl font-bold text-ink">{totalScore} / {totalPoints}점</span>
       </div>
 
-      <button
+      <Button
         onClick={async () => { setSaving(true); await onSave(localScores); setSaving(false) }}
         disabled={saving}
-        className="w-full py-3 bg-[#2B2B2B] text-white rounded-xl font-medium disabled:opacity-40"
+        className="w-full"
       >
         {saving ? '저장 중...' : '채점 저장'}
-      </button>
+      </Button>
     </div>
   )
 }

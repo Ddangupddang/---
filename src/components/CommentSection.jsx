@@ -48,23 +48,23 @@ export default function CommentSection({
 
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-[#2B2B2B]">댓글 {videoComments.length}개</h3>
+      <h3 className="font-semibold text-ink">댓글 {videoComments.length}개</h3>
 
       <div className="space-y-3">
         {videoComments.map((comment) => (
-          <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
+          <div key={comment.id} className="bg-surface-alt rounded p-3">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-medium text-[#2B2B2B]">
+              <span className="text-sm font-medium text-ink">
                 {getDisplayName(comment.studentId)}
               </span>
-              <span className="text-xs text-gray-400">{comment.createdAt}</span>
+              <span className="text-xs text-ink-faint">{comment.createdAt}</span>
             </div>
-            <p className="text-sm text-gray-700 mt-1">{comment.content}</p>
+            <p className="text-sm text-ink-soft mt-1">{comment.content}</p>
 
             {comment.reply && (
-              <div className="mt-2 ml-3 bg-blue-50 rounded p-2 border-l-2 border-[#5B8FD4]">
-                <span className="text-xs font-medium text-[#5B8FD4]">교사 답변</span>
-                <p className="text-sm text-gray-700 mt-0.5">{comment.reply}</p>
+              <div className="mt-2 ml-3 bg-navy-soft rounded p-2 border-l-2 border-navy">
+                <span className="text-xs font-medium text-navy">교사 답변</span>
+                <p className="text-sm text-ink-soft mt-0.5">{comment.reply}</p>
               </div>
             )}
 
@@ -76,17 +76,17 @@ export default function CommentSection({
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     placeholder="답변을 입력하세요"
-                    className="flex-1 border rounded px-2 py-1 text-sm"
+                    className="flex-1 border border-line rounded px-2 py-1 text-sm"
                   />
                   <button
                     onClick={() => handleReplySubmit(comment.id)}
-                    className="px-3 py-1 bg-[#5B8FD4] text-white rounded text-sm"
+                    className="px-3 py-1 bg-navy text-white rounded text-sm"
                   >
                     등록
                   </button>
                   <button
                     onClick={() => setReplyingTo(null)}
-                    className="px-3 py-1 border rounded text-sm"
+                    className="px-3 py-1 border border-line rounded text-sm"
                   >
                     취소
                   </button>
@@ -94,7 +94,7 @@ export default function CommentSection({
               ) : (
                 <button
                   onClick={() => setReplyingTo(comment.id)}
-                  className="mt-1 text-xs text-[#5B8FD4]"
+                  className="mt-1 text-xs text-navy"
                 >
                   답변 달기
                 </button>
@@ -104,7 +104,7 @@ export default function CommentSection({
         ))}
 
         {videoComments.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-4">아직 댓글이 없어요.</p>
+          <p className="text-sm text-ink-faint text-center py-4">아직 댓글이 없어요.</p>
         )}
       </div>
 
@@ -115,11 +115,11 @@ export default function CommentSection({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="익명으로 질문을 남겨보세요"
-            className="flex-1 border rounded-lg px-3 py-2 text-sm"
+            className="flex-1 border border-line rounded px-3 py-2 text-sm"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-[#2B2B2B] text-white rounded-lg text-sm"
+            className="px-4 py-2 bg-ink text-white rounded text-sm"
           >
             등록
           </button>
