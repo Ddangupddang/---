@@ -23,9 +23,17 @@ export default function WeeklyReport() {
     weeklyNotes, upsertWeeklyNote,
   } = useData()
 
-  const [weekStart, setWeekStart] = useState(() => mondayOf(new Date().toISOString().slice(0, 10)))
-  const [classId, setClassId]     = useState(() => classes[0]?.id ?? null)
-  const [selected, setSelected]   = useState(null)
+  const [weekStart, setWeekStart]       = useState(() => mondayOf(new Date().toISOString().slice(0, 10)))
+  const [selectedClass, setSelectedClass] = useState(null)
+  const [selected, setSelected]         = useState(null)
+
+  // 반 목록은 목업으로 먼저 그려졌다가 Supabase 로드 후 교체된다.
+  // 첫 렌더의 목업 id를 붙잡아 두면 실제 반과 어긋나 빈 표가 열린다 → 매 렌더 파생값으로 고른다
+  const activeClass = selectedClass ?? classes[0]?.id ?? null
+
+  // 주를 바꿀 때 상세를 닫지 않으면, 열려 있던 코멘트 입력창이 지난 주 내용을 쥔 채
+  // 새 주에 저장돼 남의 주 코멘트를 덮어쓴다 (반 변경과 같은 처리)
+  const goWeek = (weeks) => { setWeekStart(shiftWeek(weekStart, weeks)); setSelected(null) }
 
   // 학생은 이 페이지에 접근 불가
   if (user.role === 'student') {
@@ -41,7 +49,7 @@ export default function WeeklyReport() {
   const report = weeklyClassReport({
     students, attendance, tests, testSubmissions: submissions,
     homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
-    classId: Number(classId), weekStart,
+    classId: Number(activeClass), weekStart,
   })
 
   const noteOf = (studentId) =>
@@ -59,15 +67,15 @@ export default function WeeklyReport() {
 
         {/* 주 이동 + 반 선택 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <button aria-label="이전 주" onClick={() => setWeekStart(shiftWeek(weekStart, -1))}
+          <button aria-label="이전 주" onClick={() => goWeek(-1)}
             className="p-1.5 rounded-lg bg-white shadow-sm"><ChevronLeft className="w-4 h-4" /></button>
           <span data-testid="week-label" className="text-sm font-medium text-[#2B2B2B]">
             {weekStart} ~ {dateForWeekday(weekStart, 6)}
           </span>
-          <button aria-label="다음 주" onClick={() => setWeekStart(shiftWeek(weekStart, 1))}
+          <button aria-label="다음 주" onClick={() => goWeek(1)}
             className="p-1.5 rounded-lg bg-white shadow-sm"><ChevronRight className="w-4 h-4" /></button>
 
-          <select value={classId ?? ''} onChange={(e) => { setClassId(e.target.value); setSelected(null) }}
+          <select value={activeClass ?? ''} onChange={(e) => { setSelectedClass(e.target.value); setSelected(null) }}
             className="ml-auto border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white">
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
