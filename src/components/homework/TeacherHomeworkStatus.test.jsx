@@ -119,10 +119,10 @@ describe('TeacherHomeworkStatus — 요일별 학생 명단', () => {
 
     await user.click(screen.getByRole('button', { name: /고2-A/ }))
 
-    // 1번은 정답(①)을 골랐고, 2번은 ⑤를 골라 틀렸다 — 색이 아니라 의미를 단언한다
-    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-wrong', 'false')
-    expect(screen.getByTestId('cell-2-⑤')).toHaveAttribute('data-wrong', 'true')
-    expect(screen.getByTestId('cell-2-②')).toHaveAttribute('data-selected', 'false') // 실제 정답 표시(고르지 않음)
+    // 색이 아니라 의미를 단언한다 — 디자인 토큰이 바뀌어도 이 테스트는 그대로 통과해야 한다
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-result', 'correct')
+    expect(screen.getByTestId('cell-2-⑤')).toHaveAttribute('data-result', 'wrong')
+    expect(screen.getByTestId('cell-2-②')).toHaveAttribute('data-result', 'answer')
   })
 
   it('다시 누르면 명단이 접힌다', async () => {

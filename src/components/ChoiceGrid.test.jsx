@@ -50,14 +50,14 @@ describe('ChoiceGrid — result 모드', () => {
         onChange={() => {}}
       />
     )
-    // 색이 아니라 "선택됨/오답임"이라는 의미를 단언한다 — 색은 디자인 토큰이 바뀌면 함께 바뀐다
+    // 색이 아니라 "선택됨/정오답"이라는 의미를 단언한다 — 색은 디자인 토큰이 바뀌면 함께 바뀐다
     expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-selected', 'true')
-    expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-wrong', 'false')
+    expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-result', 'correct')
     expect(screen.getByTestId('cell-2-①')).toHaveAttribute('data-selected', 'true')
-    expect(screen.getByTestId('cell-2-①')).toHaveAttribute('data-wrong', 'true')
-    // 2번의 실제 정답 ④ 는 고르지 않았으므로 선택도 오답도 아니다 (테두리로만 표시)
+    expect(screen.getByTestId('cell-2-①')).toHaveAttribute('data-result', 'wrong')
+    // 2번의 실제 정답 ④ 는 고르지 않았지만 정답이므로 테두리로 표시된다
     expect(screen.getByTestId('cell-2-④')).toHaveAttribute('data-selected', 'false')
-    expect(screen.getByTestId('cell-2-④')).toHaveAttribute('data-wrong', 'false')
+    expect(screen.getByTestId('cell-2-④')).toHaveAttribute('data-result', 'answer')
   })
 
   it('result 모드에서는 클릭해도 onChange가 호출되지 않는다', () => {

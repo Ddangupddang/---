@@ -26,16 +26,33 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
     }
   }
 
+  // result 모드에서 이 선지의 의미를 판정한다. 색상 결정과 테스트용 data 속성이
+  // 같은 판정을 따로 두면 어긋날 수 있어 판정 로직을 한 곳(cellResult)에만 둔다.
+  //   correct : 정답을 골랐다
+  //   wrong   : 오답을 골랐다
+  //   answer  : 고르지 않았지만 실제 정답이다
+  //   none    : 그 밖(input 모드 포함)
+  function cellResult(number, choice) {
+    if (mode !== 'result') return 'none'
+    const picked = values[number] === choice
+    const isAnswer = answerKey[number] === choice
+    if (isAnswer && picked) return 'correct'
+    if (isAnswer) return 'answer'
+    if (picked) return 'wrong'
+    return 'none'
+  }
+
   // 한 선지 버튼의 색상 클래스 결정
   function cellClass(number, choice) {
-    const picked = values[number] === choice
     if (mode === 'result') {
-      const correctChoice = answerKey[number]
-      if (choice === correctChoice && picked) return 'bg-navy text-white'              // 맞게 고름
-      if (choice === correctChoice) return 'border-2 border-navy text-navy'            // 실제 정답 표시
-      if (picked) return 'bg-danger text-white'                                        // 틀리게 고름
-      return 'bg-surface-alt text-ink-faint'
+      switch (cellResult(number, choice)) {
+        case 'correct': return 'bg-navy text-white'               // 맞게 고름
+        case 'answer':  return 'border-2 border-navy text-navy'   // 실제 정답 표시
+        case 'wrong':   return 'bg-danger text-white'              // 틀리게 고름
+        default:        return 'bg-surface-alt text-ink-faint'
+      }
     }
+    const picked = values[number] === choice
     return picked ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
   }
 
@@ -62,28 +79,24 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
           >
             <span className="text-xs font-semibold text-gray-500 w-7 shrink-0">{number}번</span>
             <div className="flex gap-1">
-              {CHOICES.map((choice) => {
-                // result 모드에서 학생이 이 선지를 골랐는데 정답이 아닌 경우 — 오답으로 고른 선지
-                const isWrong = mode === 'result' && values[number] === choice && choice !== answerKey[number]
-                return (
-                  <button
-                    key={choice}
-                    type="button"
-                    data-testid={`cell-${number}-${choice}`}
-                    data-selected={values[number] === choice}
-                    data-wrong={isWrong}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (mode !== 'input') return
-                      setFocused(number)
-                      onChange(number, choice)
-                    }}
-                    className={`w-7 h-7 rounded-full text-sm font-medium transition-colors ${cellClass(number, choice)}`}
-                  >
-                    {choice}
-                  </button>
-                )
-              })}
+              {CHOICES.map((choice) => (
+                <button
+                  key={choice}
+                  type="button"
+                  data-testid={`cell-${number}-${choice}`}
+                  data-selected={values[number] === choice}
+                  data-result={cellResult(number, choice)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (mode !== 'input') return
+                    setFocused(number)
+                    onChange(number, choice)
+                  }}
+                  className={`w-7 h-7 rounded-full text-sm font-medium transition-colors ${cellClass(number, choice)}`}
+                >
+                  {choice}
+                </button>
+              ))}
             </div>
           </div>
         )
