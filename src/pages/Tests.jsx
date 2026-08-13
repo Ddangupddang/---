@@ -146,11 +146,7 @@ export default function Tests() {
 
                     {user.role !== 'student' && (
                       <div className="flex flex-col items-end gap-2 ml-3">
-                        {ungraded > 0 && (
-                          <span className="text-xs bg-danger text-white px-2 py-0.5 rounded-full">
-                            미채점 {ungraded}
-                          </span>
-                        )}
+                        {ungraded > 0 && <Badge tone="danger">미채점 {ungraded}</Badge>}
                         {test.status === 'ready' && (
                           <button
                             onClick={(e) => {
@@ -270,9 +266,7 @@ export default function Tests() {
                         <p className="text-xs text-ink-faint">/ {totalPoints}점</p>
                       </>
                     ) : (
-                      <span className="text-xs bg-danger text-white px-2 py-0.5 rounded-full">
-                        미채점
-                      </span>
+                      <Badge tone="danger">미채점</Badge>
                     )}
                   </div>
                 </div>
@@ -402,12 +396,14 @@ function TakeView({ test, onSubmit, onBack }) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-6">
         <div>
           <button onClick={onBack} className="text-sm text-ink-mute hover:text-ink-soft mb-1 block">
             ← 목록
           </button>
-          <PageTitle title={test.title} />
+          {/* 타이머와 한 행에서 나란히 정렬돼야 해서 PageTitle(자체 mb-6 보유) 대신
+              같은 스타일을 직접 그린다 — PageTitle을 쓰면 여백만큼 박스가 커져 타이머와 어긋난다 */}
+          <h1 className="font-serif text-3xl font-bold text-ink">{test.title}</h1>
         </div>
         {timeLeft !== null && (
           <div className={`text-xl font-mono font-bold px-4 py-2 rounded ${

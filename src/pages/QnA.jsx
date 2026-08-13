@@ -51,15 +51,16 @@ export default function QnA() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-start mb-4">
-          <PageTitle
-            title="Q&A"
-            lead={isTeacherOrAdmin && unansweredCount > 0 ? `미답변 ${unansweredCount}건` : undefined}
-          />
+        <div className="flex justify-between items-start">
+          <PageTitle title="Q&A" />
           {user.role === 'student' && (
             <Button onClick={() => setView('ask')}>+ 질문하기</Button>
           )}
         </div>
+        {/* 교사에게 급함을 알리는 신호라 PageTitle의 lead(고정 회색)로는 표현할 수 없어 직접 그린다 */}
+        {isTeacherOrAdmin && unansweredCount > 0 && (
+          <p className="text-sm text-danger mb-4">미답변 {unansweredCount}건</p>
+        )}
 
         {/* 테스트 필터 탭 */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
