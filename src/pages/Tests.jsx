@@ -405,7 +405,7 @@ function TakeView({ test, onSubmit, onBack }) {
           </button>
           {/* 타이머와 한 행에서 나란히 정렬돼야 해서 PageTitle(자체 mb-6 보유) 대신
               같은 스타일을 직접 그린다 — PageTitle을 쓰면 여백만큼 박스가 커져 타이머와 어긋난다 */}
-          <h1 className="font-serif text-3xl font-bold text-ink">{test.title}</h1>
+          <h1 className="text-3xl font-bold text-ink tracking-tight">{test.title}</h1>
         </div>
         {timeLeft !== null && (
           <div className={`text-xl font-mono font-bold px-4 py-2 rounded ${

@@ -54,7 +54,7 @@ export default function WeeklyStudentDetail({
   return (
     <div>
       <button onClick={onBack} className="text-sm text-ink-mute mb-3">← 목록</button>
-      <h2 className="font-serif text-2xl font-bold text-ink mb-4">{row.student.name}</h2>
+      <h2 className="text-2xl font-bold text-ink mb-4">{row.student.name}</h2>
 
       {/* 출석 — 요일별로 펼쳐 보여준다. 숫자만으로는 언제 빠졌는지 알 수 없다 */}
       <Card className="p-4 mb-3">

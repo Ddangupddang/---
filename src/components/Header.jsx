@@ -34,13 +34,13 @@ function Header({ onMenuClick }) {
             <Menu size={22} strokeWidth={1.8} />
           </button>
         )}
-        {/* 학생(모바일): 수문재 로고 표시 / 교사·관리자: 페이지 제목 */}
-        {isStudent ? (
+        {/* 학생(모바일)은 화면이 좁아 헤더에 로고만 두고, 제목은 오른쪽에 작게 보여준다.
+            교사·관리자 화면은 각 페이지가 PageTitle로 제목을 그리므로 헤더에서는 그리지 않는다
+            — 둘 다 그리면 같은 제목이 위아래로 두 번 나온다. */}
+        {isStudent && (
           <Link to="/dashboard">
             <img src="/logo.png" alt="수문재 로고" className="h-8 object-contain hover:opacity-80 transition-opacity" />
           </Link>
-        ) : (
-          <h1 className="text-base font-bold text-ink">{title}</h1>
         )}
       </div>
 
