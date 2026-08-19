@@ -21,7 +21,14 @@
 |---|---|---|
 | 복수 정답의 뜻 | **「모두 고르시오」형(다중선택)** | 정답이 ①③이면 학생도 ①③을 다 골라야 정답 |
 | 채점 | **전부 맞아야 정답. 부분점수 없음** | 덜 골라도 오답, 더 골라도 오답 |
-| 적용 범위 | **과제와 테스트 둘 다** | 둘이 같은 `ChoiceGrid`를 쓴다. 한쪽만 고치면 두 화면의 동작이 갈린다 |
+| 적용 범위 | **과제와 테스트 둘 다** | 한쪽만 고치면 두 화면의 동작이 갈린다 |
+
+> **정정 (계획 작성 중 확인):** 최초 설계에는 "과제와 테스트가 같은 `ChoiceGrid`를 쓴다"고 적었으나
+> **사실이 아니다.** `ChoiceGrid`를 쓰는 것은 과제뿐이고, `Tests.jsx`는 `TakeView`(학생 답안)와
+> `CreateView`(교사 정답 지정)에 **각자 자체 선지 버튼**을 갖고 있다(`Tests.jsx`는 `ChoiceGrid`를
+> import하지 않는다). 따라서 토글 동작을 **세 곳**에 적용해야 한다:
+> `ChoiceGrid`(과제), `Tests.jsx`의 `TakeView`, `Tests.jsx`의 `CreateView`.
+> 공통 비교·토글 로직을 `answerSet.js`에 두는 것이 그래서 더 중요하다 — 세 곳이 같은 규칙을 쓰게 만든다.
 | 문항 구분 | **모든 문항을 토글식으로**. 다중선택 전용 플래그를 두지 않는다 | 보통 문항은 하나만 켜면 되고, 시험지에 "모두 고르시오"가 적혀 있어 화면에 따로 표시할 필요가 없다 |
 | 키보드 | **숫자키 1~5는 토글만(제자리), Enter·↓로 다음 문항** | 다중선택을 키보드로 넣을 수 있어야 한다 |
 
@@ -69,9 +76,12 @@ sameChoiceSet(null, null)     // false — 둘 다 없으면 정답으로 치지
 
 ---
 
-## 5. ChoiceGrid — 토글
+## 5. 토글 입력 — 세 곳
 
-과제와 테스트가 같은 컴포넌트를 쓰므로 **여기 한 곳만 고치면 양쪽에 적용된다.**
+과제는 `ChoiceGrid`, 테스트는 `TakeView`·`CreateView`가 각자 선지 버튼을 갖고 있다.
+셋 다 같은 규칙(`toggleChoice`)을 쓰게 해서 동작이 갈리지 않게 한다.
+아래 표는 `ChoiceGrid` 기준이며, 테스트의 두 곳도 클릭 동작은 동일하다
+(테스트 화면에는 키보드 단축키가 원래 없으므로 키보드 항목은 `ChoiceGrid`에만 해당한다).
 
 | 동작 | 지금 | 바뀐 후 |
 |---|---|---|
@@ -122,7 +132,7 @@ isAnswer = 정답에 이 선지가 있는가
 | `src/components/ChoiceGrid.jsx` | 수정 | 토글, 키보드, `cellResult` |
 | `src/components/ChoiceGrid.test.jsx` | 수정 | 토글·키보드 테스트 추가 |
 | `src/utils/homework.js` | 수정 | `gradeHomework`가 `sameChoiceSet` 사용 |
-| `src/pages/Tests.jsx` | 수정 | 채점(`ans?.answer === q.answer`), 정답 표시(`q.answer === c`) |
+| `src/pages/Tests.jsx` | 수정 | 채점(`ans?.answer === q.answer`), `CreateView` 정답 지정 토글(`q.answer === c`), `TakeView` 학생 답안 토글(`myAnswer === c`) |
 | `src/components/homework/TeacherHomeworkCreate.jsx` | 수정 | `canSave` |
 | `src/components/homework/StudentHomeworkView.jsx` | 수정 | `allAnswered`, 입력 카운터 |
 
