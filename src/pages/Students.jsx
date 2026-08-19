@@ -24,6 +24,7 @@ function Students() {
     addClass, updateClass, deleteClass,
     reorderClasses, reorderStudents,
     studentAccountIds, studentUsernameById, refreshStudentAccounts,
+    staffProfiles,
   } = useData()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -36,7 +37,10 @@ function Students() {
   // 반 폼
   const [showClassForm, setShowClassForm] = useState(false)
   const [editClass, setEditClass]         = useState(null)
-  const [classForm, setClassForm]         = useState({ name: '' })
+  const [classForm, setClassForm]         = useState({ name: '', teacherId: '' })
+  // 담당 교사 선택 목록 (관리자는 모든 반을 보므로 교사만 배정 대상)
+  const teacherOptions = staffProfiles.filter((p) => p.role === 'teacher')
+  const getTeacherName = (id) => staffProfiles.find((p) => p.id === id)?.name ?? ''
 
   const activeTab      = searchParams.get('tab') === 'classes' ? 'classes' : 'students'
   const [selectedClass, setSelectedClass] = useState(null)
@@ -201,14 +205,15 @@ function Students() {
   const handleClassFormSubmit = async (e) => {
     e.preventDefault()
     if (!classForm.name.trim()) return
+    const payload = { name: classForm.name.trim(), teacherId: classForm.teacherId || null }
     if (editClass) {
-      await updateClass(editClass.id, { name: classForm.name.trim() })
+      await updateClass(editClass.id, payload)
     } else {
-      await addClass({ name: classForm.name.trim() })
+      await addClass(payload)
     }
     setShowClassForm(false)
     setEditClass(null)
-    setClassForm({ name: '' })
+    setClassForm({ name: '', teacherId: '' })
   }
 
   const handleDeleteClass = async (id) => {
@@ -409,7 +414,7 @@ function Students() {
           {isAdmin && (
             <Button
               variant="primary"
-              onClick={() => { setShowClassForm(true); setEditClass(null); setClassForm({ name: '' }) }}
+              onClick={() => { setShowClassForm(true); setEditClass(null); setClassForm({ name: '', teacherId: '' }) }}
               className="w-fit"
             >
               + 반 추가
@@ -423,7 +428,8 @@ function Students() {
                   cls={cls}
                   count={studentList.filter((s) => s.classId === cls.id).length}
                   isAdmin={isAdmin}
-                  onEdit={() => { setEditClass(cls); setClassForm({ name: cls.name }); setShowClassForm(true) }}
+                  teacherName={getTeacherName(cls.teacherId)}
+                  onEdit={() => { setEditClass(cls); setClassForm({ name: cls.name, teacherId: cls.teacherId ?? '' }); setShowClassForm(true) }}
                   onDelete={() => handleDeleteClass(cls.id)}
                   onClick={() => { setSelectedClass(cls.id); setSearchParams({}) }}
                 />
@@ -443,9 +449,26 @@ function Students() {
                 required
                 placeholder="반 이름 (예: 수능국어A반)"
                 value={classForm.name}
-                onChange={(e) => setClassForm({ name: e.target.value })}
+                onChange={(e) => setClassForm((f) => ({ ...f, name: e.target.value }))}
                 className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none focus:ring-2 focus:ring-navy"
               />
+              {/* 담당 교사 배정 — 교사 계정은 자기 담당 반만 보이므로 반드시 지정해야 한다 */}
+              <div>
+                <label className="block text-xs font-medium text-ink-mute mb-1">담당 교사</label>
+                <select
+                  value={classForm.teacherId}
+                  onChange={(e) => setClassForm((f) => ({ ...f, teacherId: e.target.value }))}
+                  className="w-full h-11 px-3 bg-surface-alt rounded text-sm focus:outline-none focus:ring-2 focus:ring-navy"
+                >
+                  <option value="">미지정</option>
+                  {teacherOptions.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-ink-faint mt-1">
+                  미지정이면 이 반은 교사 화면(대시보드·출결)에 나타나지 않습니다.
+                </p>
+              </div>
               <div className="flex gap-2 mt-1">
                 <Button variant="ghost" type="button" onClick={() => setShowClassForm(false)} className="flex-1">취소</Button>
                 <Button variant="primary" type="submit" className="flex-1">저장</Button>
@@ -592,7 +615,7 @@ function Students() {
 export default Students
 
 // ── 드래그 가능한 반 카드 ──────────────────────────────
-function SortableClassCard({ cls, count, isAdmin, onEdit, onDelete, onClick }) {
+function SortableClassCard({ cls, count, isAdmin, teacherName, onEdit, onDelete, onClick }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cls.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
 
@@ -614,7 +637,9 @@ function SortableClassCard({ cls, count, isAdmin, onEdit, onDelete, onClick }) {
       )}
       <div className="flex-1">
         <h3 className="font-bold text-ink">{cls.name}</h3>
-        <p className="text-xs text-ink-faint mt-0.5">학생 {count}명 · 클릭하면 학생 목록</p>
+        <p className="text-xs text-ink-faint mt-0.5">
+          담당 {teacherName || '미지정'} · 학생 {count}명 · 클릭하면 학생 목록
+        </p>
       </div>
       {isAdmin && (
         <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
