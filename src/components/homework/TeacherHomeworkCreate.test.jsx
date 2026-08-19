@@ -302,3 +302,54 @@ describe('TeacherHomeworkCreate (해설 파일 삭제)', () => {
     expect(state.data.deleteSolutionFile).not.toHaveBeenCalled()
   })
 })
+
+// 저장 버튼이 꺼져 있는 이유는 화면에 있어야 한다.
+// 저장 조건은 "사용" 체크한 모든 요일을 보는데 정답 입력표는 고른 요일 하나만 보여준다.
+// 그래서 지금 보는 요일이 멀쩡히 다 채워져 있어도 버튼이 죽어 있을 수 있다.
+describe('TeacherHomeworkCreate — 저장이 막힌 이유 안내', () => {
+  // 월요일 2문항을 다 채우고, 화요일은 "사용"만 켠 채로 둔 뒤 월요일로 돌아온다
+  async function 월요일만_채우고_화요일을_비워둔다(user) {
+    render(<TeacherHomeworkCreate category="naesin" onDone={vi.fn()} />)
+    await user.type(screen.getByPlaceholderText(/세트 제목/), '8월 2주차')
+
+    await user.click(screen.getByRole('checkbox'))          // 월요일 사용
+    await user.type(screen.getByRole('spinbutton'), '2')
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-②'))
+
+    await user.click(screen.getByRole('button', { name: '화' }))
+    await user.click(screen.getByRole('checkbox'))          // 화요일 사용 (문항 수는 비워 둠)
+    await user.click(screen.getByRole('button', { name: '월' }))
+  }
+
+  it('지금 보는 요일이 다 찼는데도 저장이 막히면, 어느 요일이 남았는지 알려준다', async () => {
+    const user = userEvent.setup()
+    await 월요일만_채우고_화요일을_비워둔다(user)
+
+    // 화면상 월요일은 완료로 보인다 — 교사가 버튼이 죽은 이유를 알 방법이 없다
+    expect(screen.getByText('정답 입력 (2/2)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '주간 과제 저장' })).toBeDisabled()
+
+    expect(screen.getByTestId('save-blocked')).toHaveTextContent('화')
+  })
+
+  it('덜 채운 요일 탭을 표시해 준다', async () => {
+    const user = userEvent.setup()
+    await 월요일만_채우고_화요일을_비워둔다(user)
+
+    expect(screen.getByRole('button', { name: '화' })).toHaveAttribute('data-incomplete', 'true')
+    expect(screen.getByRole('button', { name: '월' })).toHaveAttribute('data-incomplete', 'false')
+  })
+
+  it('모두 채우면 안내가 사라지고 저장할 수 있다', async () => {
+    const user = userEvent.setup()
+    await 월요일만_채우고_화요일을_비워둔다(user)
+
+    await user.click(screen.getByRole('button', { name: '화' }))
+    await user.type(screen.getByRole('spinbutton'), '1')
+    await user.click(screen.getByTestId('cell-1-③'))
+
+    expect(screen.queryByTestId('save-blocked')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '주간 과제 저장' })).toBeEnabled()
+  })
+})

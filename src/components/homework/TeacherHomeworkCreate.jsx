@@ -94,12 +94,23 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
   }
 
   const enabledDays = WEEKDAYS.filter((wd) => days[wd].enabled)
-  const canSave =
-    title.trim() && enabledDays.length > 0 &&
-    enabledDays.every((wd) => {
-      const dd = days[wd]
-      return dd.count > 0 && answeredCount(dd.answers) === dd.count
-    })
+  // 저장 조건은 "사용" 체크한 모든 요일을 보는데, 정답 입력표는 지금 고른 요일 하나만 보여준다.
+  // 그래서 월요일을 다 채워 놓고도 (비어 있는 화요일 때문에) 버튼이 죽어 있을 수 있다.
+  // 어느 요일이 남았는지 이름으로 들고 있다가 탭과 버튼 옆에 알려준다.
+  const incompleteDays = enabledDays.filter((wd) => {
+    const dd = days[wd]
+    return !(dd.count > 0 && answeredCount(dd.answers) === dd.count)
+  })
+  const canSave = Boolean(title.trim()) && enabledDays.length > 0 && incompleteDays.length === 0
+
+  // 버튼이 꺼져 있는 이유 — 교사가 화면만 보고 알 수 있어야 한다
+  const blockedReasons = []
+  if (!title.trim()) blockedReasons.push('세트 제목을 입력해 주세요.')
+  if (enabledDays.length === 0) blockedReasons.push('과제를 낼 요일을 하나 이상 골라 주세요.')
+  if (incompleteDays.length > 0) {
+    const names = incompleteDays.map((wd) => WEEKDAY_LABELS[wd]).join(', ')
+    blockedReasons.push(`${names}요일의 문항 수와 정답을 마저 채워 주세요.`)
+  }
 
   // 저장에 보낼 요일 목록 — 경고 계산과 저장이 같은 값을 보게 한다
   const payloadDays = enabledDays.map((wd) => {
@@ -186,10 +197,17 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
         <div className="flex gap-2 overflow-x-auto">
           {WEEKDAYS.map((wd) => (
             <button key={wd} onClick={() => setActiveWd(wd)}
+              data-incomplete={incompleteDays.includes(wd)}
               className={`px-3 py-2 rounded text-sm whitespace-nowrap ${
                 activeWd === wd ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
-              } ${days[wd].enabled ? 'ring-2 ring-navy' : ''}`}>
+              } ${days[wd].enabled ? (incompleteDays.includes(wd) ? 'ring-2 ring-danger' : 'ring-2 ring-navy') : ''}`}>
               {WEEKDAY_LABELS[wd]}
+              {/* 덜 채운 요일은 탭에서 바로 보이게 한다 — 다른 요일을 보고 있어도 알아챈다.
+                  버튼 이름("화")까지 바뀌면 안 되므로 표식은 읽어주기에서 뺀다.
+                  덜 채웠다는 사실은 저장 버튼 위 문장이 글로 말해 준다. */}
+              {incompleteDays.includes(wd) && (
+                <span aria-hidden="true" className="text-danger font-bold"> !</span>
+              )}
             </button>
           ))}
         </div>
@@ -252,6 +270,12 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
         )}
 
         {error && <Alert tone="danger">{error}</Alert>}
+
+        {!canSave && !saving && (
+          <p data-testid="save-blocked" className="text-sm text-ink-soft">
+            {blockedReasons.join(' ')}
+          </p>
+        )}
 
         <Button variant="primary" onClick={handleSave} disabled={!canSave || saving} className="w-full">
           {saving ? '저장 중...' : editSet ? '수정 저장' : '주간 과제 저장'}
