@@ -1,8 +1,9 @@
 // src/components/ChoiceGrid.jsx
 // ①②③④⑤ 객관식 선택 격자 — 과제/테스트 공용 재사용 컴포넌트
-// mode='input'  : 입력 가능 (클릭 + 키보드 1~5, 화살표 이동)
+// mode='input'  : 입력 가능 (클릭/숫자키 1~5로 토글, Enter·화살표로 이동)
 // mode='result' : 읽기 전용, answerKey와 비교해 정답/오답 표시
 import { useState } from 'react'
+import { toggleChoice } from '../utils/answerSet'
 
 const CHOICES = ['①', '②', '③', '④', '⑤']
 
@@ -15,9 +16,10 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
     if (mode !== 'input') return
     if (e.key >= '1' && e.key <= '5') {
       e.preventDefault()
-      onChange(focused, CHOICES[Number(e.key) - 1])
-      setFocused((n) => Math.min(count, n + 1)) // 자동으로 다음 칸
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      // 다중선택을 키보드로 넣을 수 있어야 해서 자동 이동을 하지 않는다.
+      // 다음 문항으로는 Enter나 화살표로 옮긴다.
+      onChange(focused, toggleChoice(values[focused], CHOICES[Number(e.key) - 1]))
+    } else if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       e.preventDefault()
       setFocused((n) => Math.min(count, n + 1))
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
@@ -34,8 +36,9 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
   //   none    : 그 밖(input 모드 포함)
   function cellResult(number, choice) {
     if (mode !== 'result') return 'none'
-    const picked = values[number] === choice
-    const isAnswer = answerKey[number] === choice
+    // 값에 그 선지가 들어 있는지로 본다 — 다중 정답이면 여러 글자가 담긴다
+    const picked = Boolean(values[number]?.includes(choice))
+    const isAnswer = Boolean(answerKey[number]?.includes(choice))
     if (isAnswer && picked) return 'correct'
     if (isAnswer) return 'answer'
     if (picked) return 'wrong'
@@ -53,7 +56,7 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
         default:        return 'bg-surface-alt text-ink-mute'
       }
     }
-    const picked = values[number] === choice
+    const picked = Boolean(values[number]?.includes(choice))
     return picked ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
   }
 
@@ -85,13 +88,13 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
                   key={choice}
                   type="button"
                   data-testid={`cell-${number}-${choice}`}
-                  data-selected={values[number] === choice}
+                  data-selected={Boolean(values[number]?.includes(choice))}
                   data-result={cellResult(number, choice)}
                   onClick={(e) => {
                     e.stopPropagation()
                     if (mode !== 'input') return
                     setFocused(number)
-                    onChange(number, choice)
+                    onChange(number, toggleChoice(values[number], choice))
                   }}
                   className={`w-7 h-7 rounded-full text-sm font-medium transition-colors ${cellClass(number, choice)}`}
                 >

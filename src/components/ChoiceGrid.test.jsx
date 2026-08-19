@@ -1,6 +1,7 @@
 // src/components/ChoiceGrid.test.jsx
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ChoiceGrid from './ChoiceGrid'
 
 describe('ChoiceGrid — input 모드', () => {
@@ -20,15 +21,15 @@ describe('ChoiceGrid — input 모드', () => {
     expect(onChange).toHaveBeenCalledWith(1, '③')
   })
 
-  it('키보드 숫자키로 포커스된 칸의 값을 설정하고 다음 칸으로 이동한다', () => {
+  it('키보드 숫자키로 포커스된 칸의 값을 토글한다', () => {
     const onChange = vi.fn()
     render(<ChoiceGrid count={3} values={{}} mode="input" onChange={onChange} />)
     const grid = screen.getByTestId('choice-grid')
     grid.focus()
     fireEvent.keyDown(grid, { key: '3' })
+    // 다중선택을 키보드로 넣을 수 있어야 해서 숫자키는 제자리에 머문다 —
+    // 다음 칸으로는 Enter나 화살표로 옮긴다
     expect(onChange).toHaveBeenCalledWith(1, '③')
-    fireEvent.keyDown(grid, { key: '1' })
-    expect(onChange).toHaveBeenCalledWith(2, '①')
   })
 
   it('values에 담긴 선택값이 강조 표시된다', () => {
@@ -80,5 +81,76 @@ describe('ChoiceGrid — 열 배치', () => {
     const grid = screen.getByTestId('choice-grid')
     expect(grid.className).not.toMatch(/(sm|md|lg|xl):grid-cols/)
     expect(grid.className).toMatch(/auto-fill/)
+  })
+})
+
+describe('ChoiceGrid (다중선택)', () => {
+  it('같은 선지를 두 번 누르면 꺼진다', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<ChoiceGrid count={1} values={{ 1: '②' }} mode="input" onChange={onChange} />)
+
+    await user.click(screen.getByTestId('cell-1-②'))
+    // 이미 켜져 있던 선지를 누르면 빈 문자열이 돼야 한다
+    expect(onChange).toHaveBeenCalledWith(1, '')
+  })
+
+  it('다른 선지를 누르면 교체가 아니라 추가된다', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<ChoiceGrid count={1} values={{ 1: '③' }} mode="input" onChange={onChange} />)
+
+    await user.click(screen.getByTestId('cell-1-①'))
+    // 선지 순서로 정렬돼 돌아온다
+    expect(onChange).toHaveBeenCalledWith(1, '①③')
+  })
+
+  it('여러 개 켜진 값이 모두 선택 표시된다', () => {
+    render(<ChoiceGrid count={1} values={{ 1: '①③' }} mode="input" onChange={() => {}} />)
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('cell-1-②')).toHaveAttribute('data-selected', 'false')
+    expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-selected', 'true')
+  })
+
+  it('숫자키는 제자리에서 토글한다 — 다음 문항으로 넘어가지 않는다', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<ChoiceGrid count={2} values={{}} mode="input" onChange={onChange} />)
+
+    const grid = screen.getByTestId('choice-grid')
+    grid.focus()
+    await user.keyboard('1')
+    await user.keyboard('3')
+
+    // 둘 다 1번 문항에 들어가야 한다 (자동 이동했다면 두 번째가 2번 문항으로 갔을 것)
+    expect(onChange).toHaveBeenNthCalledWith(1, 1, '①')
+    expect(onChange).toHaveBeenNthCalledWith(2, 1, '③')
+  })
+
+  it('Enter를 누르면 다음 문항으로 이동한다', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<ChoiceGrid count={2} values={{}} mode="input" onChange={onChange} />)
+
+    const grid = screen.getByTestId('choice-grid')
+    grid.focus()
+    await user.keyboard('1')
+    await user.keyboard('{Enter}')
+    await user.keyboard('2')
+
+    expect(onChange).toHaveBeenNthCalledWith(1, 1, '①')
+    expect(onChange).toHaveBeenNthCalledWith(2, 2, '②')
+  })
+
+  it('결과 모드에서 다중 정답의 네 상태를 바르게 표시한다', () => {
+    // 정답 ①③ / 학생 답 ①④ → ①맞음, ③놓침, ④틀림, ②아무것도 아님
+    render(
+      <ChoiceGrid count={1} values={{ 1: '①④' }} mode="result"
+        answerKey={{ 1: '①③' }} onChange={() => {}} />
+    )
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-result', 'correct')
+    expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-result', 'answer')
+    expect(screen.getByTestId('cell-1-④')).toHaveAttribute('data-result', 'wrong')
+    expect(screen.getByTestId('cell-1-②')).toHaveAttribute('data-result', 'none')
   })
 })
