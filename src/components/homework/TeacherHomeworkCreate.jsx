@@ -194,7 +194,8 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
         </div>
 
         {/* 요일 탭 */}
-        <div className="flex gap-2 overflow-x-auto">
+        {/* py-1 — 가로 스크롤 영역이라 세로 여백이 없으면 탭 테두리(ring)가 위아래로 잘린다 */}
+        <div className="flex gap-2 overflow-x-auto py-1">
           {WEEKDAYS.map((wd) => (
             <button key={wd} onClick={() => setActiveWd(wd)}
               data-incomplete={incompleteDays.includes(wd)}
