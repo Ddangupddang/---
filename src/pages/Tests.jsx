@@ -6,6 +6,7 @@ import Layout from '../components/Layout'
 import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import { sameChoiceSet, toggleChoice } from '../utils/answerSet'
 
 // 상태 배지 톤 — 팔레트에 초록이 없어 진행중=navy(긍정)로 대응한다
 const statusBadge = {
@@ -294,7 +295,8 @@ export default function Tests() {
             .filter((q) => q.type === 'mc')
             .map((q) => {
               const ans = answers.find((a) => a.questionId === q.id)
-              return { questionId: q.id, score: ans?.answer === q.answer ? q.points : 0 }
+              // 다중 정답은 순서 무관 집합 비교 — 덜 골라도 더 골라도 0점이다
+              return { questionId: q.id, score: sameChoiceSet(ans?.answer, q.answer) ? q.points : 0 }
             })
 
           await addSubmission({
@@ -435,9 +437,9 @@ function TakeView({ test, onSubmit, onBack }) {
                   {q.choices.map((c) => (
                     <button
                       key={c}
-                      onClick={() => setAnswer(q.id, c)}
+                      onClick={() => setAnswer(q.id, toggleChoice(myAnswer, c))}
                       className={`w-10 h-10 rounded-full text-base font-medium transition-colors ${
-                        myAnswer === c
+                        myAnswer.includes(c)
                           ? 'bg-ink text-white'
                           : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
                       }`}
@@ -603,9 +605,9 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
                     <button
                       key={c}
                       type="button"
-                      onClick={() => updateQuestion(idx, 'answer', c)}
+                      onClick={() => updateQuestion(idx, 'answer', toggleChoice(q.answer, c))}
                       className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                        q.answer === c
+                        q.answer?.includes(c)
                           ? 'bg-ink text-white'
                           : 'bg-surface border border-line text-ink-soft hover:border-navy'
                       }`}
@@ -664,7 +666,8 @@ function ResultView({ test, user, submissions, onBack }) {
           const ans        = mySub?.answers.find((a) => a.questionId === q.id)?.answer ?? ''
           const scoreEntry = mySub?.scores.find((s) => s.questionId === q.id)
           const score      = scoreEntry?.score ?? null
-          const isCorrect  = q.type === 'mc' ? ans === q.answer : null
+          // 다중 정답은 순서 무관 집합 비교여야 정오답이 올바르게 표시된다
+          const isCorrect  = q.type === 'mc' ? sameChoiceSet(ans, q.answer) : null
 
           return (
             <div key={q.id} className="bg-surface border border-line rounded p-4">
@@ -708,7 +711,8 @@ function GradeView({ test, submission, students, onSave, onBack }) {
       if (existing) return existing
       if (q.type === 'mc') {
         const ans = submission.answers.find((a) => a.questionId === q.id)
-        return { questionId: q.id, score: ans?.answer === q.answer ? q.points : 0 }
+        // 다중 정답은 순서 무관 집합 비교 — 덜 골라도 더 골라도 0점이다
+        return { questionId: q.id, score: sameChoiceSet(ans?.answer, q.answer) ? q.points : 0 }
       }
       return { questionId: q.id, score: 0 }
     })
@@ -725,7 +729,8 @@ function GradeView({ test, submission, students, onSave, onBack }) {
         {test.questions.map((q, idx) => {
           const ans        = submission.answers.find((a) => a.questionId === q.id)?.answer ?? ''
           const scoreEntry = localScores.find((s) => s.questionId === q.id)
-          const isCorrect  = q.type === 'mc' && ans === q.answer
+          // 다중 정답은 순서 무관 집합 비교여야 정오답이 올바르게 표시된다
+          const isCorrect  = q.type === 'mc' && sameChoiceSet(ans, q.answer)
 
           return (
             <div key={q.id} className="bg-surface border border-line rounded p-4">
