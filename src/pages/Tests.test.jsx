@@ -1,9 +1,13 @@
 // src/pages/Tests.test.jsx
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 import Tests from './Tests'
+
+// 저장 payload를 확인하는 테스트가 스파이를 갈아끼우고, 응시 테스트가 자기 문항을
+// 심을 수 있도록 가변 상태를 하나 둔다 (vi.mock 팩토리는 끌어올려지므로 값은 호출 시점에 읽는다)
+const state = {}
 
 // DataContext(useData)를 Mock 데이터로 대체 — 실제 Supabase 연결 없이 UI 로직만 검증
 // (DataContext는 createContext 객체를 export하지 않으므로 Provider 대신 useData를 모킹)
@@ -14,14 +18,21 @@ vi.mock('../context/DataContext', async () => {
   const { submissions } = await import('../data/submissions')
   return {
     useData: () => ({
-      classes, students, tests, submissions,
-      addTest: () => {},
+      classes, students, submissions,
+      tests: state.tests ?? tests,
+      addTest: state.addTest,
       updateTestStatus: () => {},
       deleteTest: () => {},
-      addSubmission: () => {},
+      addSubmission: state.addSubmission,
       updateSubmissionScores: () => {},
     }),
   }
+})
+
+beforeEach(() => {
+  state.tests         = null
+  state.addTest       = vi.fn()
+  state.addSubmission = vi.fn()
 })
 
 function renderWithAuth(user) {
@@ -57,6 +68,66 @@ describe('Tests — 교사 역할', () => {
     renderWithAuth(teacher)
     fireEvent.click(screen.getByText('4월 2주차 독서 테스트'))
     expect(screen.getByText('제출 목록')).toBeInTheDocument()
+  })
+})
+
+describe('Tests — 교사 정답 지정 (CreateView)', () => {
+  const teacher = { id: 2, name: '김선생', role: 'teacher' }
+
+  // 선지 클릭이 "교체"가 아니라 "토글"이므로, 새 문항이 어떤 선지도 켜지 않은 채
+  // 시작해야 교사가 누른 것만 정답이 된다 — 미리 켜두면 누른 선지가 거기에 더해진다
+  it('객관식 문항에 ③만 켜고 저장하면 정답이 정확히 ③으로 전달된다', async () => {
+    renderWithAuth(teacher)
+    fireEvent.click(screen.getByText('+ 테스트 만들기'))
+    fireEvent.change(screen.getByPlaceholderText('예: 4월 2주차 독서 테스트'), {
+      target: { value: '정답 지정 테스트' },
+    })
+    fireEvent.click(screen.getByText('+ 객관식'))
+    fireEvent.click(screen.getByRole('button', { name: '③' }))
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(state.addTest).toHaveBeenCalledTimes(1))
+    expect(state.addTest.mock.calls[0][0].questions[0].answer).toBe('③')
+  })
+})
+
+describe('Tests — 학생 다중 선택 응시 (TakeView)', () => {
+  const student = { id: 4, name: '홍길동', role: 'student', classId: 1, studentId: 1 }
+
+  // 기본 Mock에는 학생이 응시할 수 있는(진행중 + 미제출) 테스트가 없어 직접 심는다.
+  // timeLimit이 null이라 타이머가 돌지 않고, 정답은 두 선지를 모두 골라야 하는 문항이다.
+  const multiTest = {
+    id: 99, title: '복수 정답 응시 테스트', classId: 1, teacherId: 2,
+    date: '2026-04-20', timeLimit: null, status: 'active', startedAt: null,
+    questions: [
+      { id: 1, type: 'mc', content: '1번', choices: ['①', '②', '③', '④', '⑤'], answer: '①③', points: 10 },
+    ],
+  }
+
+  // 선지 몇 개를 켜고 제출한 뒤 addSubmission이 받은 payload를 돌려준다
+  async function submitWith(picks) {
+    const { unmount } = renderWithAuth(student)
+    fireEvent.click(screen.getByText('복수 정답 응시 테스트'))
+    picks.forEach((c) => fireEvent.click(screen.getByRole('button', { name: c })))
+    fireEvent.click(screen.getByRole('button', { name: '제출하기' }))
+    await waitFor(() => expect(state.addSubmission).toHaveBeenCalledTimes(1))
+    const payload = state.addSubmission.mock.calls[0][0]
+    unmount()
+    return payload
+  }
+
+  it('두 선지를 모두 골라야 만점이고, 하나만 고르면 0점이다', async () => {
+    state.tests = [multiTest]
+
+    const both = await submitWith(['①', '③'])
+    expect(both.answers).toContainEqual({ questionId: 1, answer: '①③' })
+    expect(both.scores).toContainEqual({ questionId: 1, score: 10 })
+
+    // 부분 점수는 없다 — 덜 고르면 0점
+    state.addSubmission = vi.fn()
+    const one = await submitWith(['①'])
+    expect(one.answers).toContainEqual({ questionId: 1, answer: '①' })
+    expect(one.scores).toContainEqual({ questionId: 1, score: 0 })
   })
 })
 
