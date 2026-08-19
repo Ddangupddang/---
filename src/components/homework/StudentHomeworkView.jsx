@@ -83,7 +83,8 @@ export default function StudentHomeworkView({ category }) {
     }
 
     // 답 입력(신규 제출 또는 수정)
-    const answeredNum = Object.keys(answers).length
+    // 선지를 다 끄면 값이 빈 문자열로 남는다 — 키가 있다고 입력된 것으로 세면 안 된다
+    const answeredNum = Object.values(answers).filter(Boolean).length
     const allAnswered = answeredNum === qs.length && qs.length > 0
     async function handleSubmit() {
       // 제출은 한 번뿐이라 중복 클릭도 막아야 한다

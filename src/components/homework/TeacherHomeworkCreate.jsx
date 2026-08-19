@@ -20,6 +20,9 @@ import {
 // 요일 하나의 편집 상태 초기값
 const emptyDay = () => ({ enabled: false, count: 0, answers: {}, videoUrl: '', fileUrl: '', file: null })
 
+// 선지를 다 끄면 값이 빈 문자열로 남는다 — 키가 있다고 입력된 것으로 세면 안 된다
+const answeredCount = (answers) => Object.values(answers).filter(Boolean).length
+
 // 수정 모드일 때 기존 세트의 요일·문항을 편집 상태로 되돌린다
 function daysFromSet(editSet, allDays, allQuestions) {
   const state = Object.fromEntries(WEEKDAYS.map((wd) => [wd, emptyDay()]))
@@ -95,7 +98,7 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
     title.trim() && enabledDays.length > 0 &&
     enabledDays.every((wd) => {
       const dd = days[wd]
-      return dd.count > 0 && Object.keys(dd.answers).length === dd.count
+      return dd.count > 0 && answeredCount(dd.answers) === dd.count
     })
 
   // 저장에 보낼 요일 목록 — 경고 계산과 저장이 같은 값을 보게 한다
@@ -206,7 +209,7 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
               </div>
               {d.count > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs text-ink-faint mb-2">정답 입력 ({Object.keys(d.answers).length}/{d.count})</p>
+                  <p className="text-xs text-ink-faint mb-2">정답 입력 ({answeredCount(d.answers)}/{d.count})</p>
                   <ChoiceGrid count={d.count} values={d.answers} mode="input"
                     onChange={(number, choice) => setDay({ answers: { ...d.answers, [number]: choice } })} />
                 </div>

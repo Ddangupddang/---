@@ -31,6 +31,21 @@ describe('gradeHomework', () => {
     expect(result.correctCount).toBe(1)
     expect(result.results[1]).toEqual({ number: 2, correct: false, studentAnswer: null })
   })
+
+  it('다중 정답은 전부 맞아야 정답이다', () => {
+    const questions = [{ number: 1, answer: '①③' }]
+    // 순서가 달라도 같은 집합이면 정답
+    expect(gradeHomework(questions, [{ number: 1, answer: '③①' }]).correctCount).toBe(1)
+    // 덜 고름
+    expect(gradeHomework(questions, [{ number: 1, answer: '①' }]).correctCount).toBe(0)
+    // 더 고름
+    expect(gradeHomework(questions, [{ number: 1, answer: '①②③' }]).correctCount).toBe(0)
+  })
+
+  it('답을 아예 안 낸 문항은 정답이 아니다', () => {
+    const questions = [{ number: 1, answer: '①③' }]
+    expect(gradeHomework(questions, []).correctCount).toBe(0)
+  })
 })
 
 describe('isLateSubmission', () => {

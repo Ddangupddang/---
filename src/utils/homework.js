@@ -1,6 +1,8 @@
 // src/utils/homework.js
 // 과제 채점·지각 판정 순수 함수 (DB·UI 의존성 없음)
 
+import { sameChoiceSet } from './answerSet'
+
 // 학생 답안을 정답표와 비교해 문항별 정답 여부와 정답 개수를 계산한다.
 // questions: [{ number, answer }]  /  answers: [{ number, answer }]
 export function gradeHomework(questions, answers) {
@@ -9,7 +11,8 @@ export function gradeHomework(questions, answers) {
     const studentAnswer = answerMap[q.number] ?? null
     return {
       number: q.number,
-      correct: studentAnswer === q.answer,
+      // 다중 정답은 순서 무관 집합 비교 — 덜 골라도 더 골라도 오답이다
+      correct: sameChoiceSet(studentAnswer, q.answer),
       studentAnswer,
     }
   })

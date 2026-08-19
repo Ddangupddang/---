@@ -190,7 +190,9 @@ describe('TeacherHomeworkCreate (수정 모드)', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(<TeacherHomeworkCreate category="naesin" editSet={EDIT_SET} onDone={onDone} />)
 
-    await user.click(screen.getByTestId('cell-2-④'))
+    // 토글이므로 정답을 바꾸려면 옛 정답을 끄고 새 정답을 켠다
+    await user.click(screen.getByTestId('cell-2-②')) // ② 끄기
+    await user.click(screen.getByTestId('cell-2-④')) // ④ 켜기
     await user.click(screen.getByRole('button', { name: '수정 저장' }))
 
     expect(confirmSpy).toHaveBeenCalled()
