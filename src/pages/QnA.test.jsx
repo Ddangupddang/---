@@ -25,7 +25,7 @@ beforeEach(() => {
       { id: 300, category: 'test', studentId: 1, content: '지난 테스트 2번요',
         createdAt: '2026-08-19T09:00:00Z', answer: null },
     ],
-    addQuestion:    vi.fn().mockResolvedValue({ id: 400 }),
+    addQuestion:    vi.fn().mockResolvedValue({ question: { id: 400 } }),
     answerQuestion: vi.fn().mockResolvedValue(undefined),
   }
 })
@@ -105,6 +105,30 @@ describe('QnA 질문하기 (학생)', () => {
     render(<QnA />)
     await user.click(screen.getByRole('button', { name: '+ 질문하기' }))
     expect(screen.getByRole('button', { name: '질문 등록' })).toBeDisabled()
+  })
+
+  it('등록에 실패하면 목록으로 넘어가지 않고 사유를 보여준다', async () => {
+    const user = userEvent.setup()
+    // 올라간 줄 알고 지나가면 학생은 답을 영영 못 받는다
+    state.data.addQuestion = vi.fn().mockResolvedValue({ error: 'null value in column "student_id"' })
+    render(<QnA />)
+    await user.click(screen.getByRole('button', { name: '+ 질문하기' }))
+    await user.type(screen.getByPlaceholderText(/궁금한 점/), '테스트 질문')
+    await user.click(screen.getByRole('button', { name: '질문 등록' }))
+
+    expect(await screen.findByTestId('ask-error')).toHaveTextContent('student_id')
+    // 작성 화면에 그대로 머문다 — 쓴 내용도 살아 있다
+    expect(screen.getByPlaceholderText(/궁금한 점/)).toHaveValue('테스트 질문')
+  })
+
+  it('계정에 학생 정보가 없으면 아예 못 쓰게 막고 이유를 알린다', async () => {
+    const user = userEvent.setup()
+    state.user = { id: 's1', role: 'student', studentId: null, classId: 10 }
+    render(<QnA />)
+    await user.click(screen.getByRole('button', { name: '+ 질문하기' }))
+
+    expect(screen.getByText(/학생 정보가 연결되어 있지 않아/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '질문 등록' })).not.toBeInTheDocument()
   })
 
   it('다른 학생 이름은 익명으로 가린다', () => {

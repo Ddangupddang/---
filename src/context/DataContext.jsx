@@ -383,10 +383,12 @@ export function DataProvider({ children }) {
       .select()
       .single()
 
-    if (error) { console.error('질문 등록 실패:', error); return null }
+    // 실패 이유를 그대로 올려보낸다 — 화면에서 "왜 안 됐는지"를 보여줘야
+    // 학생이 올라간 줄 알고 넘어가지 않는다.
+    if (error) { console.error('질문 등록 실패:', error); return { error: error.message } }
     const newQ = toQna(inserted)
     setQnaList((prev) => [newQ, ...prev])
-    return newQ
+    return { question: newQ }
   }
 
   async function answerQuestion(id, answer, answeredBy) {

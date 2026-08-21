@@ -145,9 +145,13 @@ export default function QnA() {
     return (
       <Layout>
       <AskView
+        studentId={user.studentId}
         onSubmit={async (newQ) => {
-          await addQuestion({ ...newQ, studentId: user.studentId })
+          const res = await addQuestion({ ...newQ, studentId: user.studentId })
+          // 실패했는데 목록으로 넘기면 올라간 줄 알고 지나간다 — 작성 화면에 머문다
+          if (res?.error) return res.error
           setView('list')
+          return null
         }}
         onBack={() => setView('list')}
       />
@@ -224,17 +228,36 @@ function DetailView({ question, displayName, isTeacherOrAdmin, onAnswer, onBack 
 }
 
 // ────────── AskView 컴포넌트 ──────────
-function AskView({ onSubmit, onBack }) {
+function AskView({ studentId, onSubmit, onBack }) {
   const [category,   setCategory]   = useState(QNA_CATEGORY.NAESIN)
   const [content,    setContent]    = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [error,      setError]      = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!content.trim() || submitting) return
     setSubmitting(true)
-    await onSubmit({ category, content: content.trim() })
+    setError('')
+    const failed = await onSubmit({ category, content: content.trim() })
+    if (failed) setError(failed)
     setSubmitting(false)
+  }
+
+  // 계정에 학생 정보가 안 붙어 있으면 등록이 반드시 실패한다 — 미리 알린다
+  if (!studentId) {
+    return (
+      <div>
+        <button onClick={onBack} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">
+          ← 목록
+        </button>
+        <PageTitle title="질문하기" />
+        <Alert tone="danger">
+          이 계정에 학생 정보가 연결되어 있지 않아 질문을 등록할 수 없습니다.
+          관리자에게 계정 확인을 요청해 주세요.
+        </Alert>
+      </div>
+    )
   }
 
   return (
@@ -279,6 +302,16 @@ function AskView({ onSubmit, onBack }) {
         <p className="text-xs text-ink-faint -mt-2">
           * 질문은 선생님에게만 실명으로 표시됩니다.
         </p>
+
+        {/* Alert는 임의 props를 전달하지 않으므로 data-testid는 감싸는 div에 둔다 */}
+        {error && (
+          <div data-testid="ask-error">
+            <Alert tone="danger">
+              질문 등록에 실패했습니다. 입력한 내용은 그대로 두었으니 다시 시도해 주세요.
+              <span className="block mt-1 text-xs font-normal">사유: {error}</span>
+            </Alert>
+          </div>
+        )}
 
         <Button type="submit" disabled={!content.trim() || submitting} className="w-full">
           {submitting ? '등록 중...' : '질문 등록'}
