@@ -1,4 +1,8 @@
 // src/pages/QnA.jsx
+// 질문은 말머리 하나만 붙여서 받는다.
+// 예전에는 테스트를 고르고 문항까지 골라야 했는데, 그러면
+// (1) 과제 관련 질문은 낼 방법이 없고
+// (2) 종료된 테스트가 하나도 없으면 질문 자체를 못 했다.
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
@@ -7,35 +11,39 @@ import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
-import { canSeeClass } from '../utils/classAccess'
+import { visibleQuestions, unansweredCount } from '../utils/qnaAccess'
+import { QNA_CATEGORIES, QNA_CATEGORY, qnaCategoryLabel } from '../constants/qna'
+
+// 말머리 알약 — 목록 필터와 작성 화면이 같은 모양을 쓴다
+function Pill({ active, children, ...rest }) {
+  return (
+    <button
+      type="button"
+      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+        active ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
+      }`}
+      {...rest}
+    >
+      {children}
+    </button>
+  )
+}
 
 export default function QnA() {
   const { user } = useAuth()
-  const { qnaList, students, classes, tests, addQuestion, answerQuestion } = useData()
+  const { qnaList, students, classes, addQuestion, answerQuestion } = useData()
   const [view, setView]                         = useState('list') // list | detail | ask
   const [selectedQuestion, setSelectedQuestion] = useState(null)
-  const [filterTestId, setFilterTestId]         = useState('all')
+  const [filterCategory, setFilterCategory]     = useState('all')
 
   const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin'
 
-  // 관리자는 전체, 교사는 담당 반 테스트, 학생은 본인 반의 종료된 테스트
-  const accessibleTests =
-    user.role === 'student'
-      ? tests.filter((t) => t.classId === user.classId && t.status === 'closed')
-      : tests.filter((t) => canSeeClass(classes, user, t.classId))
-
-  const accessibleTestIds = new Set(accessibleTests.map((t) => t.id))
-
-  // 질문 목록 필터링 — 볼 수 있는 테스트에 달린 질문만
-  const filteredQuestions = qnaList.filter((q) => {
-    const testMatch = filterTestId === 'all' || q.testId === Number(filterTestId)
-    return testMatch && accessibleTestIds.has(q.testId)
-  })
-
-  // 미답변 건수 (교사용 배지)
-  const unansweredCount = qnaList.filter(
-    (q) => !q.answer && accessibleTestIds.has(q.testId)
-  ).length
+  // 볼 수 있는 질문 (규칙은 utils/qnaAccess에 모아뒀다)
+  const myQuestions = visibleQuestions(qnaList, students, classes, user)
+  const filteredQuestions = myQuestions.filter(
+    (q) => filterCategory === 'all' || q.category === filterCategory
+  )
+  const unanswered = unansweredCount(qnaList, students, classes, user)
 
   // 이름 표시 규칙: 교사/관리자→실명, 학생→본인은 "나" 나머지는 "익명"
   function displayName(studentId) {
@@ -57,34 +65,24 @@ export default function QnA() {
           )}
         </div>
         {/* 교사에게 급함을 알리는 신호라 PageTitle의 lead(고정 회색)로는 표현할 수 없어 직접 그린다 */}
-        {isTeacherOrAdmin && unansweredCount > 0 && (
-          <p className="text-sm text-danger mb-4">미답변 {unansweredCount}건</p>
+        {isTeacherOrAdmin && unanswered > 0 && (
+          <p className="text-sm text-danger mb-4">미답변 {unanswered}건</p>
         )}
 
-        {/* 테스트 필터 탭 */}
+        {/* 말머리 필터 */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-          <button
-            onClick={() => setFilterTestId('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-              filterTestId === 'all'
-                ? 'bg-ink text-white'
-                : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
-            }`}
-          >
+          <Pill active={filterCategory === 'all'} onClick={() => setFilterCategory('all')}>
             전체
-          </button>
-          {accessibleTests.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setFilterTestId(String(t.id))}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                filterTestId === String(t.id)
-                  ? 'bg-ink text-white'
-                  : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
-              }`}
+          </Pill>
+          {QNA_CATEGORIES.map((c) => (
+            <Pill
+              key={c}
+              active={filterCategory === c}
+              onClick={() => setFilterCategory(c)}
+              data-testid={`filter-${c}`}
             >
-              {t.title}
-            </button>
+              {qnaCategoryLabel(c)}
+            </Pill>
           ))}
         </div>
 
@@ -93,44 +91,29 @@ export default function QnA() {
           <p className="text-center text-ink-faint py-12">질문이 없습니다.</p>
         ) : (
           <div className="flex flex-col gap-3">
-            {filteredQuestions.map((q) => {
-              const test        = tests.find((t) => t.id === q.testId)
-              const questionInfo = q.questionId
-                ? test?.questions.find((tq) => tq.id === q.questionId)
-                : null
-              const qIdx = questionInfo ? test.questions.indexOf(questionInfo) : -1
-
-              return (
-                <div
-                  key={q.id}
-                  onClick={() => {
-                    setSelectedQuestion(q)
-                    setView('detail')
-                  }}
-                  className="bg-surface border border-line rounded p-4 cursor-pointer hover:bg-surface-alt transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <span className="text-xs text-ink-faint">{test?.title}</span>
-                      {qIdx >= 0 && (
-                        <span className="text-xs bg-surface-alt text-ink-mute px-2 py-0.5 rounded-full">
-                          {qIdx + 1}번 문항
-                        </span>
-                      )}
-                    </div>
-                    {q.answer ? (
-                      <Badge tone="navy" className="shrink-0 ml-2">답변 완료</Badge>
-                    ) : (
-                      <Badge tone="warn" className="shrink-0 ml-2">답변 대기</Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-ink font-medium line-clamp-2">{q.content}</p>
-                  <p className="text-xs text-ink-faint mt-1">
-                    {displayName(q.studentId)} · {q.createdAt?.slice(0, 10)}
-                  </p>
+            {filteredQuestions.map((q) => (
+              <div
+                key={q.id}
+                data-testid={`question-${q.id}`}
+                onClick={() => { setSelectedQuestion(q); setView('detail') }}
+                className="bg-surface border border-line rounded p-4 cursor-pointer hover:bg-surface-alt transition-colors"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-xs bg-surface-alt text-ink-soft px-2 py-0.5 rounded-sm font-medium">
+                    {qnaCategoryLabel(q.category)}
+                  </span>
+                  {q.answer ? (
+                    <Badge tone="navy" className="shrink-0 ml-2">답변 완료</Badge>
+                  ) : (
+                    <Badge tone="warn" className="shrink-0 ml-2">답변 대기</Badge>
+                  )}
                 </div>
-              )
-            })}
+                <p className="text-sm text-ink font-medium line-clamp-2">{q.content}</p>
+                <p className="text-xs text-ink-faint mt-1">
+                  {displayName(q.studentId)} · {q.createdAt?.slice(0, 10)}
+                </p>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -140,21 +123,14 @@ export default function QnA() {
 
   // ────────── detail 뷰 ──────────
   if (view === 'detail') {
-    const q     = selectedQuestion
-    const test  = tests.find((t) => t.id === q.testId)
-    const qInfo = q.questionId ? test?.questions.find((tq) => tq.id === q.questionId) : null
-    const qIdx  = qInfo ? test.questions.indexOf(qInfo) : -1
-
     return (
       <Layout>
       <DetailView
-        question={q}
-        test={test}
-        questionIndex={qIdx}
+        question={selectedQuestion}
         displayName={displayName}
         isTeacherOrAdmin={isTeacherOrAdmin}
         onAnswer={async (answer) => {
-          await answerQuestion(q.id, answer, user.id)
+          await answerQuestion(selectedQuestion.id, answer, user.id)
           setView('list')
         }}
         onBack={() => setView('list')}
@@ -169,7 +145,6 @@ export default function QnA() {
     return (
       <Layout>
       <AskView
-        tests={accessibleTests}
         onSubmit={async (newQ) => {
           await addQuestion({ ...newQ, studentId: user.studentId })
           setView('list')
@@ -184,7 +159,7 @@ export default function QnA() {
 }
 
 // ────────── DetailView 컴포넌트 ──────────
-function DetailView({ question, test, questionIndex, displayName, isTeacherOrAdmin, onAnswer, onBack }) {
+function DetailView({ question, displayName, isTeacherOrAdmin, onAnswer, onBack }) {
   const [answerText, setAnswerText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -204,15 +179,10 @@ function DetailView({ question, test, questionIndex, displayName, isTeacherOrAdm
 
       {/* 질문 카드 */}
       <div className="bg-surface border border-line rounded p-5 mb-4">
-        <div className="flex gap-2 items-center mb-3 flex-wrap">
-          <span className="text-xs text-ink-faint">{test?.title}</span>
-          {questionIndex >= 0 && (
-            <span className="text-xs bg-surface-alt text-ink-mute px-2 py-0.5 rounded-full">
-              {questionIndex + 1}번 문항
-            </span>
-          )}
-        </div>
-        <p className="text-ink leading-relaxed mb-3">{question.content}</p>
+        <span className="text-xs bg-surface-alt text-ink-soft px-2 py-0.5 rounded-sm font-medium">
+          {qnaCategoryLabel(question.category)}
+        </span>
+        <p className="text-ink leading-relaxed mb-3 mt-3">{question.content}</p>
         <p className="text-xs text-ink-faint">
           {displayName(question.studentId)} · {question.createdAt?.slice(0, 16).replace('T', ' ')}
         </p>
@@ -254,23 +224,16 @@ function DetailView({ question, test, questionIndex, displayName, isTeacherOrAdm
 }
 
 // ────────── AskView 컴포넌트 ──────────
-function AskView({ tests, onSubmit, onBack }) {
-  const [testId,     setTestId]     = useState(String(tests[0]?.id ?? ''))
-  const [questionId, setQuestionId] = useState('')
+function AskView({ onSubmit, onBack }) {
+  const [category,   setCategory]   = useState(QNA_CATEGORY.NAESIN)
   const [content,    setContent]    = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const selectedTest = tests.find((t) => t.id === Number(testId))
-
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!content.trim() || !testId || submitting) return
+    if (!content.trim() || submitting) return
     setSubmitting(true)
-    await onSubmit({
-      testId:     Number(testId),
-      questionId: questionId ? Number(questionId) : null,
-      content:    content.trim(),
-    })
+    await onSubmit({ category, content: content.trim() })
     setSubmitting(false)
   }
 
@@ -281,71 +244,46 @@ function AskView({ tests, onSubmit, onBack }) {
       </button>
       <PageTitle title="질문하기" />
 
-      {tests.length === 0 ? (
-        <p className="text-center text-ink-faint py-12">
-          종료된 테스트가 없습니다.
-          <br />
-          <span className="text-xs">테스트가 종료된 후 질문할 수 있습니다.</span>
-        </p>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* 테스트 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-ink-soft mb-1">관련 테스트</label>
-            <select
-              value={testId}
-              onChange={(e) => { setTestId(e.target.value); setQuestionId('') }}
-              className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
-            >
-              {tests.map((t) => (
-                <option key={t.id} value={String(t.id)}>{t.title}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 문항 선택 */}
-          {selectedTest && (
-            <div>
-              <label className="block text-sm font-medium text-ink-soft mb-1">
-                관련 문항 <span className="text-ink-faint font-normal">(선택)</span>
-              </label>
-              <select
-                value={questionId}
-                onChange={(e) => setQuestionId(e.target.value)}
-                className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* 말머리 */}
+        <div>
+          <label className="block text-sm font-medium text-ink-soft mb-2">말머리</label>
+          <div className="flex gap-2 flex-wrap">
+            {QNA_CATEGORIES.map((c) => (
+              <Pill
+                key={c}
+                active={category === c}
+                onClick={() => setCategory(c)}
+                data-testid={`pick-${c}`}
+                aria-pressed={category === c}
               >
-                <option value="">테스트 전체 관련</option>
-                {selectedTest.questions.map((q, idx) => (
-                  <option key={q.id} value={String(q.id)}>
-                    {idx + 1}번{q.content ? ` — ${q.content}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* 질문 내용 */}
-          <div>
-            <label className="block text-sm font-medium text-ink-soft mb-1">질문 내용</label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="궁금한 점을 자유롭게 입력하세요"
-              rows={5}
-              className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none"
-              required
-            />
+                {qnaCategoryLabel(c)}
+              </Pill>
+            ))}
           </div>
+        </div>
 
-          <p className="text-xs text-ink-faint -mt-2">
-            * 질문은 선생님에게만 실명으로 표시됩니다.
-          </p>
+        {/* 질문 내용 */}
+        <div>
+          <label className="block text-sm font-medium text-ink-soft mb-1">질문 내용</label>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="궁금한 점을 자유롭게 입력하세요"
+            rows={5}
+            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none"
+            required
+          />
+        </div>
 
-          <Button type="submit" disabled={!content.trim() || submitting} className="w-full">
-            {submitting ? '등록 중...' : '질문 등록'}
-          </Button>
-        </form>
-      )}
+        <p className="text-xs text-ink-faint -mt-2">
+          * 질문은 선생님에게만 실명으로 표시됩니다.
+        </p>
+
+        <Button type="submit" disabled={!content.trim() || submitting} className="w-full">
+          {submitting ? '등록 중...' : '질문 등록'}
+        </Button>
+      </form>
     </div>
   )
 }

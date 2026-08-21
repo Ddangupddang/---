@@ -7,6 +7,7 @@ import StudentHomeworkCard from '../components/homework/StudentHomeworkCard'
 import PageTitle from '../components/ui/PageTitle'
 import { visibleClasses, visibleStudents } from '../utils/classAccess'
 import { pendingHomeworkCount } from '../utils/homeworkPending'
+import { unansweredCount } from '../utils/qnaAccess'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -30,10 +31,8 @@ function AdminTeacherDashboard({ user }) {
     today,
   })
 
-  const unansweredQna = qnaList.filter((q) => {
-    const test = tests.find((t) => t.id === q.testId)
-    return !q.answer && (user.role === 'admin' || myClassIds.includes(test?.classId))
-  }).length
+  // 질문은 이제 테스트에 매이지 않는다 — 질문한 학생을 볼 수 있는지로 판단한다
+  const unansweredQna = unansweredCount(qnaList, students, classes, user)
 
   // 요약 통계
   const totalStudents = visibleStudents(students, classes, user).length

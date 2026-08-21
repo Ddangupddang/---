@@ -7,6 +7,7 @@ import { students as mockStudents } from '../data/students'
 import { attendance as mockAttendance } from '../data/attendance'
 import { grades as mockGrades } from '../data/grades'
 import { qnaQuestions as mockQna } from '../data/qna'
+import { QNA_DEFAULT_CATEGORY } from '../constants/qna'
 import { notices as mockNotices } from '../data/notices'
 import { reports as mockReports } from '../data/reports'
 import {
@@ -52,8 +53,8 @@ function toStudent(s) {
 function toQna(q) {
   return {
     id:         q.id,
-    testId:     q.test_id,
-    questionId: q.question_id,
+    // 말머리가 빈 옛 질문은 전부 테스트에 달려 있었다
+    category:   q.category ?? QNA_DEFAULT_CATEGORY,
     studentId:  q.student_id,
     content:    q.content,
     createdAt:  q.created_at,
@@ -375,10 +376,9 @@ export function DataProvider({ children }) {
     const { data: inserted, error } = await supabase
       .from('qna')
       .insert([{
-        test_id:     data.testId,
-        question_id: data.questionId ?? null,
-        student_id:  data.studentId,
-        content:     data.content,
+        category:   data.category,
+        student_id: data.studentId,
+        content:    data.content,
       }])
       .select()
       .single()
