@@ -9,8 +9,11 @@ const WEEK = '2026-08-10'
 
 const state = {}
 vi.mock('../../context/DataContext', () => ({ useData: () => state.data }))
+vi.mock('../../context/AuthContext', () => ({ useAuth: () => state.auth }))
 
 beforeEach(() => {
+  // 기본은 관리자 — 담당 반 제한은 별도 테스트에서 확인한다
+  state.auth = { user: { id: 'admin-1', role: 'admin' } }
   state.data = {
     students: [
       { id: 1, name: '고2-A', grade: 5, jeongsiLevel: 2 },

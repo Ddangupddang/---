@@ -2,6 +2,8 @@
 // 교사: 한 종류(내신/정시)의 그룹·주차별 요일 제출 현황.
 import { useState } from 'react'
 import { useData } from '../../context/DataContext'
+import { useAuth } from '../../context/AuthContext'
+import { visibleStudents } from '../../utils/classAccess'
 import DaySubmissionList from './DaySubmissionList'
 import DayQuestionStats from './DayQuestionStats'
 import {
@@ -10,7 +12,13 @@ import {
 } from '../../constants/homework'
 
 export default function TeacherHomeworkStatus({ category }) {
-  const { students, homeworkSets, homeworkDays, homeworkQuestions = [], homeworkSubmissions } = useData()
+  const { user } = useAuth()
+  const {
+    students: allStudents, classes = [],
+    homeworkSets, homeworkDays, homeworkQuestions = [], homeworkSubmissions,
+  } = useData()
+  // 과제 세트는 학년·레벨 단위라 학원 공용이지만, 제출 현황은 담당 반 학생만 본다
+  const students = visibleStudents(allStudents, classes, user)
   const isNaesin = category === HW_CATEGORY.NAESIN
   const targets = isNaesin ? GRADES : JEONGSI_LEVELS
   const targetLabels = isNaesin ? GRADE_LABELS : JEONGSI_LEVEL_LABELS

@@ -11,8 +11,11 @@ const D2 = `${MONTH}-05`
 
 const state = {}
 vi.mock('../../context/DataContext', () => ({ useData: () => state.data }))
+vi.mock('../../context/AuthContext', () => ({ useAuth: () => state.auth }))
 
 beforeEach(() => {
+  // 기본은 관리자 — 담당 반 제한은 별도 테스트에서 확인한다
+  state.auth = { user: { id: 'admin-1', role: 'admin' } }
   state.data = {
     students: [
       { id: 1, name: '성실이', grade: 5, jeongsiLevel: null },
@@ -93,5 +96,28 @@ describe('HomeworkReport', () => {
     await openGo2(user)
     expect(screen.getByTestId('report-row-1')).toHaveTextContent('0/2')
     expect(screen.getByTestId('report-row-1')).toHaveTextContent('—')
+  })
+})
+
+describe('HomeworkReport — 담당 반 제한', () => {
+  it('교사는 담당 반 학생만 리포트에 나온다', async () => {
+    const user = userEvent.setup()
+    state.auth = { user: { id: 't1', role: 'teacher' } }
+    state.data = {
+      ...state.data,
+      classes: [
+        { id: 1, name: '내 반',   teacherId: 't1' },
+        { id: 2, name: '남의 반', teacherId: 't2' },
+      ],
+      students: [
+        { id: 1, name: '성실이', grade: 5, jeongsiLevel: null, classId: 1 },
+        { id: 2, name: '가끔이', grade: 5, jeongsiLevel: null, classId: 2 },
+      ],
+    }
+    render(<HomeworkReport category="naesin" />)
+    await openGo2(user)
+
+    expect(screen.getByTestId('report-row-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('report-row-2')).toBeNull()
   })
 })

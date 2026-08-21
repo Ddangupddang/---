@@ -4,6 +4,8 @@
 // 이 화면은 "이 학생이 요즘 성실한가"를 보는 화면이다 (학부모 상담용).
 import { useState } from 'react'
 import { useData } from '../../context/DataContext'
+import { useAuth } from '../../context/AuthContext'
+import { visibleStudents } from '../../utils/classAccess'
 import { homeworkPeriodReport } from '../../utils/homeworkReport'
 import Card from '../ui/Card'
 import Alert from '../ui/Alert'
@@ -13,10 +15,13 @@ import {
 } from '../../constants/homework'
 
 export default function HomeworkReport({ category }) {
+  const { user } = useAuth()
   const {
-    students = [], homeworkSets = [], homeworkDays = [],
+    students: allStudents = [], classes = [], homeworkSets = [], homeworkDays = [],
     homeworkQuestions = [], homeworkSubmissions = [],
   } = useData()
+  // 리포트도 담당 반 학생만 — 세트는 공용이어도 학생 명단은 담당 범위를 따른다
+  const students = visibleStudents(allStudents, classes, user)
 
   const isNaesin = category === HW_CATEGORY.NAESIN
   const targets = isNaesin ? GRADES : JEONGSI_LEVELS
