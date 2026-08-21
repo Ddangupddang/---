@@ -72,6 +72,15 @@ returns boolean language sql stable security definer set search_path = public as
   )
 $$;
 
+-- Q&A는 반이 아니라 "쓴 학생"에 묶인다. 그 학생을 볼 수 있으면 질문도 본다.
+create or replace function public.can_see_qna_author(p_student_id bigint)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.is_admin() or exists (
+    select 1 from public.students s
+    where s.id = p_student_id and s.class_id = any(public.my_class_ids())
+  )
+$$;
+
 create or replace function public.can_see_video(p_video_id bigint)
 returns boolean language sql stable security definer set search_path = public as $$
   select public.is_admin() or exists (
@@ -209,17 +218,17 @@ with check (public.is_staff() and (public.is_admin() or student_id = any(public.
 
 
 -- ── 9. qna ──────────────────────────────────────────────────
+-- 질문은 테스트에 매이지 않는다(말머리 방식). 작성한 학생을 볼 수 있으면 본다.
+-- 실제 정의는 qna-category.sql에 있다 — 두 파일이 어긋나면 그 파일이 맞다.
 create policy qna_select on public.qna
-for select using (public.can_see_test(test_id));
+for select using (public.can_see_qna_author(student_id));
 
 create policy qna_student_insert on public.qna
-for insert with check (
-  student_id = public.my_student_id() and public.can_see_test(test_id)
-);
+for insert with check (student_id = public.my_student_id());
 
 create policy qna_staff_write on public.qna
-for all using (public.is_staff() and public.can_see_test(test_id))
-with check (public.is_staff() and public.can_see_test(test_id));
+for all using (public.is_staff() and public.can_see_qna_author(student_id))
+with check (public.is_staff() and public.can_see_qna_author(student_id));
 
 
 -- ── 10. videos ──────────────────────────────────────────────
