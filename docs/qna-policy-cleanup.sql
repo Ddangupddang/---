@@ -28,11 +28,17 @@ end $$;
 create policy qna_select on public.qna
 for select using (public.can_see_qna_author(student_id));
 
--- 쓰기(학생): 본인 이름으로만 쓴다
+-- 쓰기(학생): 본인 이름으로만 쓴다.
+-- profiles를 정책 안에서 직접 읽으면 profiles의 RLS까지 함께 평가된다.
+-- 그 정책 중 하나라도 권한 없는 테이블(auth.users 등)을 보면 여기서 같이 터진다.
+-- 그래서 security definer 함수로 감싸 의존을 끊는다.
+create or replace function public.my_qna_student_id()
+returns bigint language sql stable security definer set search_path = public as $$
+  select student_id from public.profiles where id = auth.uid()
+$$;
+
 create policy qna_student_insert on public.qna
-for insert with check (
-  student_id = (select student_id from public.profiles where id = auth.uid())
-);
+for insert with check (student_id = public.my_qna_student_id());
 
 -- 답변·수정·삭제(교사/관리자): 볼 수 있는 학생의 질문만
 create policy qna_staff_write on public.qna
