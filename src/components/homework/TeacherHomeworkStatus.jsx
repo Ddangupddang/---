@@ -11,7 +11,9 @@ import {
   JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS, WEEKDAY_LABELS,
 } from '../../constants/homework'
 
-export default function TeacherHomeworkStatus({ category, userRole, userId }) {
+// 로그인 정보는 useAuth() 하나에서만 받는다 — 담당 반 범위와 제출 취소 권한이
+// 서로 다른 경로로 신원을 읽으면 나중에 어긋날 여지가 생긴다.
+export default function TeacherHomeworkStatus({ category }) {
   const { user } = useAuth()
   const {
     students: allStudents, classes = [],
@@ -55,7 +57,7 @@ export default function TeacherHomeworkStatus({ category, userRole, userId }) {
       ) : sets.map((set) => {
         const days = homeworkDays.filter((d) => d.setId === set.id).sort((a, b) => a.weekday - b.weekday)
         // 제출 취소 권한 — 세트 수정·삭제와 같은 규칙(관리자 또는 그 과제를 낸 교사)
-        const canManage = userRole === 'admin' || set.teacherId === userId
+        const canManage = user.role === 'admin' || set.teacherId === user.id
         return (
           <div key={set.id} className="mb-6">
             <p className="font-semibold text-ink mb-2">{set.title} <span className="text-xs text-ink-faint">({set.weekStart} 주)</span></p>

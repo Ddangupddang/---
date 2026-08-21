@@ -221,43 +221,52 @@ describe('TeacherHomeworkStatus (정시)', () => {
 // 학생이 실수로 낸 제출을 교사가 되돌릴 수 있어야 한다.
 // 제출은 한 번뿐이고 학생 스스로 고칠 수 없으므로, 이 길이 유일한 구제책이다.
 describe('TeacherHomeworkStatus — 제출 취소', () => {
-  // 고2 탭 → 월요일 → 제출한 학생(고2-A) 상세까지 들어간다
-  // (기본 탭은 중1이라 학년 탭부터 눌러야 세트가 나온다)
-  async function 제출한학생상세로(user, props) {
-    render(<TeacherHomeworkStatus category="naesin" {...props} />)
+  // 담당 반 범위와 취소 권한은 별개의 조건이다.
+  // 학생은 보이게 해 두고 "세트를 누가 냈는가"만 바꿔 권한만 검증한다.
+  // (교사는 담당 반 학생만 보이므로 반을 안 주면 학생이 아예 안 나온다)
+  async function 제출한학생상세로(user, loginAs, { classTeacherId = loginAs.id } = {}) {
+    state.auth = { user: loginAs }
+    state.data.classes = [{ id: 100, teacherId: classTeacherId }]
+    state.data.students = state.data.students.map((s) => ({ ...s, classId: 100 }))
+    state.data.homeworkSets[0].teacherId = 'teacher-1'
+
+    render(<TeacherHomeworkStatus category="naesin" />)
+    // 기본 탭은 중1이라 학년 탭부터 눌러야 세트가 나온다
     await user.click(screen.getByRole('button', { name: '고2' }))
     await user.click(screen.getByRole('button', { name: /월요일 · 2026-08-10/ }))
     await user.click(screen.getByRole('button', { name: /고2-A/ }))
   }
 
+  const 출제교사 = { id: 'teacher-1', role: 'teacher' }
+  const 다른교사 = { id: 'teacher-2', role: 'teacher' }
+  const 관리자   = { id: 'admin-9',   role: 'admin' }
+
   it('과제를 낸 교사에게는 제출 취소 버튼이 보인다', async () => {
     const user = userEvent.setup()
-    state.data.homeworkSets[0].teacherId = 'teacher-1'
-    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-1' })
+    await 제출한학생상세로(user, 출제교사)
     expect(screen.getByRole('button', { name: '제출 취소' })).toBeInTheDocument()
   })
 
   it('관리자에게도 보인다', async () => {
     const user = userEvent.setup()
-    state.data.homeworkSets[0].teacherId = 'teacher-1'
-    await 제출한학생상세로(user, { userRole: 'admin', userId: 'admin-9' })
+    await 제출한학생상세로(user, 관리자)
     expect(screen.getByRole('button', { name: '제출 취소' })).toBeInTheDocument()
   })
 
-  it('과제를 내지 않은 다른 교사에게는 보이지 않는다', async () => {
+  it('학생은 보이지만 과제를 내지 않은 교사에게는 버튼이 없다', async () => {
     const user = userEvent.setup()
-    state.data.homeworkSets[0].teacherId = 'teacher-1'
-    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-2' })
+    // 담당 반은 teacher-2 것이라 학생은 보인다 — 다른 점은 세트 소유뿐이다
+    await 제출한학생상세로(user, 다른교사, { classTeacherId: 'teacher-2' })
+    expect(screen.getByText('고2-A')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '제출 취소' })).not.toBeInTheDocument()
   })
 
   it('확인창에서 승인하면 그 학생의 제출만 지운다', async () => {
     const user = userEvent.setup()
-    state.data.homeworkSets[0].teacherId = 'teacher-1'
     state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(true)
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-1' })
+    await 제출한학생상세로(user, 출제교사)
     await user.click(screen.getByRole('button', { name: '제출 취소' }))
 
     // 되돌릴 수 없다는 사실을 확인창에서 알려야 한다
@@ -268,11 +277,10 @@ describe('TeacherHomeworkStatus — 제출 취소', () => {
 
   it('확인창에서 취소하면 아무 일도 일어나지 않는다', async () => {
     const user = userEvent.setup()
-    state.data.homeworkSets[0].teacherId = 'teacher-1'
     state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(true)
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
 
-    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-1' })
+    await 제출한학생상세로(user, 출제교사)
     await user.click(screen.getByRole('button', { name: '제출 취소' }))
 
     expect(state.data.deleteHomeworkSubmission).not.toHaveBeenCalled()
@@ -281,11 +289,10 @@ describe('TeacherHomeworkStatus — 제출 취소', () => {
 
   it('취소에 실패하면 성공한 척하지 않고 알린다', async () => {
     const user = userEvent.setup()
-    state.data.homeworkSets[0].teacherId = 'teacher-1'
     state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(false)
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-1' })
+    await 제출한학생상세로(user, 출제교사)
     await user.click(screen.getByRole('button', { name: '제출 취소' }))
 
     expect(await screen.findByText(/제출 취소에 실패/)).toBeInTheDocument()
