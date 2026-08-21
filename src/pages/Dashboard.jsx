@@ -6,23 +6,29 @@ import { useData } from '../context/DataContext'
 import StudentHomeworkCard from '../components/homework/StudentHomeworkCard'
 import PageTitle from '../components/ui/PageTitle'
 import { visibleClasses, visibleStudents } from '../utils/classAccess'
+import { pendingHomeworkCount } from '../utils/homeworkPending'
 
 const today = new Date().toISOString().slice(0, 10)
 
 // ────────── 관리자/교사 대시보드 ──────────
 function AdminTeacherDashboard({ user }) {
   const navigate = useNavigate()
-  const { classes, students, attendance, qnaList, notices: dbNotices, tests, submissions } = useData()
+  const {
+    classes, students, attendance, qnaList, notices: dbNotices, tests, submissions,
+    homeworkSets, homeworkDays, homeworkSubmissions,
+  } = useData()
 
   // 관리자는 전체, 교사는 담당 반만 (규칙은 utils/classAccess에 모아뒀다)
   const myClasses  = visibleClasses(classes, user)
   const myClassIds = myClasses.map((c) => c.id)
 
   // 미처리 항목 계산
-  const ungradedCount = submissions.filter((s) => {
-    const test = tests.find((t) => t.id === s.testId)
-    return s.scores.length === 0 && myClassIds.includes(test?.classId)
-  }).length
+  // 마감이 지난 과제를 안 낸 학생 수 (담당 반 학생만, 이번 주 기준)
+  const pendingHomework = pendingHomeworkCount({
+    students: visibleStudents(students, classes, user),
+    sets: homeworkSets, days: homeworkDays, submissions: homeworkSubmissions,
+    today,
+  })
 
   const unansweredQna = qnaList.filter((q) => {
     const test = tests.find((t) => t.id === q.testId)
@@ -65,18 +71,19 @@ function AdminTeacherDashboard({ user }) {
           <p className="text-xs text-ink-faint mt-0.5">전체 학생</p>
         </div>
         <button
-          onClick={() => navigate('/tests')}
+          onClick={() => navigate('/homework')}
+          data-testid="pending-homework"
           className={`rounded p-4 text-center border transition-colors ${
-            ungradedCount > 0
+            pendingHomework > 0
               ? 'bg-danger-soft border-line hover:opacity-90'
               : 'bg-surface border-line hover:bg-surface-alt'
           }`}
         >
-          <p className={`text-2xl font-bold ${ungradedCount > 0 ? 'text-danger' : 'text-ink'}`}>
-            {ungradedCount}
+          <p className={`text-2xl font-bold ${pendingHomework > 0 ? 'text-danger' : 'text-ink'}`}>
+            {pendingHomework}
           </p>
-          <p className={`text-xs mt-0.5 ${ungradedCount > 0 ? 'text-danger' : 'text-ink-faint'}`}>
-            미채점
+          <p className={`text-xs mt-0.5 ${pendingHomework > 0 ? 'text-danger' : 'text-ink-faint'}`}>
+            과제 미제출
           </p>
         </button>
         <button
