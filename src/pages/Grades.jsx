@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Button from '../components/ui/Button'
 import PageTitle from '../components/ui/PageTitle'
+import NoAssignedClass from '../components/NoAssignedClass'
+import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
 // ────────── SVG 꺾은선 그래프 ──────────
 // data: [{ label: 'MM-DD', value: 점수, max: 만점 }]
 // color는 SVG 속성이라 클래스가 아닌 CSS 변수(var(--color-*))로 토큰을 참조한다
@@ -107,7 +109,7 @@ function LineChart({ data, color = 'var(--color-navy)', height = 140 }) {
 // ────────── Grades 페이지 ──────────
 function Grades() {
   const { user } = useAuth()
-  const { classes, students, grades: gradeList, addGrade, deleteGrade } = useData()
+  const { classes: allClasses, students: allStudents, grades: gradeList, addGrade, deleteGrade } = useData()
   const [historyStudent, setHistoryStudent] = useState(null) // 기록 모달용
   const [activeType,    setActiveType]    = useState('weekly')
   const [selectedClass, setSelectedClass] = useState(null)
@@ -118,6 +120,9 @@ function Grades() {
   })
 
   const isStudent     = user?.role === 'student'
+  // 관리자는 전체, 교사는 담당 반만
+  const classes       = visibleClasses(allClasses, user)
+  const students      = visibleStudents(allStudents, allClasses, user)
   const activeClass   = selectedClass ?? classes[0]?.id ?? null
   const classStudents = students.filter((s) => s.classId === activeClass)
 
@@ -282,6 +287,15 @@ function Grades() {
     return displayGrades
       .filter((g) => g.studentId === studentId)
       .sort((a, b) => b.date.localeCompare(a.date))[0]
+  }
+
+  if (hasNoAssignedClass(allClasses, user)) {
+    return (
+      <Layout>
+        <PageTitle title="성적 관리" />
+        <NoAssignedClass />
+      </Layout>
+    )
   }
 
   return (

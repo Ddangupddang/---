@@ -7,6 +7,8 @@ import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { sameChoiceSet, toggleChoice } from '../utils/answerSet'
+import NoAssignedClass from '../components/NoAssignedClass'
+import { visibleClasses, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
 
 // 상태 배지 톤 — 팔레트에 초록이 없어 진행중=navy(긍정)로 대응한다
 const statusBadge = {
@@ -31,17 +33,13 @@ export default function Tests() {
   const [selectedSubmission,  setSelectedSubmission]  = useState(null)
   const [filterClassId,       setFilterClassId]       = useState('all')
 
-  // 학생은 본인 반만, 교사/관리자는 전체
-  const accessibleClasses =
-    user.role === 'student'
-      ? classes.filter((c) => c.id === user.classId)
-      : classes
+  // 관리자는 전체, 교사는 담당 반, 학생은 본인 반
+  const accessibleClasses = visibleClasses(classes, user)
 
   // 목록 필터
   const filteredTests = tests.filter((t) => {
-    const classMatch  = filterClassId === 'all' || t.classId === Number(filterClassId)
-    const accessMatch = user.role !== 'student' || t.classId === user.classId
-    return classMatch && accessMatch
+    const classMatch = filterClassId === 'all' || t.classId === Number(filterClassId)
+    return classMatch && canSeeClass(classes, user, t.classId)
   })
 
   // 미채점 건수
@@ -107,7 +105,9 @@ export default function Tests() {
         )}
 
         {/* 테스트 목록 */}
-        {filteredTests.length === 0 ? (
+        {hasNoAssignedClass(classes, user) ? (
+          <NoAssignedClass />
+        ) : filteredTests.length === 0 ? (
           <p className="text-center text-ink-faint py-12">테스트가 없습니다.</p>
         ) : (
           <div className="flex flex-col gap-3">

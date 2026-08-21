@@ -15,11 +15,13 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Alert from '../components/ui/Alert'
 import PageTitle from '../components/ui/PageTitle'
+import NoAssignedClass from '../components/NoAssignedClass'
+import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
 
 function Students() {
   const { user } = useAuth()
   const {
-    classes, students: studentList,
+    classes: allClasses, students: allStudents,
     addStudent, updateStudent, deleteStudent, bulkAddStudents, bulkDeleteStudents,
     addClass, updateClass, deleteClass,
     reorderClasses, reorderStudents,
@@ -45,6 +47,9 @@ function Students() {
   const activeTab      = searchParams.get('tab') === 'classes' ? 'classes' : 'students'
   const [selectedClass, setSelectedClass] = useState(null)
   const isAdmin = user?.role === 'admin'
+  // 이 화면이 다루는 범위 — 관리자는 전체, 교사는 담당 반과 그 반 학생만
+  const classes     = visibleClasses(allClasses, user)
+  const studentList = visibleStudents(allStudents, allClasses, user)
 
   // 계정 생성 모달
   const [accountModal,   setAccountModal]   = useState(null)
@@ -243,6 +248,15 @@ function Students() {
       classes.findIndex((c) => c.id === over.id)
     )
     reorderClasses(newOrder.map((c) => c.id))
+  }
+
+  if (hasNoAssignedClass(allClasses, user)) {
+    return (
+      <Layout>
+        <PageTitle title="학생 관리" />
+        <NoAssignedClass />
+      </Layout>
+    )
   }
 
   return (

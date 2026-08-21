@@ -12,7 +12,7 @@ vi.mock('../components/Layout', () => ({ default: ({ children }) => <div>{childr
 beforeEach(() => {
   state.auth = { user: { id: 'teacher-1', role: 'teacher' } }
   state.data = {
-    classes: [{ id: 10, name: '수능국어A반' }],
+    classes: [{ id: 10, name: '수능국어A반', teacherId: 'teacher-1' }],
     students: [{ id: 1, name: '김민서', classId: 10, grade: 5, jeongsiLevel: null }],
     attendance: [], tests: [], submissions: [],
     homeworkSets: [], homeworkDays: [], homeworkQuestions: [], homeworkSubmissions: [],
@@ -112,12 +112,12 @@ describe('WeeklyReport', () => {
 
   it('목업 반 목록이 실제 반으로 교체돼도 빈 표로 열리지 않는다', () => {
     // DataProvider는 목업 반(id 1·2·3)으로 먼저 그리고 Supabase 로드가 끝나야 실제 반으로 바꾼다
-    state.data = { ...state.data, classes: [{ id: 1, name: '목업반' }], students: [] }
+    state.data = { ...state.data, classes: [{ id: 1, name: '목업반', teacherId: 'teacher-1' }], students: [] }
     const { rerender } = render(<WeeklyReport />)
 
     state.data = {
       ...state.data,
-      classes: [{ id: 77, name: '실제반' }],
+      classes: [{ id: 77, name: '실제반', teacherId: 'teacher-1' }],
       students: [{ id: 5, name: '이서준', classId: 77, grade: 5, jeongsiLevel: null }],
     }
     rerender(<WeeklyReport />)
@@ -125,5 +125,42 @@ describe('WeeklyReport', () => {
     // 첫 렌더의 목업 id를 붙잡고 있으면 드롭다운이 빈칸이 되고 표에는 학생이 없다
     expect(screen.getByRole('combobox')).toHaveValue('77')
     expect(screen.getByText('이서준')).toBeInTheDocument()
+  })
+})
+
+describe('WeeklyReport — 담당 반 제한', () => {
+  it('담당이 아닌 반은 선택 목록에 없다', () => {
+    state.data = {
+      ...state.data,
+      classes: [
+        { id: 10, name: '수능국어A반', teacherId: 'teacher-1' },
+        { id: 20, name: '남의반',      teacherId: 'teacher-2' },
+      ],
+    }
+    render(<WeeklyReport />)
+    expect(screen.getByText('수능국어A반')).toBeInTheDocument()
+    expect(screen.queryByText('남의반')).toBeNull()
+  })
+
+  it('관리자는 모든 반을 본다', () => {
+    state.auth = { user: { id: 'admin-1', role: 'admin' } }
+    state.data = {
+      ...state.data,
+      classes: [
+        { id: 10, name: '수능국어A반', teacherId: 'teacher-1' },
+        { id: 20, name: '남의반',      teacherId: 'teacher-2' },
+      ],
+    }
+    render(<WeeklyReport />)
+    expect(screen.getByText('남의반')).toBeInTheDocument()
+  })
+
+  it('담당 반이 없는 교사에게는 빈 표 대신 이유를 알려준다', () => {
+    state.data = {
+      ...state.data,
+      classes: [{ id: 20, name: '남의반', teacherId: 'teacher-2' }],
+    }
+    render(<WeeklyReport />)
+    expect(screen.getByText('담당 반이 없습니다.')).toBeInTheDocument()
   })
 })

@@ -7,35 +7,34 @@ import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
+import { canSeeClass } from '../utils/classAccess'
 
 export default function QnA() {
   const { user } = useAuth()
-  const { qnaList, students, tests, addQuestion, answerQuestion } = useData()
+  const { qnaList, students, classes, tests, addQuestion, answerQuestion } = useData()
   const [view, setView]                         = useState('list') // list | detail | ask
   const [selectedQuestion, setSelectedQuestion] = useState(null)
   const [filterTestId, setFilterTestId]         = useState('all')
 
   const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin'
 
-  // 학생은 본인 반 테스트만, 교사/관리자는 전체
+  // 관리자는 전체, 교사는 담당 반 테스트, 학생은 본인 반의 종료된 테스트
   const accessibleTests =
     user.role === 'student'
       ? tests.filter((t) => t.classId === user.classId && t.status === 'closed')
-      : tests
+      : tests.filter((t) => canSeeClass(classes, user, t.classId))
 
-  // 질문 목록 필터링
+  const accessibleTestIds = new Set(accessibleTests.map((t) => t.id))
+
+  // 질문 목록 필터링 — 볼 수 있는 테스트에 달린 질문만
   const filteredQuestions = qnaList.filter((q) => {
-    const testMatch   = filterTestId === 'all' || q.testId === Number(filterTestId)
-    const accessMatch =
-      user.role !== 'student' || accessibleTests.some((t) => t.id === q.testId)
-    return testMatch && accessMatch
+    const testMatch = filterTestId === 'all' || q.testId === Number(filterTestId)
+    return testMatch && accessibleTestIds.has(q.testId)
   })
 
   // 미답변 건수 (교사용 배지)
   const unansweredCount = qnaList.filter(
-    (q) =>
-      !q.answer &&
-      (user.role !== 'student' || accessibleTests.some((t) => t.id === q.testId))
+    (q) => !q.answer && accessibleTestIds.has(q.testId)
   ).length
 
   // 이름 표시 규칙: 교사/관리자→실명, 학생→본인은 "나" 나머지는 "익명"

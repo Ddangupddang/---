@@ -2,11 +2,13 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
+import { visibleClasses, visibleClassIds } from '../utils/classAccess'
 import Layout from '../components/Layout'
 import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 
+// 공지는 반 단위로 대상을 정한다 — 대상이 비어 있으면 학원 전체 공지다
 export default function Notices() {
   const { user } = useAuth()
   const { classes, notices, addNotice, deleteNotice, staffProfiles } = useData()
@@ -15,13 +17,18 @@ export default function Notices() {
 
   const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin'
 
-  // 학생은 본인 반 또는 전체(targetClassIds 비어있거나 본인 반 포함) 공지만
+  // 대상이 비어 있으면 학원 전체 공지라 누구에게나 보인다.
+  // 대상이 정해진 공지는 자기 반(교사는 담당 반)과 겹칠 때만 보인다.
+  const myClassIds = visibleClassIds(classes, user)
+  function canSeeNotice(n) {
+    if (user.role === 'admin') return true
+    if (n.targetClassIds.length === 0) return true
+    if (user.role === 'student') return n.targetClassIds.includes(user.classId)
+    return n.targetClassIds.some((id) => myClassIds.includes(id))
+  }
+
   const visibleNotices = notices
-    .filter((n) =>
-      user.role !== 'student' ||
-      n.targetClassIds.length === 0 ||
-      n.targetClassIds.includes(user.classId)
-    )
+    .filter(canSeeNotice)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
   // ────────── list 뷰 ──────────
@@ -162,7 +169,9 @@ export default function Notices() {
 
 // ────────── CreateView 컴포넌트 ──────────
 function CreateView({ user, onSubmit, onCancel }) {
-  const { classes } = useData()
+  const { classes: allClasses } = useData()
+  // 남의 반에 공지를 보내지 못하도록 대상 선택지도 담당 반으로 제한한다
+  const classes = visibleClasses(allClasses, user)
   const [title,           setTitle]          = useState('')
   const [content,         setContent]        = useState('')
   const [selectedClasses, setSelectedClasses] = useState(classes.map((c) => c.id)) // 기본: 전체

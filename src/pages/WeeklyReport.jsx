@@ -10,6 +10,8 @@ import WeeklyReportTable from '../components/reports/WeeklyReportTable'
 import WeeklyStudentDetail from '../components/reports/WeeklyStudentDetail'
 import { weeklyClassReport } from '../utils/weeklyReport'
 import { mondayOf, dateForWeekday } from '../utils/homeworkWeek'
+import NoAssignedClass from '../components/NoAssignedClass'
+import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
 
 // 주 시작에서 n주 이동한 월요일
 function shiftWeek(weekStart, weeks) {
@@ -19,7 +21,7 @@ function shiftWeek(weekStart, weeks) {
 export default function WeeklyReport() {
   const { user } = useAuth()
   const {
-    classes, students, attendance, tests, submissions,
+    classes: allClasses, students: allStudents, attendance, tests, submissions,
     homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
     weeklyNotes, upsertWeeklyNote,
   } = useData()
@@ -27,6 +29,10 @@ export default function WeeklyReport() {
   const [weekStart, setWeekStart]       = useState(() => mondayOf(new Date().toISOString().slice(0, 10)))
   const [selectedClass, setSelectedClass] = useState(null)
   const [selected, setSelected]         = useState(null)
+
+  // 관리자는 전체, 교사는 담당 반만
+  const classes  = visibleClasses(allClasses, user)
+  const students = visibleStudents(allStudents, allClasses, user)
 
   // 반 목록은 목업으로 먼저 그려졌다가 Supabase 로드 후 교체된다.
   // 첫 렌더의 목업 id를 붙잡아 두면 실제 반과 어긋나 빈 표가 열린다 → 매 렌더 파생값으로 고른다
@@ -43,6 +49,15 @@ export default function WeeklyReport() {
         <div className="text-center py-20 text-ink-faint">
           <p className="text-lg">접근 권한이 없습니다.</p>
         </div>
+      </Layout>
+    )
+  }
+
+  if (hasNoAssignedClass(allClasses, user)) {
+    return (
+      <Layout>
+        <PageTitle title="주간 리포트" lead="한 반의 한 주를 한눈에 봅니다" />
+        <NoAssignedClass />
       </Layout>
     )
   }

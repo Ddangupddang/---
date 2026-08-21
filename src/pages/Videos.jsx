@@ -9,6 +9,8 @@ import { extractVideoId, getThumbnailUrl } from '../utils/youtube'
 import Layout from '../components/Layout'
 import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
+import NoAssignedClass from '../components/NoAssignedClass'
+import { visibleClasses, visibleStudents, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
 
 export default function Videos() {
   const { user } = useAuth()
@@ -22,19 +24,16 @@ export default function Videos() {
   const [showForm,        setShowForm]        = useState(false)
   const [selectedClassId, setSelectedClassId] = useState('all')
 
-  // 학생은 본인 반만, 교사/관리자는 전체 반
-  const accessibleClasses =
-    user.role === 'student'
-      ? classes.filter((c) => c.id === user.classId)
-      : classes
+  // 관리자는 전체, 교사는 담당 반, 학생은 본인 반
+  const accessibleClasses = visibleClasses(classes, user)
+  // 댓글에 실명을 띄울 때도 담당 반 학생만 다룬다
+  const accessibleStudents = visibleStudents(students, classes, user)
 
-  // 반 탭 + 학생 접근 필터 적용
+  // 반 탭 + 접근 권한 필터 적용
   const filteredVideos = videos.filter((v) => {
     const classMatch =
       selectedClassId === 'all' || v.classId === Number(selectedClassId)
-    const accessMatch =
-      user.role !== 'student' || v.classId === user.classId
-    return classMatch && accessMatch
+    return classMatch && canSeeClass(classes, user, v.classId)
   })
 
   async function handleAddVideo(data) {
@@ -74,7 +73,7 @@ export default function Videos() {
         role={user.role}
         currentUser={user}
         comments={videoComments}
-        students={students}
+        students={accessibleStudents}
         onBack={() => setSelectedVideo(null)}
         onAddComment={handleAddComment}
         onAddReply={handleAddReply}
@@ -136,7 +135,9 @@ export default function Videos() {
       </div>
 
       {/* 영상 그리드 */}
-      {filteredVideos.length === 0 ? (
+      {hasNoAssignedClass(classes, user) ? (
+        <NoAssignedClass />
+      ) : filteredVideos.length === 0 ? (
         <p className="text-center text-ink-faint py-12">등록된 영상이 없어요.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

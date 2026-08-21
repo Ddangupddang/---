@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import StudentHomeworkCard from '../components/homework/StudentHomeworkCard'
 import PageTitle from '../components/ui/PageTitle'
+import { visibleClasses, visibleStudents } from '../utils/classAccess'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -13,10 +14,8 @@ function AdminTeacherDashboard({ user }) {
   const navigate = useNavigate()
   const { classes, students, attendance, qnaList, notices: dbNotices, tests, submissions } = useData()
 
-  const myClasses = user.role === 'admin'
-    ? classes
-    : classes.filter((c) => c.teacherId === user.id)
-
+  // 관리자는 전체, 교사는 담당 반만 (규칙은 utils/classAccess에 모아뒀다)
+  const myClasses  = visibleClasses(classes, user)
   const myClassIds = myClasses.map((c) => c.id)
 
   // 미처리 항목 계산
@@ -31,7 +30,7 @@ function AdminTeacherDashboard({ user }) {
   }).length
 
   // 요약 통계
-  const totalStudents = students.filter((s) => myClassIds.includes(s.classId)).length
+  const totalStudents = visibleStudents(students, classes, user).length
 
   // 최근 공지사항 2개
   const recentNotices = [...dbNotices]

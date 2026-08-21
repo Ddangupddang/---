@@ -7,6 +7,8 @@ import { checkAcademyWifi } from '../utils/checkWifi'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import PageTitle from '../components/ui/PageTitle'
+import NoAssignedClass from '../components/NoAssignedClass'
+import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
 
 // 출석 상태의 의미별 톤. 팔레트에 초록·빨강·노랑이 따로 없어
 // 출석=navy(긍정) · 지각=warn(주의) · 결석=danger(경고) · 미기록=neutral로 대응한다.
@@ -38,7 +40,7 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
   const [selectedDate, setSelectedDate] = useState(today)
   const [selectedClass, setSelectedClass] = useState(null)
 
-  const myClasses = user.role === 'admin' ? classes : classes.filter((c) => c.teacherId === user.id)
+  const myClasses = visibleClasses(classes, user)
   const activeClass = selectedClass ?? myClasses[0]?.id ?? null
   const classStudents = students.filter((s) => s.classId === activeClass)
 
@@ -58,6 +60,9 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
   const presentCount = classStudents.filter((s) => getStatus(s.id) === 'present').length
   const absentCount  = classStudents.filter((s) => getStatus(s.id) === 'absent').length
   const lateCount    = classStudents.filter((s) => getStatus(s.id) === 'late').length
+
+  // 배정 전 교사에게 빈 화면 대신 이유를 알려준다
+  if (hasNoAssignedClass(classes, user)) return <NoAssignedClass />
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,17 +126,23 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
 
 // ── 클리닉 출결 (관리자/교사) ──────────────────────────────
 function ClinicAttendance({ records, upsertAttendance, deleteAttendance }) {
+  const { user } = useAuth()
   const { students, classes } = useData()
+  // 클리닉도 담당 반 학생만 다룬다 — 검색으로 남의 반 학생이 나오면 안 된다
+  const myStudents = visibleStudents(students, classes, user)
+  const myStudentIds = new Set(myStudents.map((s) => s.id))
   const today = new Date().toISOString().slice(0, 10)
   const [selectedDate, setSelectedDate] = useState(today)
   const [search, setSearch] = useState('')
 
   // 해당 날짜 클리닉 참석자 목록
-  const clinicRecords = records.filter((r) => r.date === selectedDate && r.type === '클리닉')
+  const clinicRecords = records.filter(
+    (r) => r.date === selectedDate && r.type === '클리닉' && myStudentIds.has(r.studentId)
+  )
   const attendedIds = new Set(clinicRecords.map((r) => r.studentId))
 
   // 검색 결과 (이미 참석 체크된 학생은 상단에)
-  const filtered = students.filter((s) =>
+  const filtered = myStudents.filter((s) =>
     search.trim() === '' ? false : s.name.includes(search.trim())
   )
 
@@ -164,7 +175,7 @@ function ClinicAttendance({ records, upsertAttendance, deleteAttendance }) {
       {clinicRecords.length > 0 && (
         <Card className="overflow-hidden">
           <div className="px-4 py-3 border-b border-line text-xs font-semibold text-ink-mute">참석자</div>
-          {students
+          {myStudents
             .filter((s) => attendedIds.has(s.id))
             .map((student) => (
               <div key={student.id} className="flex items-center justify-between px-4 py-3 border-b border-line-soft last:border-0">

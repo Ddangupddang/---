@@ -8,10 +8,15 @@ import ReportHomeworkChecks from '../components/reports/ReportHomeworkChecks'
 import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import NoAssignedClass from '../components/NoAssignedClass'
+import { visibleClasses, visibleStudents, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
 
 export default function Reports() {
   const { user } = useAuth()
-  const { classes, students, reports, staffProfiles, addReport, updateReportChecks, deleteReport } = useData()
+  const { classes: allClasses, students: allStudents, reports, staffProfiles, addReport, updateReportChecks, deleteReport } = useData()
+  // 관리자는 전체, 교사는 담당 반만
+  const classes  = visibleClasses(allClasses, user)
+  const students = visibleStudents(allStudents, allClasses, user)
 
   const [view,          setView]          = useState('list')
   const [selected,      setSelected]      = useState(null)
@@ -28,10 +33,20 @@ export default function Reports() {
     )
   }
 
-  // 반 필터링
+  // 담당 반 리포트만 — 그 안에서 다시 반 필터를 적용한다
   const filteredReports = reports
+    .filter((r) => canSeeClass(allClasses, user, r.classId))
     .filter((r) => filterClassId === 'all' || r.classId === Number(filterClassId))
     .sort((a, b) => b.date.localeCompare(a.date))
+
+  if (hasNoAssignedClass(allClasses, user)) {
+    return (
+      <Layout>
+        <PageTitle title="진도 리포트" />
+        <NoAssignedClass />
+      </Layout>
+    )
+  }
 
   function classStudents(classId) {
     return students.filter((s) => s.classId === classId)
@@ -225,7 +240,9 @@ function DetailView({ report, onUpdateChecks, onBack, classStudents, staffProfil
 
 // ────────── CreateView 컴포넌트 ──────────
 function CreateView({ user, onSubmit, onCancel, classStudents }) {
-  const { classes } = useData()
+  const { classes: allClasses } = useData()
+  // 남의 반 리포트를 만들 수 없도록 선택지도 담당 반으로 제한한다
+  const classes = visibleClasses(allClasses, user)
   const [classId,    setClassId]    = useState(String(classes[0]?.id ?? ''))
   const [date,       setDate]       = useState(new Date().toISOString().slice(0, 10))
   const [subject,    setSubject]    = useState('')
