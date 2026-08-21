@@ -765,6 +765,21 @@ export function DataProvider({ children }) {
     return record
   }
 
+  // 제출 취소 — 학생이 잘못 낸 답안을 지워 다시 풀 수 있게 한다.
+  // 학생은 제출 뒤 스스로 고칠 수 없으므로 이게 유일한 구제책이다.
+  // 기록을 통째로 지우므로 되돌릴 수 없다 — 부르는 쪽에서 반드시 확인을 받는다.
+  async function deleteHomeworkSubmission({ dayId, studentId }) {
+    const { error } = await supabase
+      .from('homework_submissions_v2')
+      .delete().eq('day_id', dayId).eq('student_id', studentId)
+    // 실패를 삼키면 화면만 "미제출"로 바뀌고 학생은 계속 못 내는 상태가 된다
+    if (error) { console.error('과제 제출 취소 실패:', error); return false }
+    setHomeworkSubmissions((prev) =>
+      prev.filter((s) => !(s.dayId === dayId && s.studentId === studentId))
+    )
+    return true
+  }
+
   // 해설 파일 업로드 → 공개 URL 반환
   async function uploadSolutionFile(file, prefix = 'sol') {
     const safe = file.name.replace(/[^\w.\-가-힣]/g, '_')
@@ -905,6 +920,7 @@ export function DataProvider({ children }) {
       addSubmission, updateSubmissionScores,
       homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
       addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission,
+      deleteHomeworkSubmission,
       uploadSolutionFile, deleteSolutionFile,
       weeklyNotes, upsertWeeklyNote,
     }}>

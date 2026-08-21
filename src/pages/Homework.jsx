@@ -60,7 +60,7 @@ export default function Homework() {
       {isStaff && mode === 'status' && (
         <>
           <button onClick={openList} className="text-sm text-ink-mute mb-4">← 목록</button>
-          <TeacherHomeworkStatus category={category} />
+          <TeacherHomeworkStatus category={category} userRole={user.role} userId={user.id} />
         </>
       )}
       {isStaff && mode === 'report' && (

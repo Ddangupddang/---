@@ -11,11 +11,12 @@ import {
   JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS, WEEKDAY_LABELS,
 } from '../../constants/homework'
 
-export default function TeacherHomeworkStatus({ category }) {
+export default function TeacherHomeworkStatus({ category, userRole, userId }) {
   const { user } = useAuth()
   const {
     students: allStudents, classes = [],
     homeworkSets, homeworkDays, homeworkQuestions = [], homeworkSubmissions,
+    deleteHomeworkSubmission,
   } = useData()
   // 과제 세트는 학년·레벨 단위라 학원 공용이지만, 제출 현황은 담당 반 학생만 본다
   const students = visibleStudents(allStudents, classes, user)
@@ -53,6 +54,8 @@ export default function TeacherHomeworkStatus({ category }) {
         <p className="text-center text-ink-faint py-10">등록된 과제가 없습니다.</p>
       ) : sets.map((set) => {
         const days = homeworkDays.filter((d) => d.setId === set.id).sort((a, b) => a.weekday - b.weekday)
+        // 제출 취소 권한 — 세트 수정·삭제와 같은 규칙(관리자 또는 그 과제를 낸 교사)
+        const canManage = userRole === 'admin' || set.teacherId === userId
         return (
           <div key={set.id} className="mb-6">
             <p className="font-semibold text-ink mb-2">{set.title} <span className="text-xs text-ink-faint">({set.weekStart} 주)</span></p>
@@ -92,6 +95,9 @@ export default function TeacherHomeworkStatus({ category }) {
                               students={groupStudents}
                               questions={dayQuestions}
                               submissions={subs}
+                              onCancel={canManage
+                                ? (studentId) => deleteHomeworkSubmission({ dayId: day.id, studentId })
+                                : null}
                             />
                           ) : (
                             <DayQuestionStats questions={dayQuestions} submissions={subs} />

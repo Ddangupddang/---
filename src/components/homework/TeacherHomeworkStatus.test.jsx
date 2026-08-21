@@ -217,3 +217,78 @@ describe('TeacherHomeworkStatus (정시)', () => {
     expect(screen.getByText('0/1 제출')).toBeInTheDocument()
   })
 })
+
+// 학생이 실수로 낸 제출을 교사가 되돌릴 수 있어야 한다.
+// 제출은 한 번뿐이고 학생 스스로 고칠 수 없으므로, 이 길이 유일한 구제책이다.
+describe('TeacherHomeworkStatus — 제출 취소', () => {
+  // 고2 탭 → 월요일 → 제출한 학생(고2-A) 상세까지 들어간다
+  // (기본 탭은 중1이라 학년 탭부터 눌러야 세트가 나온다)
+  async function 제출한학생상세로(user, props) {
+    render(<TeacherHomeworkStatus category="naesin" {...props} />)
+    await user.click(screen.getByRole('button', { name: '고2' }))
+    await user.click(screen.getByRole('button', { name: /월요일 · 2026-08-10/ }))
+    await user.click(screen.getByRole('button', { name: /고2-A/ }))
+  }
+
+  it('과제를 낸 교사에게는 제출 취소 버튼이 보인다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkSets[0].teacherId = 'teacher-1'
+    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-1' })
+    expect(screen.getByRole('button', { name: '제출 취소' })).toBeInTheDocument()
+  })
+
+  it('관리자에게도 보인다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkSets[0].teacherId = 'teacher-1'
+    await 제출한학생상세로(user, { userRole: 'admin', userId: 'admin-9' })
+    expect(screen.getByRole('button', { name: '제출 취소' })).toBeInTheDocument()
+  })
+
+  it('과제를 내지 않은 다른 교사에게는 보이지 않는다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkSets[0].teacherId = 'teacher-1'
+    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-2' })
+    expect(screen.queryByRole('button', { name: '제출 취소' })).not.toBeInTheDocument()
+  })
+
+  it('확인창에서 승인하면 그 학생의 제출만 지운다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkSets[0].teacherId = 'teacher-1'
+    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(true)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-1' })
+    await user.click(screen.getByRole('button', { name: '제출 취소' }))
+
+    // 되돌릴 수 없다는 사실을 확인창에서 알려야 한다
+    expect(confirmSpy.mock.calls[0][0]).toMatch(/되돌릴 수 없/)
+    expect(state.data.deleteHomeworkSubmission).toHaveBeenCalledWith({ dayId: 110, studentId: 1 })
+    confirmSpy.mockRestore()
+  })
+
+  it('확인창에서 취소하면 아무 일도 일어나지 않는다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkSets[0].teacherId = 'teacher-1'
+    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(true)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-1' })
+    await user.click(screen.getByRole('button', { name: '제출 취소' }))
+
+    expect(state.data.deleteHomeworkSubmission).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it('취소에 실패하면 성공한 척하지 않고 알린다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkSets[0].teacherId = 'teacher-1'
+    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(false)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await 제출한학생상세로(user, { userRole: 'teacher', userId: 'teacher-1' })
+    await user.click(screen.getByRole('button', { name: '제출 취소' }))
+
+    expect(await screen.findByText(/제출 취소에 실패/)).toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
+})
