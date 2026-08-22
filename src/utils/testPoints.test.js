@@ -1,6 +1,6 @@
 // src/utils/testPoints.test.js
 import { describe, it, expect } from 'vitest'
-import { distributePoints } from './testPoints'
+import { distributePoints, evenTotalSuggestions } from './testPoints'
 
 const sum = (arr) => Math.round(arr.reduce((a, b) => a + b, 0) * 10) / 10
 
@@ -31,5 +31,28 @@ describe('distributePoints', () => {
 
   it('총점이 비어 있어도 터지지 않는다 — 0점씩 준다', () => {
     expect(distributePoints('', 2)).toEqual([0, 0])
+  })
+})
+
+describe('evenTotalSuggestions', () => {
+  it('이미 딱 떨어지면 제안하지 않는다', () => {
+    expect(evenTotalSuggestions(100, 20)).toEqual([])
+    expect(evenTotalSuggestions(100, 4)).toEqual([])
+  })
+
+  it('나누어떨어지지 않으면 가까운 총점을 위아래로 알려준다', () => {
+    expect(evenTotalSuggestions(100, 3)).toEqual([99, 102])
+    expect(evenTotalSuggestions(100, 7)).toEqual([98, 105])
+  })
+
+  it('제안값은 그 문항 수로 딱 나누어떨어진다', () => {
+    for (const n of [3, 6, 7, 9, 11, 13, 17, 23]) {
+      for (const v of evenTotalSuggestions(100, n)) expect(v % n).toBe(0)
+    }
+  })
+
+  it('문항 수나 총점이 없으면 제안도 없다', () => {
+    expect(evenTotalSuggestions(100, 0)).toEqual([])
+    expect(evenTotalSuggestions(0, 10)).toEqual([])
   })
 })

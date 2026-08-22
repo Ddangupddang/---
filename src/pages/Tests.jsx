@@ -8,7 +8,7 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { sameChoiceSet, toggleChoice } from '../utils/answerSet'
 import ChoiceGrid from '../components/ChoiceGrid'
-import { distributePoints } from '../utils/testPoints'
+import { distributePoints, evenTotalSuggestions } from '../utils/testPoints'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
 
@@ -502,6 +502,8 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
   // 배점은 총점을 문항 수로 나눠 자동으로 정한다
   const questionCount = mcCount + saList.length
   const points = distributePoints(totalPoints, questionCount)
+  // 배점이 갈리면 총점을 조금 고치는 편이 낫다 — 가까운 값을 알려준다
+  const evenTotals = evenTotalSuggestions(totalPoints, questionCount)
 
   const questions = [
     ...Array.from({ length: mcCount }, (_, i) => ({
@@ -632,10 +634,18 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
         </div>
 
         {questionCount > 0 && (
-          <p className="text-xs text-ink-mute -mt-3">
-            {questionCount}문항 · 문항당 {points[0]}점
-            {points[0] !== points[questionCount - 1] && ` (나누어떨어지지 않아 뒤쪽 문항은 ${points[questionCount - 1]}점)`}
-          </p>
+          <div className="-mt-3">
+            <p className="text-xs text-ink-mute">
+              {questionCount}문항 · 문항당 {points[0]}점
+              {points[0] !== points[questionCount - 1] && ` (뒤쪽 ${questionCount - points.filter((p) => p === points[0]).length}문항은 ${points[questionCount - 1]}점)`}
+            </p>
+            {evenTotals.length > 0 && (
+              <p data-testid="even-total-hint" className="text-xs text-ink-soft mt-1">
+                {questionCount}문항은 {totalPoints}점으로 나누어떨어지지 않습니다.{' '}
+                {evenTotals.map((v) => `${v}점(문항당 ${v / questionCount}점)`).join(' 또는 ')}으로 하면 딱 맞습니다.
+              </p>
+            )}
+          </div>
         )}
 
         {mcCount > 0 && (

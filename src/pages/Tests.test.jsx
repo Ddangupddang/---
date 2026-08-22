@@ -139,6 +139,23 @@ describe('Tests — 교사 정답 지정 (CreateView)', () => {
     expect(state.addTest.mock.calls[0][0].questions[1].answer).toBe('③')
   })
 
+  it('총점이 문항 수로 나누어떨어지지 않으면 가까운 총점을 알려준다', () => {
+    renderWithAuth(teacher)
+    fireEvent.click(screen.getByText('+ 테스트 만들기'))
+    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '3' } })
+
+    expect(screen.getByTestId('even-total-hint'))
+      .toHaveTextContent('99점(문항당 33점) 또는 102점(문항당 34점)')
+  })
+
+  it('딱 나누어떨어지면 총점 안내를 띄우지 않는다', () => {
+    renderWithAuth(teacher)
+    fireEvent.click(screen.getByText('+ 테스트 만들기'))
+    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '20' } })
+
+    expect(screen.queryByTestId('even-total-hint')).toBeNull()
+  })
+
   it('주관식은 객관식 뒤 번호로 붙고 배점도 함께 나눠 갖는다', async () => {
     renderWithAuth(teacher)
     fireEvent.click(screen.getByText('+ 테스트 만들기'))
