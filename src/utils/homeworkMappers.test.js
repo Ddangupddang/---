@@ -5,12 +5,17 @@ import {
 
 describe('homework 매퍼', () => {
   it('toHomeworkSet: snake→camel', () => {
-    const row = { id: 1, category: 'naesin', target: 5, week_start: '2026-08-10',
+    const row = { id: 1, category: 'naesin', target: null, class_id: 7, week_start: '2026-08-10',
       title: '8월 2주차', teacher_id: 'uid-t', created_at: '2026-08-09T00:00:00Z' }
     expect(toHomeworkSet(row)).toEqual({
-      id: 1, category: 'naesin', target: 5, weekStart: '2026-08-10',
+      id: 1, category: 'naesin', target: null, classId: 7, weekStart: '2026-08-10',
       title: '8월 2주차', teacherId: 'uid-t', createdAt: '2026-08-09T00:00:00Z',
     })
+  })
+  it('toHomeworkSet: 반별 전환 이전 세트는 반이 비고 학년이 남는다', () => {
+    const row = { id: 2, category: 'naesin', target: 5, week_start: '2026-07-06',
+      title: '7월 1주차', teacher_id: 'uid-t', created_at: '2026-07-05T00:00:00Z' }
+    expect(toHomeworkSet(row)).toMatchObject({ target: 5, classId: null })
   })
   it('toHomeworkDay: null 해설은 빈 문자열로', () => {
     const row = { id: 3, set_id: 1, weekday: 1, date: '2026-08-10', question_count: 20,

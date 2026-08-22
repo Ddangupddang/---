@@ -5,14 +5,11 @@
 import { useState } from 'react'
 import { useData } from '../../context/DataContext'
 import { useAuth } from '../../context/AuthContext'
-import { visibleStudents } from '../../utils/classAccess'
+import { visibleStudents, visibleClasses } from '../../utils/classAccess'
+import { homeworkGroups } from '../../utils/homeworkGroup'
 import { homeworkPeriodReport } from '../../utils/homeworkReport'
 import Card from '../ui/Card'
 import Alert from '../ui/Alert'
-import {
-  HW_CATEGORY, GRADES, GRADE_LABELS,
-  JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS,
-} from '../../constants/homework'
 
 export default function HomeworkReport({ category }) {
   const { user } = useAuth()
@@ -23,17 +20,18 @@ export default function HomeworkReport({ category }) {
   // 리포트도 담당 반 학생만 — 세트는 공용이어도 학생 명단은 담당 범위를 따른다
   const students = visibleStudents(allStudents, classes, user)
 
-  const isNaesin = category === HW_CATEGORY.NAESIN
-  const targets = isNaesin ? GRADES : JEONGSI_LEVELS
-  const targetLabels = isNaesin ? GRADE_LABELS : JEONGSI_LEVEL_LABELS
+  // 내신은 반, 정시는 레벨로 묶는다
+  const groups = homeworkGroups(category, visibleClasses(classes, user))
 
-  const [target, setTarget] = useState(targets[0])
+  const [groupKey, setGroupKey] = useState('')
+  // 반 목록은 Supabase 로드 뒤에 채워진다 — 첫 렌더의 빈 값을 붙잡으면 표가 빈 채로 열린다
+  const group = groups.find((g) => g.key === groupKey) ?? groups[0] ?? null
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
 
   const { totalDays, rows } = homeworkPeriodReport({
     students, sets: homeworkSets, days: homeworkDays,
     questions: homeworkQuestions, submissions: homeworkSubmissions,
-    category, target, month,
+    category, group, month,
   })
 
   const lowCount = rows.filter((r) => r.lowSubmission).length
@@ -42,11 +40,11 @@ export default function HomeworkReport({ category }) {
     <div>
       {/* 그룹 탭 */}
       <div className="flex gap-2 mb-3 overflow-x-auto">
-        {targets.map((t) => (
-          <button key={t} onClick={() => setTarget(t)}
+        {groups.map((g) => (
+          <button key={g.key} onClick={() => setGroupKey(g.key)}
             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
-              target === t ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
-            }`}>{targetLabels[t]}</button>
+              group?.key === g.key ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
+            }`}>{g.label}</button>
         ))}
       </div>
 
@@ -56,7 +54,9 @@ export default function HomeworkReport({ category }) {
         <span className="text-sm text-ink-mute">과제 {totalDays}회</span>
       </div>
 
-      {totalDays === 0 ? (
+      {groups.length === 0 ? (
+        <p className="text-center text-ink-faint py-10">담당 반이 없습니다. 관리자에게 반 배정을 요청하세요.</p>
+      ) : totalDays === 0 ? (
         <p className="text-center text-ink-faint py-10">이 달에 출제된 과제가 없습니다.</p>
       ) : rows.length === 0 ? (
         <p className="text-center text-ink-faint py-10">이 그룹에 학생이 없습니다.</p>

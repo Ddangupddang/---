@@ -15,8 +15,13 @@ vi.mock('../../context/DataContext', () => ({ useData: () => state.data }))
 
 beforeEach(() => {
   state.data = {
+    // 내신 과제는 반 단위로 나간다
+    classes: [
+      { id: 7, name: '고2A반', teacherId: 'teacher-1' },
+      { id: 8, name: '고2B반', teacherId: 'teacher-1' },
+    ],
     // 실제 addHomeworkSet은 성공 시 생성된 세트를, 실패 시 null을 반환한다
-    addHomeworkSet: vi.fn().mockResolvedValue({ id: 1, category: 'naesin', target: 5 }),
+    addHomeworkSet: vi.fn().mockResolvedValue({ id: 1, category: 'naesin', classId: 7 }),
     updateHomeworkSet: vi.fn().mockResolvedValue({ id: 11 }),
     uploadSolutionFile: vi.fn(),
     deleteSolutionFile: vi.fn().mockResolvedValue(true),
@@ -24,8 +29,8 @@ beforeEach(() => {
   }
 })
 
-// 수정 모드용 기존 세트: 고2 월요일 2문항(정답 ①②), 이미 2명이 제출한 상태
-const EDIT_SET = { id: 11, category: 'naesin', target: 5, weekStart: WEEK, title: '8월 2주차' }
+// 수정 모드용 기존 세트: 고2B반 월요일 2문항(정답 ①②), 이미 2명이 제출한 상태
+const EDIT_SET = { id: 11, category: 'naesin', classId: 8, target: null, weekStart: WEEK, title: '8월 2주차' }
 function withExistingSet() {
   state.data.homeworkDays = [
     { id: 110, setId: 11, weekday: 1, date: WEEK, questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
@@ -68,8 +73,8 @@ describe('TeacherHomeworkCreate (내신)', () => {
     render(<TeacherHomeworkCreate category="naesin" onDone={onDone} />)
 
     await user.type(screen.getByPlaceholderText(/세트 제목/), '8월 2주차')
-    // 학년 선택: 5 = 고2
-    await user.selectOptions(screen.getAllByRole('combobox')[0], '5')
+    // 반 선택
+    await user.selectOptions(screen.getAllByRole('combobox')[0], 'class-7')
 
     // 월요일 과제 사용 → 문항 수 2 → 정답 ①, ②
     await user.click(screen.getByRole('checkbox'))
@@ -85,7 +90,8 @@ describe('TeacherHomeworkCreate (내신)', () => {
     await waitFor(() => expect(state.data.addHomeworkSet).toHaveBeenCalledTimes(1))
     expect(state.data.addHomeworkSet).toHaveBeenCalledWith({
       category: 'naesin',
-      target: 5,
+      target: null,
+      classId: 7,
       weekStart: WEEK,
       title: '8월 2주차',
       teacherId: 'teacher-1',
@@ -160,7 +166,8 @@ describe('TeacherHomeworkCreate (수정 모드)', () => {
 
     expect(screen.getByText('내신과제 수정')).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/세트 제목/)).toHaveValue('8월 2주차')
-    expect(screen.getAllByRole('combobox')[0]).toHaveValue('5')
+    // 수정 화면은 그 세트의 반이 골라진 채로 열린다
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('class-8')
     expect(screen.getByRole('checkbox')).toBeChecked()
     expect(screen.getByRole('spinbutton')).toHaveValue(2)
     // 저장된 정답이 선택된 상태로 보인다
@@ -241,7 +248,7 @@ describe('TeacherHomeworkCreate (정시)', () => {
     expect(screen.getByText('정시과제 만들기')).toBeInTheDocument()
 
     await user.type(screen.getByPlaceholderText(/세트 제목/), '정시 8월 2주차')
-    await user.selectOptions(screen.getAllByRole('combobox')[0], '2')
+    await user.selectOptions(screen.getAllByRole('combobox')[0], 'level-2')
     await user.click(screen.getByRole('checkbox'))
     await user.type(screen.getByRole('spinbutton'), '1')
     await user.click(screen.getByTestId('cell-1-⑤'))

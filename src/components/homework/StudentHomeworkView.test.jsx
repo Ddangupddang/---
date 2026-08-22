@@ -14,10 +14,10 @@ vi.mock('../../context/DataContext', () => ({ useData: () => state.data }))
 
 beforeEach(() => {
   state.data = {
-    students: [{ id: 7, name: '홍길동', grade: 5, jeongsiLevel: null }],
+    students: [{ id: 7, name: '홍길동', grade: 5, jeongsiLevel: null, classId: 3 }],
     homeworkSets: [
-      { id: 1, category: 'naesin',  target: 5, weekStart: WEEK, title: '내신 세트' },
-      { id: 2, category: 'naesin',  target: 4, weekStart: WEEK, title: '다른학년 세트' },
+      { id: 1, category: 'naesin', classId: 3, target: null, weekStart: WEEK, title: '내신 세트' },
+      { id: 2, category: 'naesin', classId: 4, target: null, weekStart: WEEK, title: '다른반 세트' },
     ],
     homeworkDays: [
       { id: 10, setId: 1, weekday: 1, date: WEEK, questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
@@ -33,7 +33,7 @@ beforeEach(() => {
 })
 
 describe('StudentHomeworkView (내신)', () => {
-  it('자기 학년(5=고2) 세트의 요일만 보인다', () => {
+  it('자기 반 세트의 요일만 보인다', () => {
     render(<StudentHomeworkView category="naesin" />)
     expect(screen.getByText('내신 세트')).toBeInTheDocument()
     expect(screen.getByText('월요일 과제')).toBeInTheDocument()
@@ -174,5 +174,16 @@ describe('StudentHomeworkView (결과·해설)', () => {
     expect(screen.getByText('요일 해설')).toBeInTheDocument()
     expect(screen.getByTitle('해설 영상')).toBeInTheDocument()
     expect(screen.getByText('해설 파일 열기')).toHaveAttribute('href', 'https://example.com/sol.pdf')
+  })
+})
+
+describe('StudentHomeworkView — 반 미배정', () => {
+  it('내신 과제는 반이 없으면 이유를 알려준다', () => {
+    state.data = {
+      ...state.data,
+      students: [{ id: 7, name: '홍길동', grade: 5, jeongsiLevel: 2, classId: null }],
+    }
+    render(<StudentHomeworkView category="naesin" />)
+    expect(screen.getByText(/반이 배정되지 않았습니다/)).toBeInTheDocument()
   })
 })

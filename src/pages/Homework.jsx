@@ -12,10 +12,14 @@ import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import { HW_CATEGORY, CATEGORY_LABELS } from '../constants/homework'
+import { visibleClasses } from '../utils/classAccess'
+import { setTargetLabel } from '../utils/homeworkGroup'
 
 export default function Homework() {
   const { user } = useAuth()
-  const { homeworkSets, deleteHomeworkSet } = useData()
+  const { homeworkSets, deleteHomeworkSet, classes = [] } = useData()
+  // 내신 과제는 반 단위라 담당 반 것만 다룬다 (정시는 레벨 단위라 학원 공용)
+  const myClasses = visibleClasses(classes, user)
   const isStaff = user.role === 'teacher' || user.role === 'admin'
 
   const [category, setCategory] = useState(HW_CATEGORY.NAESIN)
@@ -71,7 +75,7 @@ export default function Homework() {
       )}
       {isStaff && mode === 'list' && (
         <TeacherSetList
-          category={category} sets={homeworkSets}
+          category={category} sets={homeworkSets} classes={myClasses}
           onEdit={(s) => { setEditSet(s); setMode('form') }}
           onDelete={deleteHomeworkSet}
           userRole={user.role} userId={user.id}
@@ -82,9 +86,16 @@ export default function Homework() {
 }
 
 // 교사 목록: 이 종류의 세트들 (주차 최신순) + 수정/삭제
-function TeacherSetList({ category, sets, onEdit, onDelete, userRole, userId }) {
+function TeacherSetList({ category, sets, classes = [], onEdit, onDelete, userRole, userId }) {
   const mine = sets
-    .filter((s) => s.category === category)
+    .filter((s) => {
+      if (s.category !== category) return false
+      // 정시는 레벨 단위 학원 공용
+      if (category === HW_CATEGORY.JEONGSI) return true
+      // 내신은 담당 반 것만. 반별 전환 이전의 학년 세트는 정리할 수 있게 관리자에게만 남긴다
+      if (s.classId != null) return classes.some((c) => c.id === s.classId)
+      return userRole === 'admin'
+    })
     .sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1))
   if (mine.length === 0) return <p className="text-center text-ink-faint py-12">등록된 {CATEGORY_LABELS[category]}가 없습니다.</p>
   return (
@@ -96,7 +107,7 @@ function TeacherSetList({ category, sets, onEdit, onDelete, userRole, userId }) 
           <Card key={s.id} className="p-4 flex justify-between items-center">
             <div>
               <p className="font-semibold text-ink">{s.title}</p>
-              <p className="text-xs text-ink-faint mt-1">{s.weekStart} 주 · target {s.target}</p>
+              <p className="text-xs text-ink-faint mt-1">{s.weekStart} 주 · {setTargetLabel(s, classes)}</p>
             </div>
             {canManage && (
               <div className="flex items-center gap-3">

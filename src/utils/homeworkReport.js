@@ -1,22 +1,24 @@
 // src/utils/homeworkReport.js
-// 과제 리포트: 한 달 동안 한 그룹(내신 학년 / 정시 레벨)의 학생별 누적 수행.
+// 과제 리포트: 한 달 동안 한 그룹(내신 반 / 정시 레벨)의 학생별 누적 수행.
 // 요일 단위 제출 현황만으로는 "이 학생이 요즘 성실한가"를 알 수 없어,
 // 학부모 상담과 학생 관리를 위해 기간 단위로 모아 본다.
 import { gradeHomework } from './homework'
+import { setInGroup, studentInGroup } from './homeworkGroup'
 import { LOW_SUBMISSION } from '../constants/homework'
 
 export function homeworkPeriodReport({
-  students, sets, days, questions, submissions, category, target, month,
+  students, sets, days, questions, submissions, category, group, month,
 }) {
+  // 담당 반이 없는 교사는 고를 그룹 자체가 없다
+  if (!group) return { totalDays: 0, rows: [] }
+
   const setIds = new Set(
-    sets.filter((s) => s.category === category && s.target === target).map((s) => s.id)
+    sets.filter((s) => s.category === category && setInGroup(s, group)).map((s) => s.id)
   )
   const periodDays = days.filter((d) => setIds.has(d.setId) && d.date.startsWith(month))
   const totalDays = periodDays.length
 
-  const groupStudents = students.filter((s) =>
-    category === 'naesin' ? s.grade === target : s.jeongsiLevel === target
-  )
+  const groupStudents = students.filter((s) => studentInGroup(s, group))
 
   const rows = groupStudents.map((student) => {
     let submitted = 0

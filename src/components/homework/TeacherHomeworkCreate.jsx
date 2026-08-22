@@ -12,9 +12,10 @@ import Button from '../ui/Button'
 import { mondayOf } from '../../utils/homeworkWeek'
 import { homeworkEditImpact } from '../../utils/homeworkEdit'
 import { solutionFileName } from '../../utils/homework'
+import { homeworkGroups, setInGroup } from '../../utils/homeworkGroup'
+import { visibleClasses } from '../../utils/classAccess'
 import {
-  HW_CATEGORY, CATEGORY_LABELS, GRADES, GRADE_LABELS,
-  JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS, WEEKDAYS, WEEKDAY_LABELS,
+  HW_CATEGORY, CATEGORY_LABELS, WEEKDAYS, WEEKDAY_LABELS,
 } from '../../constants/homework'
 
 // 요일 하나의 편집 상태 초기값
@@ -42,14 +43,17 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
   const { user } = useAuth()
   const {
     addHomeworkSet, updateHomeworkSet, uploadSolutionFile, deleteSolutionFile,
-    homeworkDays = [], homeworkQuestions = [], homeworkSubmissions = [],
+    classes = [], homeworkDays = [], homeworkQuestions = [], homeworkSubmissions = [],
   } = useData()
 
   const isNaesin = category === HW_CATEGORY.NAESIN
-  const targets = isNaesin ? GRADES : JEONGSI_LEVELS
-  const targetLabels = isNaesin ? GRADE_LABELS : JEONGSI_LEVEL_LABELS
+  // 내신은 반, 정시는 레벨이 대상이다. 교사에게는 담당 반만 고를 수 있게 한다.
+  const groups = homeworkGroups(category, visibleClasses(classes, user))
 
-  const [target, setTarget]   = useState(String(editSet?.target ?? targets[0]))
+  const [groupKey, setGroupKey] = useState(
+    () => groups.find((g) => setInGroup(editSet, g))?.key ?? groups[0]?.key ?? ''
+  )
+  const group = groups.find((g) => g.key === groupKey) ?? null
   const [title, setTitle]     = useState(editSet?.title ?? '')
   const [weekStart, setWeekStart] = useState(
     editSet?.weekStart ?? mondayOf(new Date().toISOString().slice(0, 10))
@@ -80,7 +84,7 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
   async function handleFile(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = await uploadSolutionFile(file, `${category}-${target}-${weekStart}`)
+    const url = await uploadSolutionFile(file, `${category}-${groupKey}-${weekStart}`)
     if (!url) { setError('해설 파일 업로드에 실패했습니다. 다시 시도해 주세요.'); return }
     setDay({ fileUrl: url })
   }
@@ -101,10 +105,12 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
     const dd = days[wd]
     return !(dd.count > 0 && answeredCount(dd.answers) === dd.count)
   })
-  const canSave = Boolean(title.trim()) && enabledDays.length > 0 && incompleteDays.length === 0
+  const canSave = Boolean(group) && Boolean(title.trim())
+    && enabledDays.length > 0 && incompleteDays.length === 0
 
   // 버튼이 꺼져 있는 이유 — 교사가 화면만 보고 알 수 있어야 한다
   const blockedReasons = []
+  if (!group) blockedReasons.push(isNaesin ? '담당 반이 있어야 내신 과제를 낼 수 있습니다.' : '대상을 골라 주세요.')
   if (!title.trim()) blockedReasons.push('세트 제목을 입력해 주세요.')
   if (enabledDays.length === 0) blockedReasons.push('과제를 낼 요일을 하나 이상 골라 주세요.')
   if (incompleteDays.length > 0) {
@@ -151,10 +157,12 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
     setError('')
     const saved = editSet
       ? await updateHomeworkSet(editSet.id, {
-          target: Number(target), weekStart, title: title.trim(), days: payloadDays,
+          target: group?.target ?? null, classId: group?.classId ?? null,
+          weekStart, title: title.trim(), days: payloadDays,
         })
       : await addHomeworkSet({
-          category, target: Number(target), weekStart, title: title.trim(),
+          category, target: group?.target ?? null, classId: group?.classId ?? null,
+          weekStart, title: title.trim(),
           teacherId: user.id, days: payloadDays,
         })
     setSaving(false)
@@ -180,11 +188,14 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
 
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-ink-soft mb-1">{isNaesin ? '학년' : '정시 레벨'}</label>
-            <select value={target} onChange={(e) => setTarget(e.target.value)}
+            <label className="block text-sm font-medium text-ink-soft mb-1">{isNaesin ? '반' : '정시 레벨'}</label>
+            <select value={groupKey} onChange={(e) => setGroupKey(e.target.value)}
               className="w-full border border-line rounded px-3 py-2 text-sm">
-              {targets.map((t) => <option key={t} value={t}>{targetLabels[t]}</option>)}
+              {groups.map((g) => <option key={g.key} value={g.key}>{g.label}</option>)}
             </select>
+            {isNaesin && groups.length === 0 && (
+              <p className="text-xs text-danger mt-1">담당 반이 없어 내신 과제를 낼 수 없습니다.</p>
+            )}
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium text-ink-soft mb-1">주 시작(월요일)</label>

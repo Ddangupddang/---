@@ -17,12 +17,17 @@ beforeEach(() => {
   // 기본은 관리자 — 담당 반 제한은 별도 테스트에서 확인한다
   state.auth = { user: { id: 'admin-1', role: 'admin' } }
   state.data = {
-    students: [
-      { id: 1, name: '성실이', grade: 5, jeongsiLevel: null },
-      { id: 2, name: '가끔이', grade: 5, jeongsiLevel: null },
-      { id: 3, name: '중1학생', grade: 1, jeongsiLevel: null },
+    // 내신 과제는 반 단위다. 첫 번째 반이 기본 탭이 된다.
+    classes: [
+      { id: 1, name: '중1', teacherId: 'admin-1' },
+      { id: 2, name: '고2', teacherId: 'admin-1' },
     ],
-    homeworkSets: [{ id: 11, category: 'naesin', target: 5, weekStart: D1 }],
+    students: [
+      { id: 1, name: '성실이',  grade: 5, jeongsiLevel: null, classId: 2 },
+      { id: 2, name: '가끔이',  grade: 5, jeongsiLevel: null, classId: 2 },
+      { id: 3, name: '중1학생', grade: 1, jeongsiLevel: null, classId: 1 },
+    ],
+    homeworkSets: [{ id: 11, category: 'naesin', classId: 2, target: null, weekStart: D1 }],
     homeworkDays: [
       { id: 110, setId: 11, weekday: 1, date: D1 },
       { id: 111, setId: 11, weekday: 3, date: D2 },
@@ -100,8 +105,7 @@ describe('HomeworkReport', () => {
 })
 
 describe('HomeworkReport — 담당 반 제한', () => {
-  it('교사는 담당 반 학생만 리포트에 나온다', async () => {
-    const user = userEvent.setup()
+  it('교사는 담당 반 학생만 리포트에 나온다', () => {
     state.auth = { user: { id: 't1', role: 'teacher' } }
     state.data = {
       ...state.data,
@@ -113,10 +117,13 @@ describe('HomeworkReport — 담당 반 제한', () => {
         { id: 1, name: '성실이', grade: 5, jeongsiLevel: null, classId: 1 },
         { id: 2, name: '가끔이', grade: 5, jeongsiLevel: null, classId: 2 },
       ],
+      homeworkSets: [{ id: 11, category: 'naesin', classId: 1, target: null, weekStart: D1 }],
     }
     render(<HomeworkReport category="naesin" />)
-    await openGo2(user)
 
+    // 담당 반 탭 하나만 뜬다 — 남의 반은 탭에도 없다
+    expect(screen.getByRole('button', { name: '내 반' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '남의 반' })).toBeNull()
     expect(screen.getByTestId('report-row-1')).toBeInTheDocument()
     expect(screen.queryByTestId('report-row-2')).toBeNull()
   })

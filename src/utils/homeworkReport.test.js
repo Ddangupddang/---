@@ -2,16 +2,19 @@
 import { describe, it, expect } from 'vitest'
 import { homeworkPeriodReport } from './homeworkReport'
 
-// 고2(내신) 8월: 월·수 2회 출제, 각 2문항
+// 고2A반(내신) 8월: 월·수 2회 출제, 각 2문항
+const CLASS_GROUP  = { key: 'class-7', label: '고2A반', classId: 7, target: null }
+const LEVEL_GROUP  = { key: 'level-2', label: '2레벨',  classId: null, target: 2 }
+
 const base = () => ({
   students: [
-    { id: 1, name: '성실이', grade: 5, jeongsiLevel: 2 },
-    { id: 2, name: '가끔이', grade: 5, jeongsiLevel: null },
-    { id: 3, name: '남의반', grade: 1, jeongsiLevel: null },
+    { id: 1, name: '성실이', grade: 5, jeongsiLevel: 2, classId: 7 },
+    { id: 2, name: '가끔이', grade: 5, jeongsiLevel: null, classId: 7 },
+    { id: 3, name: '남의반', grade: 1, jeongsiLevel: null, classId: 8 },
   ],
   sets: [
-    { id: 11, category: 'naesin',  target: 5, weekStart: '2026-08-10' },
-    { id: 12, category: 'jeongsi', target: 2, weekStart: '2026-08-10' },
+    { id: 11, category: 'naesin',  classId: 7,    target: null, weekStart: '2026-08-10' },
+    { id: 12, category: 'jeongsi', classId: null, target: 2,    weekStart: '2026-08-10' },
   ],
   days: [
     { id: 110, setId: 11, weekday: 1, date: '2026-08-10' },
@@ -26,7 +29,7 @@ const base = () => ({
   ],
   submissions: [],
   category: 'naesin',
-  target: 5,
+  group: CLASS_GROUP,
   month: '2026-08',
 })
 
@@ -43,7 +46,7 @@ describe('homeworkPeriodReport — 기간·그룹 고르기', () => {
   })
 
   it('정시는 정시 레벨로 학생을 고른다', () => {
-    const r = homeworkPeriodReport({ ...base(), category: 'jeongsi', target: 2 })
+    const r = homeworkPeriodReport({ ...base(), category: 'jeongsi', group: LEVEL_GROUP })
     expect(r.totalDays).toBe(1)
     expect(r.rows.map((x) => x.student.name)).toEqual(['성실이'])
   })

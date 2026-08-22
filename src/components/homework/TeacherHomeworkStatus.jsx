@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { useData } from '../../context/DataContext'
 import { useAuth } from '../../context/AuthContext'
-import { visibleStudents } from '../../utils/classAccess'
+import { visibleStudents, visibleClasses } from '../../utils/classAccess'
+import { homeworkGroups, setInGroup, studentInGroup } from '../../utils/homeworkGroup'
 import DaySubmissionList from './DaySubmissionList'
 import DayQuestionStats from './DayQuestionStats'
 import {
-  HW_CATEGORY, GRADES, GRADE_LABELS,
-  JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS, WEEKDAY_LABELS,
+  WEEKDAY_LABELS,
 } from '../../constants/homework'
 
 // 로그인 정보는 useAuth() 하나에서만 받는다 — 담당 반 범위와 제출 취소 권한이
@@ -22,37 +22,38 @@ export default function TeacherHomeworkStatus({ category }) {
   } = useData()
   // 과제 세트는 학년·레벨 단위라 학원 공용이지만, 제출 현황은 담당 반 학생만 본다
   const students = visibleStudents(allStudents, classes, user)
-  const isNaesin = category === HW_CATEGORY.NAESIN
-  const targets = isNaesin ? GRADES : JEONGSI_LEVELS
-  const targetLabels = isNaesin ? GRADE_LABELS : JEONGSI_LEVEL_LABELS
+  // 내신은 반, 정시는 레벨로 묶는다
+  const groups = homeworkGroups(category, visibleClasses(classes, user))
 
-  const [target, setTarget] = useState(targets[0])
+  const [groupKey, setGroupKey] = useState('')
+  // 반 목록은 Supabase 로드 뒤에 채워진다 — 첫 렌더의 빈 값을 붙잡고 있으면 표가 빈 채로 열린다
+  const group = groups.find((g) => g.key === groupKey) ?? groups[0] ?? null
   const [openDayId, setOpenDayId] = useState(null) // 펼쳐서 보고 있는 요일
   const [dayView, setDayView] = useState('students') // students | questions
 
   // 이 종류·그룹의 세트(주차 최신순)
   const sets = homeworkSets
-    .filter((s) => s.category === category && s.target === target)
+    .filter((s) => s.category === category && setInGroup(s, group))
     .sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1))
 
-  // 이 그룹에 속한 학생 (내신=학년, 정시=정시레벨)
-  const groupStudents = students.filter((s) =>
-    isNaesin ? s.grade === target : s.jeongsiLevel === target
-  )
+  // 이 그룹에 속한 학생 (내신=반, 정시=정시레벨)
+  const groupStudents = students.filter((s) => studentInGroup(s, group))
 
   return (
     <div>
       {/* 그룹 탭 */}
       <div className="flex gap-2 mb-4 overflow-x-auto">
-        {targets.map((t) => (
-          <button key={t} onClick={() => setTarget(t)}
+        {groups.map((g) => (
+          <button key={g.key} onClick={() => setGroupKey(g.key)}
             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
-              target === t ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
-            }`}>{targetLabels[t]}</button>
+              group?.key === g.key ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
+            }`}>{g.label}</button>
         ))}
       </div>
 
-      {sets.length === 0 ? (
+      {groups.length === 0 ? (
+        <p className="text-center text-ink-faint py-10">담당 반이 없습니다. 관리자에게 반 배정을 요청하세요.</p>
+      ) : sets.length === 0 ? (
         <p className="text-center text-ink-faint py-10">등록된 과제가 없습니다.</p>
       ) : sets.map((set) => {
         const days = homeworkDays.filter((d) => d.setId === set.id).sort((a, b) => a.weekday - b.weekday)

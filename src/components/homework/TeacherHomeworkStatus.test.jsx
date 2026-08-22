@@ -1,5 +1,5 @@
 // src/components/homework/TeacherHomeworkStatus.test.jsx
-// 교사 과제 현황 화면 테스트 — 그룹(학년/정시레벨) 탭 전환과 요일별 제출 집계.
+// 교사 과제 현황 화면 테스트 — 그룹(내신=반 / 정시=레벨) 탭 전환과 요일별 제출 집계.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -15,15 +15,20 @@ beforeEach(() => {
   // 기본은 관리자 — 담당 반 제한은 별도 테스트에서 확인한다
   state.auth = { user: { id: 'admin-1', role: 'admin' } }
   state.data = {
+    // 내신 과제는 반 단위로 나간다. 첫 번째 반이 기본 탭이 된다.
+    classes: [
+      { id: 1, name: '중1', teacherId: 'admin-1' },
+      { id: 2, name: '고2', teacherId: 'admin-1' },
+    ],
     students: [
-      { id: 1, name: '고2-A', grade: 5, jeongsiLevel: 2 },
-      { id: 2, name: '고2-B', grade: 5, jeongsiLevel: null },
-      { id: 3, name: '중1-C', grade: 1, jeongsiLevel: null },
+      { id: 1, name: '고2-A', grade: 5, jeongsiLevel: 2,    classId: 2 },
+      { id: 2, name: '고2-B', grade: 5, jeongsiLevel: null, classId: 2 },
+      { id: 3, name: '중1-C', grade: 1, jeongsiLevel: null, classId: 1 },
     ],
     homeworkSets: [
-      { id: 11, category: 'naesin',  target: 5, weekStart: WEEK,        title: '고2 8월 2주차' },
-      { id: 12, category: 'naesin',  target: 5, weekStart: '2026-08-03', title: '고2 8월 1주차' },
-      { id: 13, category: 'jeongsi', target: 2, weekStart: WEEK,        title: '정시2 8월 2주차' },
+      { id: 11, category: 'naesin',  classId: 2, target: null, weekStart: WEEK,         title: '고2 8월 2주차' },
+      { id: 12, category: 'naesin',  classId: 2, target: null, weekStart: '2026-08-03', title: '고2 8월 1주차' },
+      { id: 13, category: 'jeongsi', classId: null, target: 2, weekStart: WEEK,         title: '정시2 8월 2주차' },
     ],
     homeworkDays: [
       { id: 110, setId: 11, weekday: 1, date: '2026-08-10', questionCount: 2 },
@@ -47,12 +52,12 @@ beforeEach(() => {
 
 describe('TeacherHomeworkStatus (내신)', () => {
   it('과제가 없는 그룹에는 안내 문구를 보여준다', () => {
-    // 기본 선택 그룹은 중1 — 중1 대상 세트는 없다
+    // 기본 선택 그룹은 첫 번째 반(중1) — 그 반 대상 세트는 없다
     render(<TeacherHomeworkStatus category="naesin" />)
     expect(screen.getByText('등록된 과제가 없습니다.')).toBeInTheDocument()
   })
 
-  it('고2 탭을 누르면 해당 학년 세트와 요일별 제출 집계가 보인다', async () => {
+  it('고2반 탭을 누르면 그 반 세트와 요일별 제출 집계가 보인다', async () => {
     const user = userEvent.setup()
     render(<TeacherHomeworkStatus category="naesin" />)
 
@@ -226,12 +231,14 @@ describe('TeacherHomeworkStatus — 제출 취소', () => {
   // (교사는 담당 반 학생만 보이므로 반을 안 주면 학생이 아예 안 나온다)
   async function 제출한학생상세로(user, loginAs, { classTeacherId = loginAs.id } = {}) {
     state.auth = { user: loginAs }
-    state.data.classes = [{ id: 100, teacherId: classTeacherId }]
+    state.data.classes = [{ id: 100, name: '고2', teacherId: classTeacherId }]
     state.data.students = state.data.students.map((s) => ({ ...s, classId: 100 }))
+    state.data.homeworkSets = state.data.homeworkSets.map((set) =>
+      set.category === 'naesin' ? { ...set, classId: 100 } : set
+    )
     state.data.homeworkSets[0].teacherId = 'teacher-1'
 
     render(<TeacherHomeworkStatus category="naesin" />)
-    // 기본 탭은 중1이라 학년 탭부터 눌러야 세트가 나온다
     await user.click(screen.getByRole('button', { name: '고2' }))
     await user.click(screen.getByRole('button', { name: /월요일 · 2026-08-10/ }))
     await user.click(screen.getByRole('button', { name: /고2-A/ }))

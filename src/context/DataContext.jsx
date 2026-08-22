@@ -601,7 +601,9 @@ export function DataProvider({ children }) {
       .from('homework_sets')
       .insert([{
         category:   payload.category,
-        target:     Number(payload.target),
+        // 내신은 class_id로, 정시는 target(레벨)로 대상을 정한다
+        target:     payload.target == null ? null : Number(payload.target),
+        class_id:   payload.classId ?? null,
         week_start: payload.weekStart,
         title:      payload.title,
         teacher_id: payload.teacherId,
@@ -656,7 +658,8 @@ export function DataProvider({ children }) {
     const { data: setRow, error: setErr } = await supabase
       .from('homework_sets')
       .update({
-        target:     Number(payload.target),
+        target:     payload.target == null ? null : Number(payload.target),
+        class_id:   payload.classId ?? null,
         week_start: payload.weekStart,
         title:      payload.title,
       })

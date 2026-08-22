@@ -38,6 +38,11 @@ export default function StudentHomeworkView({ category }) {
   if (category === 'jeongsi' && (!me || me.jeongsiLevel == null)) {
     return <p className="text-center text-ink-faint py-12">정시 레벨이 배정되지 않았습니다. 선생님께 문의하세요.</p>
   }
+  // 내신 과제는 반 단위로 나간다 — 반이 없으면 받을 과제가 없다.
+  // 빈 화면만 보이면 과제가 없는 건지 내 계정 문제인지 알 수 없다.
+  if (category === 'naesin' && me && me.classId == null) {
+    return <p className="text-center text-ink-faint py-12">반이 배정되지 않았습니다. 선생님께 문의하세요.</p>
+  }
   if (!me) return <p className="text-center text-ink-faint py-12">학생 정보를 찾을 수 없습니다.</p>
 
   // 이번 주 + 종류 + 내 그룹에 맞는 세트 → 요일들

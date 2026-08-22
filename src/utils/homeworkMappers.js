@@ -2,7 +2,10 @@
 
 export function toHomeworkSet(r) {
   return {
-    id: r.id, category: r.category, target: r.target,
+    id: r.id, category: r.category, target: r.target ?? null,
+    // 내신은 반, 정시는 target(레벨)로 대상을 정한다.
+    // 반별 전환 이전의 내신 세트는 classId가 비어 있고 target에 학년이 들어 있다.
+    classId: r.class_id ?? null,
     weekStart: r.week_start, title: r.title,
     teacherId: r.teacher_id, createdAt: r.created_at,
   }
