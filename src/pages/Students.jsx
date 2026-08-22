@@ -17,6 +17,7 @@ import Alert from '../components/ui/Alert'
 import PageTitle from '../components/ui/PageTitle'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
+import { filterStudents } from '../utils/studentSearch'
 
 function Students() {
   const { user } = useAuth()
@@ -63,14 +64,16 @@ function Students() {
   const accountlessStudents = studentList.filter((s) => !studentAccountIds.includes(s.id))
 
   // ── 선택 삭제 ─────────────────────────────────────────
+  const [search,             setSearch]             = useState('')
   const [selectMode,         setSelectMode]         = useState(false)
   const [selectedIds,        setSelectedIds]        = useState([])
   const [bulkDeleteConfirm,  setBulkDeleteConfirm]  = useState(false)
   const [bulkDeleting,       setBulkDeleting]       = useState(false)
 
-  const displayStudents = selectedClass
-    ? studentList.filter((s) => s.classId === selectedClass)
-    : studentList
+  const displayStudents = filterStudents(studentList, { classId: selectedClass, search })
+
+  // 걸러진 일부만 놓고 순서를 바꾸면 화면에 없는 학생들과 순서가 뒤엉킨다
+  const canReorder = search.trim() === ''
 
   const allSelected = displayStudents.length > 0 && selectedIds.length === displayStudents.length
 
@@ -318,6 +321,27 @@ function Students() {
             )}
           </div>
 
+          {/* 학생 검색 */}
+          <div className="relative max-w-xs">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="이름 또는 연락처로 검색"
+              className="w-full h-10 pl-3 pr-8 bg-surface border border-line rounded text-sm focus:outline-none focus:ring-2 focus:ring-navy"
+            />
+            {search && (
+              <button
+                type="button"
+                aria-label="검색어 지우기"
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-mute text-sm"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
           {/* 반 필터 */}
           <div className="flex gap-2 flex-wrap">
             <button
@@ -374,6 +398,7 @@ function Students() {
                         key={student.id}
                         student={student}
                         isAdmin={isAdmin}
+                        canReorder={canReorder}
                         getClassName={getClassName}
                         username={studentUsernameById[student.id]}
                         onEdit={() => handleEdit(student)}
@@ -389,7 +414,9 @@ function Students() {
               </DndContext>
             </table>
             {displayStudents.length === 0 && (
-              <div className="py-8 text-center text-ink-faint text-sm">학생이 없습니다.</div>
+              <div className="py-8 text-center text-ink-faint text-sm">
+                {search.trim() ? `'${search.trim()}'에 해당하는 학생이 없습니다.` : '학생이 없습니다.'}
+              </div>
             )}
           </Card>
 
@@ -667,11 +694,12 @@ function SortableClassCard({ cls, count, isAdmin, teacherName, onEdit, onDelete,
 
 // ── 드래그 가능한 학생 행 ──────────────────────────────
 function SortableStudentRow({
-  student, isAdmin, getClassName, username,
+  student, isAdmin, canReorder = true, getClassName, username,
   onEdit, onDelete, onCreateAccount,
   selectMode, selected, onToggle,
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: student.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: student.id, disabled: !canReorder })
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -704,12 +732,14 @@ function SortableStudentRow({
           />
         </td>
       )}
-      {/* 일반 모드: 드래그 핸들 */}
+      {/* 일반 모드: 드래그 핸들. 검색 중에는 순서를 바꿀 수 없어 감춘다 */}
       {isAdmin && !selectMode && (
         <td className="px-2 py-3 w-8">
-          <div {...attributes} {...listeners} className="cursor-grab text-ink-faint hover:text-ink-mute flex justify-center select-none">
-            ⠿
-          </div>
+          {canReorder && (
+            <div {...attributes} {...listeners} className="cursor-grab text-ink-faint hover:text-ink-mute flex justify-center select-none">
+              ⠿
+            </div>
+          )}
         </td>
       )}
       <td className="px-3 py-3 font-medium whitespace-nowrap">{student.name}</td>
