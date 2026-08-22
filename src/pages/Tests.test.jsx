@@ -82,12 +82,79 @@ describe('Tests — 교사 정답 지정 (CreateView)', () => {
     fireEvent.change(screen.getByPlaceholderText('예: 4월 2주차 독서 테스트'), {
       target: { value: '정답 지정 테스트' },
     })
-    fireEvent.click(screen.getByText('+ 객관식'))
-    fireEvent.click(screen.getByRole('button', { name: '③' }))
+    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '1' } })
+    fireEvent.click(screen.getByTestId('cell-1-③'))
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(state.addTest).toHaveBeenCalledTimes(1))
     expect(state.addTest.mock.calls[0][0].questions[0].answer).toBe('③')
+  })
+
+  it('문항 수를 넣으면 그 수만큼 문항이 만들어지고 총점이 나눠 담긴다', async () => {
+    renderWithAuth(teacher)
+    fireEvent.click(screen.getByText('+ 테스트 만들기'))
+    fireEvent.change(screen.getByPlaceholderText('예: 4월 2주차 독서 테스트'), {
+      target: { value: '20문항 테스트' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '20' } })
+    for (let n = 1; n <= 20; n++) fireEvent.click(screen.getByTestId(`cell-${n}-①`))
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(state.addTest).toHaveBeenCalledTimes(1))
+    const { questions } = state.addTest.mock.calls[0][0]
+    expect(questions).toHaveLength(20)
+    expect(questions.every((q) => q.type === 'mc' && q.points === 5)).toBe(true)
+  })
+
+  it('정답을 지정하지 않은 문항이 있으면 저장할 수 없고 몇 번인지 알려준다', () => {
+    renderWithAuth(teacher)
+    fireEvent.click(screen.getByText('+ 테스트 만들기'))
+    fireEvent.change(screen.getByPlaceholderText('예: 4월 2주차 독서 테스트'), {
+      target: { value: '미완성 테스트' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '3' } })
+    fireEvent.click(screen.getByTestId('cell-2-②'))
+
+    expect(screen.getByTestId('save-blocked')).toHaveTextContent('1, 3번 정답을 지정해 주세요.')
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
+  })
+
+  it('문항 수를 줄이면 사라진 문항의 정답도 함께 버린다', async () => {
+    renderWithAuth(teacher)
+    fireEvent.click(screen.getByText('+ 테스트 만들기'))
+    fireEvent.change(screen.getByPlaceholderText('예: 4월 2주차 독서 테스트'), {
+      target: { value: '줄이기 테스트' },
+    })
+    const countInput = screen.getByPlaceholderText('예: 20')
+    fireEvent.change(countInput, { target: { value: '2' } })
+    fireEvent.click(screen.getByTestId('cell-1-①'))
+    fireEvent.click(screen.getByTestId('cell-2-⑤'))
+    // 2번을 지웠다가 다시 늘려도 예전 답이 되살아나지 않는다
+    fireEvent.change(countInput, { target: { value: '1' } })
+    fireEvent.change(countInput, { target: { value: '2' } })
+    fireEvent.click(screen.getByTestId('cell-2-③'))
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(state.addTest).toHaveBeenCalledTimes(1))
+    expect(state.addTest.mock.calls[0][0].questions[1].answer).toBe('③')
+  })
+
+  it('주관식은 객관식 뒤 번호로 붙고 배점도 함께 나눠 갖는다', async () => {
+    renderWithAuth(teacher)
+    fireEvent.click(screen.getByText('+ 테스트 만들기'))
+    fireEvent.change(screen.getByPlaceholderText('예: 4월 2주차 독서 테스트'), {
+      target: { value: '주관식 포함' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '3' } })
+    for (let n = 1; n <= 3; n++) fireEvent.click(screen.getByTestId(`cell-${n}-①`))
+    fireEvent.click(screen.getByText('+ 주관식'))
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(state.addTest).toHaveBeenCalledTimes(1))
+    const { questions } = state.addTest.mock.calls[0][0]
+    expect(questions).toHaveLength(4)
+    expect(questions[3]).toMatchObject({ id: 4, type: 'sa', answer: null })
+    expect(questions.reduce((sum, q) => sum + q.points, 0)).toBe(100)
   })
 })
 

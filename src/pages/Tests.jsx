@@ -7,6 +7,8 @@ import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { sameChoiceSet, toggleChoice } from '../utils/answerSet'
+import ChoiceGrid from '../components/ChoiceGrid'
+import { distributePoints } from '../utils/testPoints'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
 
@@ -470,44 +472,69 @@ function TakeView({ test, onSubmit, onBack }) {
 }
 
 // ────────── CreateView 컴포넌트 ──────────
+const MC_CHOICES = ['①', '②', '③', '④', '⑤']
+
 function CreateView({ classes, user, onSubmit, onCancel }) {
   const [title,     setTitle]     = useState('')
   const [classId,   setClassId]   = useState(String(classes[0]?.id ?? ''))
   const [date,      setDate]      = useState(new Date().toISOString().slice(0, 10))
   const [timeLimit, setTimeLimit] = useState(30)
-  const [questions, setQuestions] = useState([])
+  // 오프라인 시험지를 나눠주고 답만 입력하는 쓰임이라, 객관식은 문항 수를 넣고
+  // 정답 표에서 한 번에 찍는다 (과제 출제 화면과 같은 방식).
+  const [mcCount,   setMcCount]   = useState(0)
+  const [answers,   setAnswers]   = useState({})   // { 문항번호: '①③' }
+  const [saList,    setSaList]    = useState([])   // 주관식은 필요할 때만 따로 추가
+  const [totalPoints, setTotalPoints] = useState(100)
   const [saving,    setSaving]    = useState(false)
 
-  function addQuestion(type) {
-    const newQ = {
-      id:      questions.length + 1,
-      type,
-      content: '',
-      choices: type === 'mc' ? ['①', '②', '③', '④', '⑤'] : null,
-      // 선지 클릭이 토글이라 미리 켜두면 교사가 누른 선지가 거기에 더해져 버린다
-      // (③을 누르면 '①③'이 저장돼 ③을 쓴 학생이 전부 오답) — 빈 상태로 시작한다
-      answer:  type === 'mc' ? '' : null,
-      points:  10,
-    }
-    setQuestions([...questions, newQ])
+  function changeMcCount(val) {
+    const n = Math.max(0, Math.min(300, Number(val) || 0))
+    // 문항 수를 줄이면 사라진 문항의 정답도 함께 버린다 — 남겨두면
+    // 나중에 다시 늘렸을 때 예전 답이 되살아나 교사가 모르게 저장된다
+    setAnswers((prev) => {
+      const next = {}
+      for (let i = 1; i <= n; i++) if (prev[i]) next[i] = prev[i]
+      return next
+    })
+    setMcCount(n)
   }
 
-  function updateQuestion(idx, field, value) {
-    setQuestions(questions.map((q, i) => (i === idx ? { ...q, [field]: value } : q)))
-  }
+  // 배점은 총점을 문항 수로 나눠 자동으로 정한다
+  const questionCount = mcCount + saList.length
+  const points = distributePoints(totalPoints, questionCount)
 
-  function removeQuestion(idx) {
-    setQuestions(questions.filter((_, i) => i !== idx))
-  }
+  const questions = [
+    ...Array.from({ length: mcCount }, (_, i) => ({
+      id: i + 1, type: 'mc', content: '',
+      choices: MC_CHOICES,
+      // 선지 클릭이 토글이라 빈 상태로 시작한다 — 미리 켜두면 교사가 누른 선지가 거기에 더해진다
+      answer: answers[i + 1] ?? '',
+      points: points[i] ?? 0,
+    })),
+    ...saList.map((sa, j) => ({
+      id: mcCount + j + 1, type: 'sa', content: sa.content,
+      choices: null, answer: null,
+      points: points[mcCount + j] ?? 0,
+    })),
+  ]
 
   // 저장 조건은 한 곳에서만 정한다 — 버튼과 handleSubmit이 어긋나면
   // 버튼은 눌리는데 아무 일도 일어나지 않아 교사가 이유를 알 수 없다.
   // 객관식은 정답을 다 끄면 ''이 되는데, 그 문항은 누구도 맞힐 수 없으므로 막는다(과제 쪽과 같은 규칙).
+  const unanswered = Array.from({ length: mcCount }, (_, i) => i + 1).filter((n) => !answers[n])
   const canSave =
     Boolean(title.trim()) &&
-    questions.length > 0 &&
-    questions.every((q) => q.type !== 'mc' || Boolean(q.answer)) &&
+    questionCount > 0 &&
+    unanswered.length === 0 &&
     !saving
+
+  // 버튼이 꺼져 있는 이유 — 화면만 보고 알 수 있어야 한다
+  const blockedReasons = []
+  if (!title.trim()) blockedReasons.push('제목을 입력해 주세요.')
+  if (questionCount === 0) blockedReasons.push('문항 수를 입력해 주세요.')
+  if (unanswered.length > 0) {
+    blockedReasons.push(`${unanswered.join(', ')}번 정답을 지정해 주세요.`)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -578,72 +605,91 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
           </div>
         </div>
 
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-ink-soft mb-1">객관식 문항 수</label>
+            <input
+              type="number"
+              value={mcCount || ''}
+              onChange={(e) => changeMcCount(e.target.value)}
+              min="0"
+              max="300"
+              placeholder="예: 20"
+              className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-ink-soft mb-1">총점</label>
+            <input
+              type="number"
+              value={totalPoints}
+              onChange={(e) => setTotalPoints(e.target.value)}
+              min="0"
+              step="0.1"
+              className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
+            />
+          </div>
+        </div>
+
+        {questionCount > 0 && (
+          <p className="text-xs text-ink-mute -mt-3">
+            {questionCount}문항 · 문항당 {points[0]}점
+            {points[0] !== points[questionCount - 1] && ` (나누어떨어지지 않아 뒤쪽 문항은 ${points[questionCount - 1]}점)`}
+          </p>
+        )}
+
+        {mcCount > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-ink-soft mb-2">
+              정답 <span className="font-normal text-ink-faint">— 선지를 누르거나 숫자키 1~5로 지정합니다</span>
+            </label>
+            <ChoiceGrid
+              count={mcCount}
+              values={answers}
+              onChange={(number, value) => setAnswers((prev) => ({ ...prev, [number]: value }))}
+            />
+          </div>
+        )}
+
         <div>
           <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-ink-soft">문항</label>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => addQuestion('mc')} className="text-xs px-3 py-1 bg-navy text-white rounded">+ 객관식</button>
-              <button type="button" onClick={() => addQuestion('sa')} className="text-xs px-3 py-1 bg-ink text-white rounded">+ 주관식</button>
-            </div>
+            <label className="text-sm font-medium text-ink-soft">
+              주관식 <span className="font-normal text-ink-faint">— 교사가 직접 채점합니다</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setSaList((prev) => [...prev, { content: '' }])}
+              className="text-xs px-3 py-1 bg-ink text-white rounded"
+            >
+              + 주관식
+            </button>
           </div>
 
-          {questions.length === 0 && (
-            <p className="text-sm text-ink-faint text-center py-6 border border-dashed border-line rounded">
-              문항을 추가해주세요.
-            </p>
-          )}
-
-          {questions.map((q, idx) => (
-            <div key={idx} className="bg-surface-alt rounded p-3 mb-3">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-medium text-ink-mute">
-                  {idx + 1}번 · {q.type === 'mc' ? '객관식' : '주관식'}
-                </span>
-                <button type="button" onClick={() => removeQuestion(idx)} className="text-xs text-danger hover:opacity-80">삭제</button>
-              </div>
-
+          {saList.map((sa, j) => (
+            <div key={j} className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-medium text-ink-mute w-10 shrink-0">{mcCount + j + 1}번</span>
               <input
-                value={q.content}
-                onChange={(e) => updateQuestion(idx, 'content', e.target.value)}
-                placeholder={`${idx + 1}번 문항 내용 (참고용)`}
-                className="w-full border border-line rounded px-2 py-1.5 text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-navy"
+                value={sa.content}
+                onChange={(e) => setSaList((prev) => prev.map((it, i) => (i === j ? { content: e.target.value } : it)))}
+                placeholder="문항 내용 (참고용, 비워도 됩니다)"
+                className="flex-1 border border-line rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-navy"
               />
-
-              {q.type === 'mc' && (
-                <div className="flex gap-2 mb-2 flex-wrap">
-                  <span className="text-xs text-ink-mute self-center">정답:</span>
-                  {q.choices.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => updateQuestion(idx, 'answer', toggleChoice(q.answer, c))}
-                      className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                        q.answer?.includes(c)
-                          ? 'bg-ink text-white'
-                          : 'bg-surface border border-line text-ink-soft hover:border-navy'
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-ink-mute">배점:</span>
-                <input
-                  type="number"
-                  value={q.points}
-                  onChange={(e) => updateQuestion(idx, 'points', Number(e.target.value))}
-                  min="0.1"
-                  step="0.1"
-                  className="w-16 border border-line rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-navy"
-                />
-                <span className="text-xs text-ink-mute">점</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setSaList((prev) => prev.filter((_, i) => i !== j))}
+                className="text-xs text-danger hover:opacity-80"
+              >
+                삭제
+              </button>
             </div>
           ))}
         </div>
+
+        {!canSave && !saving && (
+          <p data-testid="save-blocked" className="text-sm text-ink-soft">
+            {blockedReasons.join(' ')}
+          </p>
+        )}
 
         <Button type="submit" disabled={!canSave} className="w-full">
           {saving ? '저장 중...' : '저장'}
