@@ -40,3 +40,11 @@ describe('isAcademyIp', () => {
     expect(isAcademyIp(undefined, {})).toBe(false)
   })
 })
+
+describe('진단 정보', () => {
+  it('등록된 IP 개수를 세어 환경변수 문제와 값 오류를 가른다', () => {
+    expect(academyIps({ ACADEMY_IPS: '1.2.3.4,5.6.7.8,9.10.11.12' })).toHaveLength(3)
+    expect(academyIps({ ACADEMY_IPS: '1.2.3.4' })).toHaveLength(1)
+    expect(academyIps({})).toHaveLength(0)
+  })
+})

@@ -26,6 +26,13 @@ export default function handler(req, res) {
   const forwarded = req.headers['x-forwarded-for']
   const clientIp = forwarded ? forwarded.split(',')[0].trim() : req.socket?.remoteAddress
 
-  // clientIp는 지점 IP를 확인할 때 쓴다 — 각 지점 WiFi에서 이 주소를 열면 그 지점의 공인 IP가 보인다
-  res.status(200).json({ ok: isAcademyIp(clientIp, process.env), clientIp })
+  // clientIp — 각 지점 WiFi에서 이 주소를 열면 그 지점의 공인 IP가 보인다.
+  // registered — 등록된 지점 IP가 몇 개인지. 값은 알려주지 않는다.
+  //   IP는 맞는데 ok가 false일 때, 환경변수에 값이 덜 들어간 것인지
+  //   그 값이 틀린 것인지를 이 숫자 하나로 가른다.
+  res.status(200).json({
+    ok: isAcademyIp(clientIp, process.env),
+    clientIp,
+    registered: academyIps(process.env).length,
+  })
 }
