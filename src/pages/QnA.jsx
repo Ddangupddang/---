@@ -3,7 +3,8 @@
 // 예전에는 테스트를 고르고 문항까지 골라야 했는데, 그러면
 // (1) 과제 관련 질문은 낼 방법이 없고
 // (2) 종료된 테스트가 하나도 없으면 질문 자체를 못 했다.
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Camera, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
@@ -13,6 +14,7 @@ import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
 import { visibleQuestions, unansweredCount } from '../utils/qnaAccess'
 import { QNA_CATEGORIES, QNA_CATEGORY, qnaCategoryLabel } from '../constants/qna'
+import { MAX_QNA_IMAGES, validateQnaImage } from '../utils/qnaImage'
 
 // 말머리 알약 — 목록 필터와 작성 화면이 같은 모양을 쓴다
 function Pill({ active, children, ...rest }) {
@@ -31,7 +33,10 @@ function Pill({ active, children, ...rest }) {
 
 export default function QnA() {
   const { user } = useAuth()
-  const { qnaList, students, classes, addQuestion, answerQuestion } = useData()
+  const {
+    qnaList, students, classes,
+    addQuestion, answerQuestion, uploadQnaImage, qnaImageUrl,
+  } = useData()
   const [view, setView]                         = useState('list') // list | detail | ask
   const [selectedQuestion, setSelectedQuestion] = useState(null)
   const [filterCategory, setFilterCategory]     = useState('all')
@@ -45,12 +50,14 @@ export default function QnA() {
   )
   const unanswered = unansweredCount(qnaList, students, classes, user)
 
-  // 이름 표시 규칙: 교사/관리자→실명, 학생→본인은 "나" 나머지는 "익명"
+  // 이름 표시 규칙: 교사/관리자→실명, 학생→본인 질문뿐이므로 "나"
   function displayName(studentId) {
     if (isTeacherOrAdmin) {
       return students.find((s) => s.id === studentId)?.name ?? '알 수 없음'
     }
-    return user.studentId === studentId ? '나' : '익명'
+    // 학생 화면에는 본인 질문만 내려온다(qnaAccess). 그래도 남의 행이 섞여 들어오면
+    // 이름 대신 "비공개"를 보여준다 — 실명이 새는 것보다 낫다.
+    return user.studentId === studentId ? '나' : '비공개'
   }
 
   // ────────── list 뷰 ──────────
@@ -109,8 +116,18 @@ export default function QnA() {
                   )}
                 </div>
                 <p className="text-sm text-ink font-medium line-clamp-2">{q.content}</p>
-                <p className="text-xs text-ink-faint mt-1">
+                <p className="text-xs text-ink-faint mt-1 flex items-center gap-1">
                   {displayName(q.studentId)} · {q.createdAt?.slice(0, 10)}
+                  {q.imagePaths?.length > 0 && (
+                    <span
+                      data-testid={`photo-mark-${q.id}`}
+                      className="inline-flex items-center gap-0.5 ml-1"
+                      title={`사진 ${q.imagePaths.length}장`}
+                    >
+                      <Camera size={12} aria-hidden="true" />
+                      {q.imagePaths.length}
+                    </span>
+                  )}
                 </p>
               </div>
             ))}
@@ -129,6 +146,7 @@ export default function QnA() {
         question={selectedQuestion}
         displayName={displayName}
         isTeacherOrAdmin={isTeacherOrAdmin}
+        qnaImageUrl={qnaImageUrl}
         onAnswer={async (answer) => {
           await answerQuestion(selectedQuestion.id, answer, user.id)
           setView('list')
@@ -146,6 +164,7 @@ export default function QnA() {
       <Layout>
       <AskView
         studentId={user.studentId}
+        uploadQnaImage={uploadQnaImage}
         onSubmit={async (newQ) => {
           const res = await addQuestion({ ...newQ, studentId: user.studentId })
           // 실패했는데 목록으로 넘기면 올라간 줄 알고 지나간다 — 작성 화면에 머문다
@@ -163,7 +182,7 @@ export default function QnA() {
 }
 
 // ────────── DetailView 컴포넌트 ──────────
-function DetailView({ question, displayName, isTeacherOrAdmin, onAnswer, onBack }) {
+function DetailView({ question, displayName, isTeacherOrAdmin, qnaImageUrl, onAnswer, onBack }) {
   const [answerText, setAnswerText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -187,6 +206,7 @@ function DetailView({ question, displayName, isTeacherOrAdmin, onAnswer, onBack 
           {qnaCategoryLabel(question.category)}
         </span>
         <p className="text-ink leading-relaxed mb-3 mt-3">{question.content}</p>
+        <QuestionPhotos paths={question.imagePaths} qnaImageUrl={qnaImageUrl} />
         <p className="text-xs text-ink-faint">
           {displayName(question.studentId)} · {question.createdAt?.slice(0, 16).replace('T', ' ')}
         </p>
@@ -227,19 +247,111 @@ function DetailView({ question, displayName, isTeacherOrAdmin, onAnswer, onBack 
   )
 }
 
+// ────────── 질문에 붙은 사진 ──────────
+// qna-images는 비공개 버킷이라 주소가 고정돼 있지 않다.
+// 볼 때마다 1시간짜리 임시 주소를 받아서 건다.
+function QuestionPhotos({ paths, qnaImageUrl }) {
+  const [urls, setUrls] = useState([])
+
+  useEffect(() => {
+    // 사진이 없으면 아래에서 아무것도 그리지 않는다. urls는 빈 채로 둔다.
+    if (!paths?.length || !qnaImageUrl) return
+    let alive = true
+    Promise.all(paths.map((p) => qnaImageUrl(p)))
+      .then((got) => { if (alive) setUrls(got) })
+    // 화면을 떠난 뒤에 응답이 와서 setState하면 경고가 뜬다
+    return () => { alive = false }
+  }, [paths, qnaImageUrl])
+
+  if (!paths?.length) return null
+
+  return (
+    <div className="flex flex-col gap-2 mb-3">
+      {urls.map((url, i) => (
+        url ? (
+          // 원본은 새 탭에서 크게 본다 — 답안지 글씨를 확대해야 할 때가 있다
+          <a key={paths[i]} href={url} target="_blank" rel="noreferrer">
+            <img
+              data-testid={`detail-photo-${i}`}
+              src={url}
+              alt={`첨부 사진 ${i + 1}`}
+              className="w-full rounded border border-line"
+            />
+          </a>
+        ) : (
+          <p key={paths[i]} className="text-xs text-ink-mute">
+            사진을 불러오지 못했습니다.
+          </p>
+        )
+      ))}
+    </div>
+  )
+}
+
 // ────────── AskView 컴포넌트 ──────────
-function AskView({ studentId, onSubmit, onBack }) {
+function AskView({ studentId, uploadQnaImage, onSubmit, onBack }) {
   const [category,   setCategory]   = useState(QNA_CATEGORY.NAESIN)
   const [content,    setContent]    = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error,      setError]      = useState('')
+  // 고른 사진 [{ file, preview }] — 실제 업로드는 등록을 누를 때 한다.
+  // 고를 때마다 올리면 뺐다 넣었다 한 사진이 스토리지에 쓰레기로 남는다.
+  const [photos,     setPhotos]     = useState([])
+  const [photoError, setPhotoError] = useState('')
+  const fileInputRef = useRef(null)
+  // 정리할 때 최신 목록이 필요하다. photos를 의존성에 넣으면 사진을 더할 때마다
+  // 정리가 돌아서 아직 쓰고 있는 미리보기까지 끊어 버린다.
+  const photosRef = useRef(photos)
+  photosRef.current = photos
+
+  // 미리보기 주소는 브라우저가 붙들고 있으므로 화면을 떠날 때 놓아준다
+  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.preview)), [])
+
+  function handlePick(e) {
+    const picked = Array.from(e.target.files ?? [])
+    // 같은 사진을 뺐다가 다시 고를 수 있게 입력칸을 비운다
+    e.target.value = ''
+
+    const next = [...photos]
+    let firstReason = ''
+    for (const file of picked) {
+      const reason = validateQnaImage(file, next.length)
+      // 한 장이 걸려도 나머지는 받는다. 사유는 처음 것만 보여준다.
+      if (reason) { firstReason ||= reason; continue }
+      next.push({ file, preview: URL.createObjectURL(file) })
+    }
+    setPhotos(next)
+    setPhotoError(firstReason)
+  }
+
+  function removePhoto(index) {
+    setPhotos((prev) => {
+      URL.revokeObjectURL(prev[index].preview)
+      return prev.filter((_, i) => i !== index)
+    })
+    setPhotoError('')
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!content.trim() || submitting) return
     setSubmitting(true)
     setError('')
-    const failed = await onSubmit({ category, content: content.trim() })
+
+    // 사진부터 올린다. 한 장이라도 실패하면 질문을 등록하지 않는다 —
+    // "사진 보고 답해 주세요"라고 쓴 질문만 올라가면 학생은 답을 못 받는다.
+    const imagePaths = []
+    for (const { file } of photos) {
+      const path = await uploadQnaImage(file, studentId)
+      if (!path) {
+        setError('사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.')
+        setSubmitting(false)
+        return
+      }
+      imagePaths.push(path)
+    }
+
+    const failed = await onSubmit({ category, content: content.trim(), imagePaths })
     if (failed) setError(failed)
     setSubmitting(false)
   }
@@ -299,8 +411,65 @@ function AskView({ studentId, onSubmit, onBack }) {
           />
         </div>
 
+        {/* 사진 첨부 */}
+        <div>
+          <label className="block text-sm font-medium text-ink-soft mb-2">
+            사진 첨부 <span className="text-ink-faint font-normal">(최대 {MAX_QNA_IMAGES}장, 선택)</span>
+          </label>
+
+          <div className="flex gap-2 flex-wrap">
+            {photos.map((p, i) => (
+              <div
+                key={p.preview}
+                data-testid={`qna-photo-${i}`}
+                className="relative w-20 h-20 rounded border border-line overflow-hidden"
+              >
+                <img src={p.preview} alt={`첨부 사진 ${i + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  data-testid={`qna-photo-remove-${i}`}
+                  onClick={() => removePhoto(i)}
+                  aria-label={`첨부 사진 ${i + 1} 빼기`}
+                  className="absolute top-0 right-0 bg-ink/70 text-white p-0.5 rounded-bl"
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+
+            {photos.length < MAX_QNA_IMAGES && (
+              <button
+                type="button"
+                data-testid="qna-photo-add"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-20 h-20 rounded border border-line border-dashed text-ink-mute flex flex-col items-center justify-center gap-1 hover:bg-surface-alt transition-colors"
+              >
+                <Camera size={18} aria-hidden="true" />
+                <span className="text-xs">사진 추가</span>
+              </button>
+            )}
+          </div>
+
+          {/* accept·capture 덕분에 폰에서 카메라와 앨범을 바로 고를 수 있다 */}
+          <input
+            ref={fileInputRef}
+            data-testid="qna-photo-input"
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handlePick}
+          />
+
+          {photoError && (
+            <p data-testid="qna-photo-error" className="text-xs text-danger mt-2">
+              {photoError}
+            </p>
+          )}
+        </div>
+
         <p className="text-xs text-ink-faint -mt-2">
-          * 질문은 선생님에게만 실명으로 표시됩니다.
+          * 질문은 담당 선생님만 볼 수 있습니다. 다른 학생에게는 보이지 않습니다.
         </p>
 
         {/* Alert는 임의 props를 전달하지 않으므로 data-testid는 감싸는 div에 둔다 */}

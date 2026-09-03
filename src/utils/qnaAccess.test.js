@@ -39,10 +39,16 @@ describe('visibleQuestions', () => {
     expect(see({ id: 't9', role: 'teacher' })).toEqual([])
   })
 
-  it('학생 화면은 서버가 내려준 목록을 그대로 쓴다', () => {
-    // 학생 계정은 같은 반 친구의 students 행을 받지 못해 작성자로 거를 수 없다.
-    // 여기서 걸러 버리면 친구 질문이 통째로 사라진다.
-    expect(see({ id: 's1', role: 'student', studentId: 1, classId: 10 })).toEqual([100, 200, 300])
+  it('학생은 본인이 쓴 질문만 본다', () => {
+    // Q&A는 1:1 상담이다. 같은 반이라도 남의 질문은 안 보인다 —
+    // 질문에 붙은 답안지 사진이 반 전체로 새는 걸 막는다.
+    expect(see({ id: 's1', role: 'student', studentId: 1, classId: 10 })).toEqual([100])
+    expect(see({ id: 's2', role: 'student', studentId: 2, classId: 20 })).toEqual([200])
+  })
+
+  it('학생 계정에 학생 정보가 안 붙어 있으면 아무것도 안 준다', () => {
+    // studentId가 없는데 통과시키면 남의 질문이 통째로 보인다
+    expect(see({ id: 's9', role: 'student', studentId: null, classId: 10 })).toEqual([])
   })
 
   it('로그인 정보가 없으면 아무것도 안 준다', () => {

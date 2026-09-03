@@ -8,6 +8,7 @@ import { attendance as mockAttendance } from '../data/attendance'
 import { grades as mockGrades } from '../data/grades'
 import { qnaQuestions as mockQna } from '../data/qna'
 import { QNA_DEFAULT_CATEGORY } from '../constants/qna'
+import { resizeQnaImage, qnaImagePath, qnaImageToken } from '../utils/qnaImage'
 import { notices as mockNotices } from '../data/notices'
 import { reports as mockReports } from '../data/reports'
 import {
@@ -57,6 +58,8 @@ function toQna(q) {
     category:   q.category ?? QNA_DEFAULT_CATEGORY,
     studentId:  q.student_id,
     content:    q.content,
+    // 사진을 붙이기 전 질문에는 이 칸이 없다 — 빈 배열로 채워 화면이 분기하지 않게 한다
+    imagePaths: q.image_paths ?? [],
     createdAt:  q.created_at,
     answer:     q.answer,
     answeredAt: q.answered_at,
@@ -376,9 +379,10 @@ export function DataProvider({ children }) {
     const { data: inserted, error } = await supabase
       .from('qna')
       .insert([{
-        category:   data.category,
-        student_id: data.studentId,
-        content:    data.content,
+        category:    data.category,
+        student_id:  data.studentId,
+        content:     data.content,
+        image_paths: data.imagePaths ?? [],
       }])
       .select()
       .single()
@@ -389,6 +393,33 @@ export function DataProvider({ children }) {
     const newQ = toQna(inserted)
     setQnaList((prev) => [newQ, ...prev])
     return { question: newQ }
+  }
+
+  // 질문에 붙일 사진 하나를 올리고 스토리지 경로를 돌려준다.
+  //
+  // 공개 URL이 아니라 경로를 담는 이유: qna-images는 비공개 버킷이다.
+  // 질문 자체가 본인·담당 교사에게만 보이는데 사진만 URL 아는 사람 아무나
+  // 볼 수 있으면 앞문을 잠그고 뒷문을 열어 두는 꼴이 된다.
+  async function uploadQnaImage(file, studentId) {
+    const blob = await resizeQnaImage(file)
+    const path = qnaImagePath(studentId, qnaImageToken())
+    const { error } = await supabase.storage
+      .from('qna-images')
+      // 축소에 실패해 원본(PNG·HEIC 등)이 그대로 오는 경우가 있어 형식을 물어본다
+      .upload(path, blob, { contentType: blob.type || 'image/jpeg' })
+
+    if (error) { console.error('Q&A 사진 업로드 실패:', error); return null }
+    return path
+  }
+
+  // 볼 때마다 1시간짜리 임시 주소를 만든다
+  async function qnaImageUrl(path) {
+    const { data, error } = await supabase.storage
+      .from('qna-images')
+      .createSignedUrl(path, 60 * 60)
+
+    if (error) { console.error('Q&A 사진 주소 생성 실패:', error); return null }
+    return data.signedUrl
   }
 
   async function answerQuestion(id, answer, answeredBy) {
@@ -917,7 +948,7 @@ export function DataProvider({ children }) {
       reorderStudents, reorderClasses,
       upsertAttendance, deleteAttendance,
       addGrade, updateGrade, deleteGrade,
-      addQuestion, answerQuestion,
+      addQuestion, answerQuestion, uploadQnaImage, qnaImageUrl,
       addNotice, deleteNotice,
       addReport, updateReportChecks, deleteReport,
       addVideo, deleteVideo, addVideoComment, replyVideoComment,

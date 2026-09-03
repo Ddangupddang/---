@@ -3,14 +3,24 @@
 //
 // 예전에는 "질문이 달린 테스트를 볼 수 있는가"로 판단했다. 말머리 방식으로 바꾸면서
 // 테스트 연결이 없어졌으므로, 이제 "질문한 학생을 볼 수 있는가"로 판단한다.
+//
+//   관리자 — 전체
+//   교사   — 담당 반 학생의 질문
+//   학생   — 본인이 쓴 질문만
+//
+// 학생 범위를 "같은 반"에서 "본인"으로 좁혔다. Q&A는 1:1 상담이고,
+// 질문에 답안지 사진이 붙기 때문에 반 친구에게 보이면 안 된다.
 
 import { visibleStudents } from './classAccess'
 
 export function visibleQuestions(qnaList = [], students = [], classes = [], user) {
   if (!user) return []
-  // 학생 계정은 같은 반 친구의 students 행을 아예 받지 못한다(서버 RLS).
-  // 그래서 작성자로 거를 수가 없다 — 학생 화면의 범위는 서버가 정해서 내려준다.
-  if (user.role === 'student') return qnaList
+  // 서버(RLS)도 같은 규칙으로 막지만 여기서 한 번 더 거른다.
+  // 정책이 꺼지는 사고가 나도 화면에는 남의 질문이 안 뜨게 하는 이중 방어다.
+  if (user.role === 'student') {
+    if (!user.studentId) return []
+    return qnaList.filter((q) => q.studentId === user.studentId)
+  }
 
   const ids = new Set(visibleStudents(students, classes, user).map((s) => s.id))
   return qnaList.filter((q) => ids.has(q.studentId))

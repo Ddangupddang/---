@@ -1,9 +1,18 @@
 // src/pages/QnA.test.jsx
 // Q&A 간편화 — 말머리로 받고, 테스트·문항 선택은 없앴다.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import QnA from './QnA'
+
+// jsdom에는 없다. 미리보기가 이걸 쓴다.
+globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview')
+globalThis.URL.revokeObjectURL = vi.fn()
+
+const jpeg = (name = 'photo.jpg') => new File(['x'], name, { type: 'image/jpeg' })
+// 숨겨진 file input이라 클릭이 안 먹는다. change를 직접 쏜다.
+const pick = (files) =>
+  fireEvent.change(screen.getByTestId('qna-photo-input'), { target: { files } })
 
 const state = {}
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: state.user }) }))
@@ -27,6 +36,8 @@ beforeEach(() => {
     ],
     addQuestion:    vi.fn().mockResolvedValue({ question: { id: 400 } }),
     answerQuestion: vi.fn().mockResolvedValue(undefined),
+    uploadQnaImage: vi.fn().mockResolvedValue('1/token.jpg'),
+    qnaImageUrl:    vi.fn().mockResolvedValue('https://example.test/signed.jpg'),
   }
 })
 
@@ -87,9 +98,10 @@ describe('QnA 질문하기 (학생)', () => {
     await user.click(screen.getByRole('button', { name: '질문 등록' }))
 
     await waitFor(() => expect(state.data.addQuestion).toHaveBeenCalledWith({
-      category:  'jeongsi',
-      content:   '정시 4번 풀이가 궁금해요',
-      studentId: 1,
+      category:   'jeongsi',
+      content:    '정시 4번 풀이가 궁금해요',
+      imagePaths: [],
+      studentId:  1,
     }))
   })
 
@@ -131,13 +143,150 @@ describe('QnA 질문하기 (학생)', () => {
     expect(screen.queryByRole('button', { name: '질문 등록' })).not.toBeInTheDocument()
   })
 
-  it('다른 학생 이름은 익명으로 가린다', () => {
+  it('다른 학생의 질문은 아예 보이지 않는다', () => {
+    // Q&A는 1:1 상담이다. 답안지 사진이 붙는 곳이라 반 친구에게 보이면 안 된다.
     state.data.qnaList = [
       { id: 100, category: 'naesin', studentId: 2, content: '남의 질문',
         createdAt: '2026-08-20T09:00:00Z', answer: null },
     ]
     render(<QnA />)
-    expect(screen.getByTestId('question-100')).toHaveTextContent('익명')
+    expect(screen.queryByTestId('question-100')).not.toBeInTheDocument()
+    expect(screen.getByText('질문이 없습니다.')).toBeInTheDocument()
+  })
+
+  it('본인 질문은 "나"로 표시된다', () => {
+    state.data.qnaList = [
+      { id: 100, category: 'naesin', studentId: 1, content: '내 질문',
+        createdAt: '2026-08-20T09:00:00Z', answer: null },
+    ]
+    render(<QnA />)
+    expect(screen.getByTestId('question-100')).toHaveTextContent('나')
     expect(screen.getByTestId('question-100')).not.toHaveTextContent('홍길동')
+  })
+})
+
+describe('질문 사진 첨부 (학생)', () => {
+  beforeEach(async () => {
+    state.user = { id: 's1', role: 'student', studentId: 1, classId: 10 }
+    state.data.qnaList = []
+  })
+
+  // 작성 화면까지 열어 준다
+  async function openAsk(user) {
+    render(<QnA />)
+    await user.click(screen.getByRole('button', { name: '+ 질문하기' }))
+  }
+
+  it('고른 사진이 미리보기로 뜬다', async () => {
+    const user = userEvent.setup()
+    await openAsk(user)
+
+    pick([jpeg()])
+
+    expect(await screen.findByTestId('qna-photo-0')).toBeInTheDocument()
+  })
+
+  it('3장을 채우면 더 고를 수 없다', async () => {
+    const user = userEvent.setup()
+    await openAsk(user)
+
+    pick([jpeg('a.jpg'), jpeg('b.jpg'), jpeg('c.jpg')])
+
+    expect(await screen.findByTestId('qna-photo-2')).toBeInTheDocument()
+    expect(screen.queryByTestId('qna-photo-add')).not.toBeInTheDocument()
+  })
+
+  it('4장째는 받지 않고 사유를 알린다', async () => {
+    const user = userEvent.setup()
+    await openAsk(user)
+
+    pick([jpeg('a.jpg'), jpeg('b.jpg'), jpeg('c.jpg'), jpeg('d.jpg')])
+
+    expect(await screen.findByTestId('qna-photo-error')).toHaveTextContent('3장')
+    expect(screen.queryByTestId('qna-photo-3')).not.toBeInTheDocument()
+  })
+
+  it('사진이 아닌 파일은 받지 않고 사유를 알린다', async () => {
+    const user = userEvent.setup()
+    await openAsk(user)
+
+    pick([new File(['x'], '메모.pdf', { type: 'application/pdf' })])
+
+    expect(await screen.findByTestId('qna-photo-error')).toHaveTextContent('사진만')
+    expect(screen.queryByTestId('qna-photo-0')).not.toBeInTheDocument()
+  })
+
+  it('뺀 사진은 미리보기에서 사라진다', async () => {
+    const user = userEvent.setup()
+    await openAsk(user)
+
+    pick([jpeg('a.jpg'), jpeg('b.jpg')])
+    await screen.findByTestId('qna-photo-1')
+    await user.click(screen.getByTestId('qna-photo-remove-0'))
+
+    expect(screen.getByTestId('qna-photo-0')).toBeInTheDocument()
+    expect(screen.queryByTestId('qna-photo-1')).not.toBeInTheDocument()
+  })
+
+  it('등록하면 사진을 올리고 경로를 질문에 함께 담는다', async () => {
+    const user = userEvent.setup()
+    await openAsk(user)
+
+    pick([jpeg()])
+    await screen.findByTestId('qna-photo-0')
+    await user.type(screen.getByPlaceholderText(/궁금한 점/), '이 문제 풀이가 궁금해요')
+    await user.click(screen.getByRole('button', { name: '질문 등록' }))
+
+    await waitFor(() => expect(state.data.addQuestion).toHaveBeenCalledWith({
+      category:   'naesin',
+      content:    '이 문제 풀이가 궁금해요',
+      imagePaths: ['1/token.jpg'],
+      studentId:  1,
+    }))
+  })
+
+  it('사진 올리기가 실패하면 질문을 등록하지 않고 작성 화면에 남는다', async () => {
+    const user = userEvent.setup()
+    // 사진 없이 올라가면 학생은 "사진 보고 답해 주세요"라고 쓴 채로 답을 못 받는다
+    state.data.uploadQnaImage = vi.fn().mockResolvedValue(null)
+    await openAsk(user)
+
+    pick([jpeg()])
+    await screen.findByTestId('qna-photo-0')
+    await user.type(screen.getByPlaceholderText(/궁금한 점/), '사진 보고 답해 주세요')
+    await user.click(screen.getByRole('button', { name: '질문 등록' }))
+
+    expect(await screen.findByTestId('ask-error')).toHaveTextContent('사진')
+    expect(state.data.addQuestion).not.toHaveBeenCalled()
+    expect(screen.getByPlaceholderText(/궁금한 점/)).toHaveValue('사진 보고 답해 주세요')
+  })
+})
+
+describe('질문에 붙은 사진 보기', () => {
+  beforeEach(() => {
+    state.data.qnaList = [
+      { id: 100, category: 'naesin', studentId: 1, content: '이 문제 풀이가 궁금해요',
+        createdAt: '2026-08-20T09:00:00Z', answer: null, imagePaths: ['1/a.jpg', '1/b.jpg'] },
+      { id: 200, category: 'etc', studentId: 1, content: '사진 없는 질문',
+        createdAt: '2026-08-20T10:00:00Z', answer: null, imagePaths: [] },
+    ]
+  })
+
+  it('사진이 있는 질문만 목록에서 표시가 붙는다', () => {
+    render(<QnA />)
+    expect(screen.getByTestId('photo-mark-100')).toBeInTheDocument()
+    expect(screen.queryByTestId('photo-mark-200')).not.toBeInTheDocument()
+  })
+
+  it('상세 화면에서 교사가 사진을 본다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+
+    expect(await screen.findByTestId('detail-photo-0')).toHaveAttribute(
+      'src', 'https://example.test/signed.jpg'
+    )
+    expect(screen.getByTestId('detail-photo-1')).toBeInTheDocument()
+    expect(state.data.qnaImageUrl).toHaveBeenCalledWith('1/a.jpg')
   })
 })
