@@ -1,6 +1,9 @@
 // api/notify-qna.test.js
 import { describe, it, expect } from 'vitest'
-import { notifyTargets, qnaNotification, isDeadSubscription } from './notify-qna.js'
+import {
+  notifyTargets, qnaNotification, isDeadSubscription,
+  isAuthorizedWebhook, endpointsToRemove,
+} from './notify-qna.js'
 
 // 인자는 전부 DB 행 모양(snake_case)이다 — 웹훅 payload를 변환 없이 그대로 넘긴다
 const STUDENTS = [
@@ -66,5 +69,38 @@ describe('isDeadSubscription', () => {
     expect(isDeadSubscription(500)).toBe(false)
     expect(isDeadSubscription(429)).toBe(false)
     expect(isDeadSubscription(undefined)).toBe(false)
+  })
+})
+
+describe('isAuthorizedWebhook', () => {
+  it('비밀값이 맞으면 통과시킨다', () => {
+    expect(isAuthorizedWebhook({ 'x-webhook-secret': 'S3CRET' }, 'S3CRET')).toBe(true)
+  })
+
+  it('비밀값이 틀리거나 없으면 막는다', () => {
+    expect(isAuthorizedWebhook({ 'x-webhook-secret': 'nope' }, 'S3CRET')).toBe(false)
+    expect(isAuthorizedWebhook({}, 'S3CRET')).toBe(false)
+  })
+
+  it('서버에 비밀값을 설정하지 않았으면 아무도 통과시키지 않는다', () => {
+    // 설정 전에는 누구나 알림을 쏘는 것보다 아무도 못 쏘는 편이 안전하다
+    expect(isAuthorizedWebhook({ 'x-webhook-secret': 'anything' }, undefined)).toBe(false)
+    expect(isAuthorizedWebhook({ 'x-webhook-secret': '' }, '')).toBe(false)
+  })
+})
+
+describe('endpointsToRemove', () => {
+  it('죽은 구독만 골라낸다', () => {
+    expect(endpointsToRemove([
+      { endpoint: 'https://a', statusCode: 410 },
+      { endpoint: 'https://b' },                   // 성공
+      { endpoint: 'https://c', statusCode: 500 },  // 잠시 실패 — 살려둔다
+      { endpoint: 'https://d', statusCode: 404 },
+    ])).toEqual(['https://a', 'https://d'])
+  })
+
+  it('전부 성공하면 지울 게 없다', () => {
+    expect(endpointsToRemove([{ endpoint: 'https://a' }])).toEqual([])
+    expect(endpointsToRemove([])).toEqual([])
   })
 })
