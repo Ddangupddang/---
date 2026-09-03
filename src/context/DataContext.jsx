@@ -9,6 +9,7 @@ import { grades as mockGrades } from '../data/grades'
 import { qnaQuestions as mockQna } from '../data/qna'
 import { QNA_DEFAULT_CATEGORY } from '../constants/qna'
 import { resizeQnaImage, qnaImagePath, qnaImageToken } from '../utils/qnaImage'
+import { subscriptionRow } from '../utils/pushSubscription'
 import { notices as mockNotices } from '../data/notices'
 import { reports as mockReports } from '../data/reports'
 import {
@@ -433,6 +434,38 @@ export function DataProvider({ children }) {
     setQnaList((prev) =>
       prev.map((q) => q.id === id ? { ...q, answer, answeredAt: now, answeredBy } : q)
     )
+  }
+
+  // ── 알림 구독 ──────────────────────────────────────────
+
+  // 이 기기에서 알림을 받겠다고 등록한다.
+  // 껐다 켜면 같은 endpoint가 다시 오므로 upsert로 덮어쓴다.
+  async function savePushSubscription(subscription, profileId) {
+    let row
+    try {
+      row = subscriptionRow(subscription, profileId, navigator.userAgent)
+    } catch (e) {
+      console.error('알림 구독 정보가 올바르지 않습니다:', e)
+      return false
+    }
+
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .upsert(row, { onConflict: 'endpoint' })
+
+    if (error) { console.error('알림 구독 저장 실패:', error); return false }
+    return true
+  }
+
+  // 이 기기에서 알림을 끈다
+  async function deletePushSubscription(endpoint) {
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('endpoint', endpoint)
+
+    if (error) { console.error('알림 구독 해제 실패:', error); return false }
+    return true
   }
 
   // ── 공지사항 CRUD ──────────────────────────────────────
@@ -949,6 +982,7 @@ export function DataProvider({ children }) {
       upsertAttendance, deleteAttendance,
       addGrade, updateGrade, deleteGrade,
       addQuestion, answerQuestion, uploadQnaImage, qnaImageUrl,
+      savePushSubscription, deletePushSubscription,
       addNotice, deleteNotice,
       addReport, updateReportChecks, deleteReport,
       addVideo, deleteVideo, addVideoComment, replyVideoComment,
