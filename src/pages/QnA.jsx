@@ -12,6 +12,7 @@ import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
+import PushToggle from '../components/PushToggle'
 import { visibleQuestions, unansweredCount } from '../utils/qnaAccess'
 import { QNA_CATEGORIES, QNA_CATEGORY, qnaCategoryLabel } from '../constants/qna'
 import { MAX_QNA_IMAGES, validateQnaImage } from '../utils/qnaImage'
@@ -75,6 +76,10 @@ export default function QnA() {
         {isTeacherOrAdmin && unanswered > 0 && (
           <p className="text-sm text-danger mb-4">미답변 {unanswered}건</p>
         )}
+
+        {/* 교사·관리자에게만 보인다 (컴포넌트 안에서 역할을 본다) */}
+        <PushToggle />
+
 
         {/* 말머리 필터 */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
