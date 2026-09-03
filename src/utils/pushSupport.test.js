@@ -39,9 +39,19 @@ describe('pushEnvironment', () => {
     expect(pushEnvironment({ ...base, hasPushManager: false })).toBe('unsupported')
   })
 
-  it('지원하지 않는 게 먼저다 — 아이폰 안내보다 우선한다', () => {
-    // iOS 16.4 미만에는 PushManager 자체가 없다. 홈 화면에 추가해도 안 된다.
-    expect(pushEnvironment({ ...base, isIos: true, isStandalone: true, hasPushManager: false }))
-      .toBe('unsupported')
+  it('아이폰 Safari 탭에는 PushManager가 없다 — 그래도 안내를 보여준다', () => {
+    // 아이폰은 홈 화면에 추가한 뒤에야 PushManager가 생긴다.
+    // 이걸 "지원 안 함"으로 처리하면, 안내가 필요한 바로 그 사람에게
+    // "이 브라우저는 알림을 지원하지 않습니다"가 뜬다.
+    expect(pushEnvironment({
+      ...base, isIos: true, isStandalone: false, hasPushManager: false,
+    })).toBe('ios-needs-install')
+  })
+
+  it('홈 화면에 추가했는데도 PushManager가 없으면 지원하지 않는 기기다', () => {
+    // iOS 16.4 미만. 여기서는 안내해도 방법이 없다.
+    expect(pushEnvironment({
+      ...base, isIos: true, isStandalone: true, hasPushManager: false,
+    })).toBe('unsupported')
   })
 })

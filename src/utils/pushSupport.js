@@ -7,9 +7,14 @@
 export function pushEnvironment({
   hasServiceWorker, hasPushManager, isIos, isStandalone, permission, subscribed,
 }) {
-  // iOS 16.4 미만에는 PushManager 자체가 없다. 홈 화면에 추가해도 안 되므로 먼저 본다.
-  if (!hasServiceWorker || !hasPushManager) return 'unsupported'
+  // 아이폰은 홈 화면에 추가하기 전에는 PushManager가 아예 없다.
+  // 그래서 "지원 안 함"보다 이 판단이 먼저 와야 한다 — 순서를 바꾸면
+  // 안내가 필요한 바로 그 사람에게 "지원하지 않습니다"가 뜬다.
   if (isIos && !isStandalone) return 'ios-needs-install'
+
+  // 홈 화면에 추가했는데도 없으면 iOS 16.4 미만이다. 여기서는 방법이 없다.
+  if (!hasServiceWorker || !hasPushManager) return 'unsupported'
+
   if (permission === 'denied') return 'denied'
   if (subscribed) return 'on'
   return 'ready'
