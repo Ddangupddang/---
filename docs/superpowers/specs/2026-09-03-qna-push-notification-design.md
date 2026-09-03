@@ -156,6 +156,7 @@ Q&A 페이지 상단에 **"이 기기에서 알림 받기"** 토글을 둔다. "
 | `VAPID_PRIVATE_KEY` | Vercel | 발송 시 서명 (외부 노출 금지) |
 | `VITE_VAPID_PUBLIC_KEY` | Vercel + 로컬 `.env` | 브라우저가 구독을 만들 때 필요 |
 | `QNA_WEBHOOK_SECRET` | Vercel + Supabase 웹훅 헤더 | 아무나 발송 주소를 두드리지 못하게 |
+| `VAPID_CONTACT` | Vercel | 푸시 서버가 문제 발생 시 연락할 `mailto:` 주소 |
 
 `SUPABASE_SERVICE_ROLE_KEY`는 이미 Vercel에 있다 (계정 생성 함수들이 쓴다).
 
