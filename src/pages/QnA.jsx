@@ -3,8 +3,8 @@
 // 예전에는 테스트를 고르고 문항까지 골라야 했는데, 그러면
 // (1) 과제 관련 질문은 낼 방법이 없고
 // (2) 종료된 테스트가 하나도 없으면 질문 자체를 못 했다.
-import { useState, useEffect, useRef } from 'react'
-import { Camera, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
@@ -13,9 +13,13 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
 import PushToggle from '../components/PushToggle'
-import { visibleQuestions, unansweredCount, canDeleteQuestion } from '../utils/qnaAccess'
+import {
+  visibleQuestions, unansweredCount, canDeleteQuestion,
+  qnaStatus, canDeleteMessage, canEditMessage,
+} from '../utils/qnaAccess'
 import { QNA_CATEGORIES, QNA_CATEGORY, qnaCategoryLabel } from '../constants/qna'
-import { MAX_QNA_IMAGES, validateQnaImage } from '../utils/qnaImage'
+import QnaImagePicker from '../components/qna/QnaImagePicker'
+import { MAX_QNA_IMAGES } from '../utils/qnaImage'
 import { formatDate, formatDateTime } from '../utils/datetime'
 
 // 말머리 알약 — 목록 필터와 작성 화면이 같은 모양을 쓴다
@@ -37,7 +41,8 @@ export default function QnA() {
   const { user } = useAuth()
   const {
     qnaList, students, classes,
-    addQuestion, answerQuestion, deleteAnswer, deleteQuestion, uploadQnaImage, qnaImageUrl,
+    addQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
+    qnaMessages, addQnaMessage, updateQnaMessage, deleteQnaMessage,
   } = useData()
   const [view, setView]                         = useState('list') // list | detail | ask
   // 질문 자체가 아니라 id를 들고 있는다. 스냅샷을 들고 있으면 답변을 고쳐도
@@ -52,7 +57,7 @@ export default function QnA() {
   const filteredQuestions = myQuestions.filter(
     (q) => filterCategory === 'all' || q.category === filterCategory
   )
-  const unanswered = unansweredCount(qnaList, students, classes, user)
+  const unanswered = unansweredCount(qnaList, students, classes, user, qnaMessages)
 
   // 이름 표시 규칙: 교사/관리자→실명, 학생→본인 질문뿐이므로 "나"
   function displayName(studentId) {
@@ -117,7 +122,7 @@ export default function QnA() {
                   <span className="text-xs bg-surface-alt text-ink-soft px-2 py-0.5 rounded-sm font-medium">
                     {qnaCategoryLabel(q.category)}
                   </span>
-                  {q.answer ? (
+                  {qnaStatus(q, qnaMessages) === 'answered' ? (
                     <Badge tone="navy" className="shrink-0 ml-2">답변 완료</Badge>
                   ) : (
                     <Badge tone="warn" className="shrink-0 ml-2">답변 대기</Badge>
@@ -157,7 +162,6 @@ export default function QnA() {
       <DetailView
         question={selectedQuestion}
         displayName={displayName}
-        isTeacherOrAdmin={isTeacherOrAdmin}
         qnaImageUrl={qnaImageUrl}
         canDelete={canDeleteQuestion(selectedQuestion, students, classes, user)}
         onDelete={async () => {
@@ -167,17 +171,35 @@ export default function QnA() {
           setView('list')
           return null
         }}
-        onAnswer={async (answer) => {
-          await answerQuestion(selectedQuestion.id, answer, user.id)
-          setView('list')
-        }}
-        // 수정은 목록으로 나가지 않는다 — 고친 결과를 그 자리에서 봐야 한다
-        onUpdateAnswer={async (answer) => {
-          const res = await answerQuestion(selectedQuestion.id, answer, user.id)
+        messages={qnaMessages
+          .filter((m) => m.qnaId === selectedQuestion.id)
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt))}
+        canDeleteMessageOf={(m) => canDeleteMessage(m, selectedQuestion, students, classes, user)}
+        canEditMessageOf={(m) => canEditMessage(m, user)}
+        onSendMessage={async ({ content, photos }) => {
+          // 사진부터 올린다. 한 장이라도 실패하면 글을 등록하지 않는다 —
+          // "사진 보고 답해 주세요"라고 쓴 글만 올라가면 소용이 없다.
+          const imagePaths = []
+          for (const { file } of photos) {
+            const path = await uploadQnaImage(file, selectedQuestion.studentId)
+            if (!path) return '사진을 올리지 못했습니다. 잠시 후 다시 시도해 주세요.'
+            imagePaths.push(path)
+          }
+          const res = await addQnaMessage({
+            qnaId:      selectedQuestion.id,
+            authorId:   user.id,
+            authorRole: isTeacherOrAdmin ? 'teacher' : 'student',
+            content,
+            imagePaths,
+          })
           return res?.error ?? null
         }}
-        onDeleteAnswer={async () => {
-          const res = await deleteAnswer(selectedQuestion.id)
+        onUpdateMessage={async (m, content) => {
+          const res = await updateQnaMessage(m.id, content)
+          return res?.error ?? null
+        }}
+        onDeleteMessage={async (m) => {
+          const res = await deleteQnaMessage(m.id, m.imagePaths ?? [])
           return res?.error ?? null
         }}
         onBack={() => setView('list')}
@@ -212,55 +234,52 @@ export default function QnA() {
 
 // ────────── DetailView 컴포넌트 ──────────
 function DetailView({
-  question, displayName, isTeacherOrAdmin, qnaImageUrl, canDelete,
-  onDelete, onAnswer, onUpdateAnswer, onDeleteAnswer, onBack,
+  question, displayName, qnaImageUrl, canDelete, messages,
+  canDeleteMessageOf, canEditMessageOf,
+  onDelete, onSendMessage, onUpdateMessage, onDeleteMessage, onBack,
 }) {
-  const [answerText, setAnswerText] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  // 사진까지 함께 사라지는 동작이라 한 번 물어본다
+  // 질문 삭제 — 사진까지 함께 사라지는 동작이라 한 번 물어본다
   const [confirming,   setConfirming]   = useState(false)
   const [deleting,     setDeleting]     = useState(false)
   const [deleteError,  setDeleteError]  = useState('')
-  // 답변 수정·삭제 (교사·관리자만)
-  const [editing,      setEditing]      = useState(false)
+
+  // 대화 글쓰기
+  const [draft,        setDraft]        = useState('')
+  const [draftPhotos,  setDraftPhotos]  = useState([])
+  const [photoError,   setPhotoError]   = useState('')
+  const [messageError, setMessageError] = useState('')
+  const [messageBusy,  setMessageBusy]  = useState(false)
+  const [confirmingMessage, setConfirmingMessage] = useState(null)
+  const [editingId,    setEditingId]    = useState(null)
   const [editText,     setEditText]     = useState('')
-  const [answerBusy,   setAnswerBusy]   = useState(false)
-  const [answerError,  setAnswerError]  = useState('')
-  const [confirmingAnswer, setConfirmingAnswer] = useState(false)
 
-  // 답변을 관리할 수 있는 사람 = 질문을 지울 수 있는 교사·관리자.
-  // 답변용 규칙을 따로 두면 규칙이 둘로 갈려 나중에 어긋난다.
-  const canManageAnswer = isTeacherOrAdmin && canDelete
-
-  function startEdit() {
-    setEditText(question.answer ?? '')
-    setEditing(true)
-    setAnswerError('')
+  async function handleSend() {
+    if (!draft.trim() || messageBusy) return
+    setMessageBusy(true)
+    setMessageError('')
+    const failed = await onSendMessage({ content: draft.trim(), photos: draftPhotos })
+    if (failed) setMessageError(failed)
+    else { setDraft(''); setDraftPhotos([]) }
+    setMessageBusy(false)
   }
 
-  async function saveEdit() {
-    if (!editText.trim() || answerBusy) return
-    setAnswerBusy(true)
-    const failed = await onUpdateAnswer(editText.trim())
-    if (failed) setAnswerError(failed)
-    else setEditing(false)
-    setAnswerBusy(false)
+  async function handleEditSave(m) {
+    if (!editText.trim() || messageBusy) return
+    setMessageBusy(true)
+    setMessageError('')
+    const failed = await onUpdateMessage(m, editText.trim())
+    if (failed) setMessageError(failed)
+    else setEditingId(null)
+    setMessageBusy(false)
   }
 
-  async function removeAnswer() {
-    if (answerBusy) return
-    setAnswerBusy(true)
-    const failed = await onDeleteAnswer()
-    if (failed) setAnswerError(failed)
-    setConfirmingAnswer(false)
-    setAnswerBusy(false)
-  }
-
-  async function handleAnswer() {
-    if (!answerText.trim() || submitting) return
-    setSubmitting(true)
-    await onAnswer(answerText.trim())
-    setSubmitting(false)
+  async function handleDeleteMessage() {
+    if (messageBusy) return
+    setMessageBusy(true)
+    const failed = await onDeleteMessage(confirmingMessage)
+    if (failed) setMessageError(failed)
+    setConfirmingMessage(null)
+    setMessageBusy(false)
   }
 
   async function handleDelete() {
@@ -291,106 +310,132 @@ function DetailView({
         </p>
       </div>
 
-      {/* 답변 영역 */}
-      {question.answer && editing ? (
-        <div className="bg-surface border border-line rounded p-5">
-          <p className="text-sm font-semibold text-ink-soft mb-3">답변 수정</p>
-          <textarea
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            rows={5}
-            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none mb-3"
-          />
-          <div className="flex gap-2">
-            <Button onClick={saveEdit} disabled={!editText.trim() || answerBusy} className="flex-1">
-              {answerBusy ? '저장 중...' : '답변 저장'}
-            </Button>
-            <button
-              type="button"
-              onClick={() => { setEditing(false); setAnswerError('') }}
-              disabled={answerBusy}
-              className="text-sm border border-line rounded px-4 hover:bg-surface-alt transition-colors"
-            >
-              취소
-            </button>
-          </div>
-          {answerError && <p className="text-xs text-danger mt-2">{answerError}</p>}
-        </div>
-      ) : question.answer ? (
-        <div>
-          <Alert tone="info">
-            <p className="text-xs font-semibold text-navy mb-2">선생님 답변</p>
-            <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap font-normal">{question.answer}</p>
-            {/* Alert(info)의 남색 배경 위라 ink-faint는 2.66:1까지 떨어진다 */}
-            <p className="text-xs text-ink-mute mt-3 font-normal">
-              {formatDateTime(question.answeredAt)}
-            </p>
-          </Alert>
-
-          {canManageAnswer && (
-            <div className="mt-2">
-              {confirmingAnswer ? (
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-ink-soft flex-1">
-                    답변을 지우면 이 질문은 다시 답변 대기가 됩니다.
-                  </p>
+      {/* 대화 — 첫 질문 다음에 오간 글들 */}
+      <div className="flex flex-col gap-3 mb-4">
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            data-testid={`message-${m.id}`}
+            className={m.authorRole === 'teacher'
+              ? 'bg-navy-soft border border-line rounded p-4'
+              : 'bg-surface border border-line rounded p-4'}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <p className="text-xs font-semibold text-ink-soft">
+                {m.authorRole === 'teacher' ? '선생님' : displayName(question.studentId)}
+              </p>
+              <div className="flex gap-2 shrink-0">
+                {/* 고치는 건 본인 글만. 남이 한 말을 고쳐 쓰면 학생이 하지 않은 말이
+                    학생 이름으로 남는다. 문제가 있는 글은 지우면 된다. */}
+                {canEditMessageOf(m) && editingId !== m.id && (
                   <button
                     type="button"
-                    data-testid="answer-delete-confirm"
-                    onClick={removeAnswer}
-                    disabled={answerBusy}
-                    className="text-xs bg-danger text-white rounded px-3 py-2"
+                    data-testid={`message-edit-${m.id}`}
+                    onClick={() => { setEditingId(m.id); setEditText(m.content); setMessageError('') }}
+                    className="text-xs text-ink-faint hover:text-ink-soft transition-colors"
                   >
-                    {answerBusy ? '삭제 중...' : '삭제'}
+                    수정
                   </button>
+                )}
+                {canDeleteMessageOf(m) && (
                   <button
                     type="button"
-                    onClick={() => setConfirmingAnswer(false)}
-                    disabled={answerBusy}
-                    className="text-xs border border-line rounded px-3 py-2 hover:bg-surface-alt transition-colors"
+                    data-testid={`message-delete-${m.id}`}
+                    onClick={() => setConfirmingMessage(m)}
+                    className="text-xs text-ink-faint hover:text-danger transition-colors"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {editingId === m.id ? (
+              <div>
+                <textarea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  rows={4}
+                  className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none mb-2"
+                />
+                <div className="flex gap-2">
+                  <Button onClick={() => handleEditSave(m)} disabled={!editText.trim() || messageBusy} className="flex-1">
+                    {messageBusy ? '저장 중...' : '수정 저장'}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingId(null); setMessageError('') }}
+                    disabled={messageBusy}
+                    className="text-sm border border-line rounded px-4 hover:bg-surface-alt transition-colors"
                   >
                     취소
                   </button>
                 </div>
-              ) : (
-                <div className="flex gap-3">
-                  <button type="button" onClick={startEdit} className="text-xs text-ink-mute hover:underline">
-                    답변 수정
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setConfirmingAnswer(true); setAnswerError('') }}
-                    className="text-xs text-danger hover:underline"
-                  >
-                    답변 삭제
-                  </button>
-                </div>
-              )}
-              {answerError && <p className="text-xs text-danger mt-2">{answerError}</p>}
-            </div>
-          )}
-        </div>
-      ) : isTeacherOrAdmin ? (
-        <div className="bg-surface border border-line rounded p-5">
-          <p className="text-sm font-semibold text-ink-soft mb-3">답변 작성</p>
-          <textarea
-            value={answerText}
-            onChange={(e) => setAnswerText(e.target.value)}
-            placeholder="답변을 입력하세요"
-            rows={5}
-            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none mb-3"
-          />
-          <Button onClick={handleAnswer} disabled={!answerText.trim() || submitting} className="w-full">
-            {submitting ? '등록 중...' : '답변 등록'}
-          </Button>
-        </div>
-      ) : (
-        // 옅은 배경 위 안내문이라 ink-faint(2.94:1)로는 읽히지 않아 한 단계 진하게 쓴다
-        <div className="bg-surface-alt rounded p-6 text-center">
-          <p className="text-sm text-ink-mute">아직 답변이 등록되지 않았습니다.</p>
-          <p className="text-xs text-ink-mute mt-1">선생님이 곧 답변 드릴 예정입니다.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">{m.content}</p>
+            )}
+
+            {/* 사진은 수정 대상이 아니다. 바꾸려면 글을 지우고 다시 쓴다 —
+                수정 중에 사진까지 갈아 끼우게 만들면 중간에 실패했을 때
+                글과 사진이 어긋난 상태로 남는다. */}
+            <QuestionPhotos paths={m.imagePaths} qnaImageUrl={qnaImageUrl} />
+            <p className="text-xs text-ink-mute mt-2">{formatDateTime(m.createdAt)}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* 글 삭제 확인 */}
+      {confirmingMessage && (
+        <div className="border border-line rounded p-3 mb-4 flex items-center gap-2">
+          <p className="text-sm text-ink-soft flex-1">
+            이 글을 삭제할까요?
+            {confirmingMessage.imagePaths?.length > 0 && ' 붙은 사진도 함께 지워집니다.'}
+          </p>
+          <button
+            type="button"
+            data-testid="message-delete-confirm"
+            onClick={handleDeleteMessage}
+            disabled={messageBusy}
+            className="shrink-0 text-xs bg-danger text-white rounded px-3 py-2"
+          >
+            {messageBusy ? '삭제 중...' : '삭제'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmingMessage(null)}
+            disabled={messageBusy}
+            className="shrink-0 text-xs border border-line rounded px-3 py-2 hover:bg-surface-alt transition-colors"
+          >
+            취소
+          </button>
         </div>
       )}
+
+      {/* 글쓰기 — 학생·교사가 같은 칸을 쓴다 */}
+      <div className="bg-surface border border-line rounded p-4">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="이어서 쓸 내용을 입력하세요"
+          rows={3}
+          className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none mb-3"
+        />
+        <QnaImagePicker
+          photos={draftPhotos}
+          onChange={setDraftPhotos}
+          error={photoError}
+          onError={setPhotoError}
+        />
+        {messageError && (
+          <p data-testid="message-error" className="text-xs text-danger mt-2">
+            등록하지 못했습니다. 사유: {messageError}
+          </p>
+        )}
+        <Button onClick={handleSend} disabled={!draft.trim() || messageBusy} className="w-full mt-3">
+          {messageBusy ? '등록 중...' : '등록'}
+        </Button>
+      </div>
 
       {/* 삭제 — 권한이 있는 사람에게만 보인다 */}
       {canDelete && (
@@ -493,40 +538,6 @@ function AskView({ studentId, uploadQnaImage, onSubmit, onBack }) {
   // 고를 때마다 올리면 뺐다 넣었다 한 사진이 스토리지에 쓰레기로 남는다.
   const [photos,     setPhotos]     = useState([])
   const [photoError, setPhotoError] = useState('')
-  const fileInputRef = useRef(null)
-  // 정리할 때 최신 목록이 필요하다. photos를 의존성에 넣으면 사진을 더할 때마다
-  // 정리가 돌아서 아직 쓰고 있는 미리보기까지 끊어 버린다.
-  const photosRef = useRef(photos)
-  photosRef.current = photos
-
-  // 미리보기 주소는 브라우저가 붙들고 있으므로 화면을 떠날 때 놓아준다
-  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.preview)), [])
-
-  function handlePick(e) {
-    const picked = Array.from(e.target.files ?? [])
-    // 같은 사진을 뺐다가 다시 고를 수 있게 입력칸을 비운다
-    e.target.value = ''
-
-    const next = [...photos]
-    let firstReason = ''
-    for (const file of picked) {
-      const reason = validateQnaImage(file, next.length)
-      // 한 장이 걸려도 나머지는 받는다. 사유는 처음 것만 보여준다.
-      if (reason) { firstReason ||= reason; continue }
-      next.push({ file, preview: URL.createObjectURL(file) })
-    }
-    setPhotos(next)
-    setPhotoError(firstReason)
-  }
-
-  function removePhoto(index) {
-    setPhotos((prev) => {
-      URL.revokeObjectURL(prev[index].preview)
-      return prev.filter((_, i) => i !== index)
-    })
-    setPhotoError('')
-  }
-
   async function handleSubmit(e) {
     e.preventDefault()
     if (!content.trim() || submitting) return
@@ -611,61 +622,18 @@ function AskView({ studentId, uploadQnaImage, onSubmit, onBack }) {
           <label className="block text-sm font-medium text-ink-soft mb-2">
             사진 첨부 <span className="text-ink-faint font-normal">(최대 {MAX_QNA_IMAGES}장, 선택)</span>
           </label>
-
-          <div className="flex gap-2 flex-wrap">
-            {photos.map((p, i) => (
-              <div
-                key={p.preview}
-                data-testid={`qna-photo-${i}`}
-                className="relative w-20 h-20 rounded border border-line overflow-hidden"
-              >
-                <img src={p.preview} alt={`첨부 사진 ${i + 1}`} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  data-testid={`qna-photo-remove-${i}`}
-                  onClick={() => removePhoto(i)}
-                  aria-label={`첨부 사진 ${i + 1} 빼기`}
-                  className="absolute top-0 right-0 bg-ink/70 text-white p-0.5 rounded-bl"
-                >
-                  <X size={14} aria-hidden="true" />
-                </button>
-              </div>
-            ))}
-
-            {photos.length < MAX_QNA_IMAGES && (
-              <button
-                type="button"
-                data-testid="qna-photo-add"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-20 h-20 rounded border border-line border-dashed text-ink-mute flex flex-col items-center justify-center gap-1 hover:bg-surface-alt transition-colors"
-              >
-                <Camera size={18} aria-hidden="true" />
-                <span className="text-xs">사진 추가</span>
-              </button>
-            )}
-          </div>
-
-          {/* accept·capture 덕분에 폰에서 카메라와 앨범을 바로 고를 수 있다 */}
-          <input
-            ref={fileInputRef}
-            data-testid="qna-photo-input"
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handlePick}
+          <QnaImagePicker
+            photos={photos}
+            onChange={setPhotos}
+            error={photoError}
+            onError={setPhotoError}
           />
-
-          {photoError && (
-            <p data-testid="qna-photo-error" className="text-xs text-danger mt-2">
-              {photoError}
-            </p>
-          )}
         </div>
 
         <p className="text-xs text-ink-faint -mt-2">
           * 질문은 담당 선생님만 볼 수 있습니다. 다른 학생에게는 보이지 않습니다.
         </p>
+
 
         {/* Alert는 임의 props를 전달하지 않으므로 data-testid는 감싸는 div에 둔다 */}
         {error && (

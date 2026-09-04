@@ -35,9 +35,12 @@ beforeEach(() => {
         createdAt: '2026-08-19T09:00:00Z', answer: null },
     ],
     addQuestion:    vi.fn().mockResolvedValue({ question: { id: 400 } }),
-    answerQuestion: vi.fn().mockResolvedValue(undefined),
     uploadQnaImage: vi.fn().mockResolvedValue('1/token.jpg'),
     qnaImageUrl:    vi.fn().mockResolvedValue('https://example.test/signed.jpg'),
+    qnaMessages:      [],
+    addQnaMessage:    vi.fn().mockResolvedValue({ message: { id: 1 } }),
+    updateQnaMessage: vi.fn().mockResolvedValue({}),
+    deleteQnaMessage: vi.fn().mockResolvedValue({}),
   }
 })
 
@@ -358,62 +361,123 @@ describe('질문 삭제', () => {
   })
 })
 
-describe('답변 수정·삭제', () => {
+
+describe('Q&A 대화', () => {
   beforeEach(() => {
     state.data.qnaList = [
       { id: 100, category: 'naesin', studentId: 1, content: '3번 문제요',
-        createdAt: '2026-09-04T09:00:00Z', imagePaths: [],
-        answer: '지문 2단락을 보세요', answeredAt: '2026-09-04T10:00:00Z', answeredBy: 't1' },
+        createdAt: '2026-09-04T00:00:00Z', imagePaths: [] },
     ]
-    state.data.answerQuestion = vi.fn().mockResolvedValue({})
-    state.data.deleteAnswer   = vi.fn().mockResolvedValue({})
+    state.data.qnaMessages = [
+      { id: 1, qnaId: 100, authorId: 't1', authorRole: 'teacher',
+        content: '지문 2단락을 보세요', imagePaths: [], createdAt: '2026-09-04T01:00:00Z' },
+    ]
   })
 
-  it('교사는 답변을 고쳐 저장한다', async () => {
+  it('첫 질문과 이후 글이 함께 보인다', async () => {
     const user = userEvent.setup()
     render(<QnA />)
     await user.click(screen.getByTestId('question-100'))
-    await user.click(screen.getByRole('button', { name: '답변 수정' }))
 
-    const box = screen.getByDisplayValue('지문 2단락을 보세요')
-    await user.clear(box)
-    await user.type(box, '지문 3단락이 근거입니다')
-    await user.click(screen.getByRole('button', { name: '답변 저장' }))
-
-    await waitFor(() =>
-      expect(state.data.answerQuestion).toHaveBeenCalledWith(100, '지문 3단락이 근거입니다', 't1'))
-  })
-
-  it('수정을 취소하면 원래 답변이 그대로 남는다', async () => {
-    const user = userEvent.setup()
-    render(<QnA />)
-    await user.click(screen.getByTestId('question-100'))
-    await user.click(screen.getByRole('button', { name: '답변 수정' }))
-    await user.click(screen.getByRole('button', { name: '취소' }))
-
+    expect(screen.getByText('3번 문제요')).toBeInTheDocument()
     expect(screen.getByText('지문 2단락을 보세요')).toBeInTheDocument()
-    expect(state.data.answerQuestion).not.toHaveBeenCalled()
   })
 
-  it('답변을 지우면 다시 답변 대기가 된다', async () => {
+  it('교사가 글을 이어서 쓴다', async () => {
     const user = userEvent.setup()
     render(<QnA />)
     await user.click(screen.getByTestId('question-100'))
-    await user.click(screen.getByRole('button', { name: '답변 삭제' }))
-    await user.click(screen.getByTestId('answer-delete-confirm'))
+    await user.type(screen.getByPlaceholderText(/이어서/), '3번은 다음 시간에 다룹니다')
+    await user.click(screen.getByRole('button', { name: '등록' }))
 
-    await waitFor(() => expect(state.data.deleteAnswer).toHaveBeenCalledWith(100))
+    await waitFor(() => expect(state.data.addQnaMessage).toHaveBeenCalledWith({
+      qnaId:      100,
+      authorId:   't1',
+      authorRole: 'teacher',
+      content:    '3번은 다음 시간에 다룹니다',
+      imagePaths: [],
+    }))
   })
 
-  it('학생에게는 수정·삭제 버튼이 보이지 않는다', async () => {
+  it('학생이 되물으면 authorRole이 student로 간다', async () => {
     const user = userEvent.setup()
-    // 학생이 선생님 답변을 지울 수 있으면 안 된다
+    state.user = { id: 's1', role: 'student', studentId: 1, classId: 10 }
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.type(screen.getByPlaceholderText(/이어서/), '그럼 4번은요?')
+    await user.click(screen.getByRole('button', { name: '등록' }))
+
+    await waitFor(() => expect(state.data.addQnaMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ authorRole: 'student', authorId: 's1' })))
+  })
+
+  it('등록에 실패하면 쓴 내용이 남고 사유를 보여준다', async () => {
+    const user = userEvent.setup()
+    state.data.addQnaMessage = vi.fn().mockResolvedValue({ error: '권한이 없습니다' })
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.type(screen.getByPlaceholderText(/이어서/), '테스트')
+    await user.click(screen.getByRole('button', { name: '등록' }))
+
+    expect(await screen.findByTestId('message-error')).toHaveTextContent('권한')
+    expect(screen.getByPlaceholderText(/이어서/)).toHaveValue('테스트')
+  })
+
+  it('교사는 대화의 글을 지울 수 있다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.click(screen.getByTestId('message-delete-1'))
+    await user.click(screen.getByTestId('message-delete-confirm'))
+
+    await waitFor(() => expect(state.data.deleteQnaMessage).toHaveBeenCalledWith(1, []))
+  })
+
+  it('학생은 선생님 글을 지울 수 없다', async () => {
+    const user = userEvent.setup()
     state.user = { id: 's1', role: 'student', studentId: 1, classId: 10 }
     render(<QnA />)
     await user.click(screen.getByTestId('question-100'))
 
-    expect(screen.getByText('지문 2단락을 보세요')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '답변 수정' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '답변 삭제' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('message-delete-1')).not.toBeInTheDocument()
+  })
+
+  it('본인이 쓴 글은 고쳐서 저장한다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.click(screen.getByTestId('message-edit-1'))
+
+    const box = screen.getByDisplayValue('지문 2단락을 보세요')
+    await user.clear(box)
+    await user.type(box, '지문 3단락이 근거입니다')
+    await user.click(screen.getByRole('button', { name: '수정 저장' }))
+
+    await waitFor(() => expect(state.data.updateQnaMessage)
+      .toHaveBeenCalledWith(1, '지문 3단락이 근거입니다'))
+  })
+
+  it('교사여도 학생 글은 고칠 수 없다 — 지우는 것만 된다', async () => {
+    const user = userEvent.setup()
+    // 남이 한 말을 고쳐 쓰면 학생이 하지 않은 말이 학생 이름으로 남는다
+    state.data.qnaMessages = [
+      { id: 2, qnaId: 100, authorId: 's1', authorRole: 'student',
+        content: '그럼 4번은요?', imagePaths: [], createdAt: '2026-09-04T02:00:00Z' },
+    ]
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+
+    expect(screen.queryByTestId('message-edit-2')).not.toBeInTheDocument()
+    expect(screen.getByTestId('message-delete-2')).toBeInTheDocument()
+  })
+
+  it('마지막 글이 학생이면 목록에 답변 대기로 나온다', () => {
+    state.data.qnaMessages = [
+      ...state.data.qnaMessages,
+      { id: 2, qnaId: 100, authorId: 's1', authorRole: 'student',
+        content: '그럼 4번은요?', imagePaths: [], createdAt: '2026-09-04T02:00:00Z' },
+    ]
+    render(<QnA />)
+    expect(screen.getByTestId('question-100')).toHaveTextContent('답변 대기')
   })
 })

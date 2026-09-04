@@ -130,12 +130,24 @@ function toSubmission(s) {
     scores:      s.scores  ?? [],
   }
 }
+function toQnaMessage(m) {
+  return {
+    id:         m.id,
+    qnaId:      m.qna_id,
+    authorId:   m.author_id,
+    authorRole: m.author_role,
+    content:    m.content,
+    imagePaths: m.image_paths ?? [],
+    createdAt:  m.created_at,
+  }
+}
 export function DataProvider({ children }) {
   const [classes,       setClasses]       = useState([])
   const [students,      setStudents]      = useState([])
   const [attendance,    setAttendance]    = useState([])
   const [grades,        setGrades]        = useState([])
   const [qnaList,       setQnaList]       = useState([])
+  const [qnaMessages,   setQnaMessages]   = useState([])
   const [notices,       setNotices]       = useState([])
   const [reports,       setReports]       = useState([])
   const [staffProfiles, setStaffProfiles] = useState([])
@@ -166,13 +178,14 @@ export function DataProvider({ children }) {
 
   useEffect(() => {
     async function load() {
-      const [cRes, sRes, aRes, gRes, qRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, wnRes, saRes] =
+      const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, wnRes, saRes] =
         await Promise.all([
           supabase.from('classes').select('*').order('sort_order').order('id'),
           supabase.from('students').select('*').order('sort_order').order('id'),
           supabase.from('attendance').select('*').order('date', { ascending: false }),
           supabase.from('grades').select('*').order('date', { ascending: false }),
           supabase.from('qna').select('*').order('created_at', { ascending: false }),
+          supabase.from('qna_messages').select('*').order('created_at'),
           supabase.from('notices').select('*').order('created_at', { ascending: false }),
           supabase.from('reports').select('*').order('date', { ascending: false }),
           supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher']),
@@ -196,6 +209,7 @@ export function DataProvider({ children }) {
       const aRows = rowsOrNull(aRes); if (aRows) setAttendance(aRows.map(toAttendance))
       const gRows = rowsOrNull(gRes); if (gRows) setGrades(gRows.map(toGrade))
       const qRows = rowsOrNull(qRes); if (qRows) setQnaList(qRows.map(toQna))
+      const qmRows = rowsOrNull(qmRes); if (qmRows) setQnaMessages(qmRows.map(toQnaMessage))
       const nRows = rowsOrNull(nRes); if (nRows) setNotices(nRows.map(toNotice))
       const rRows = rowsOrNull(rRes); if (rRows) setReports(rRows.map(toReport))
       if (!pRes.error && pRes.data)              setStaffProfiles(pRes.data)
@@ -427,46 +441,65 @@ export function DataProvider({ children }) {
     return data.signedUrl
   }
 
-  async function answerQuestion(id, answer, answeredBy) {
-    const now = new Date().toISOString()
+  // ── Q&A 대화 ───────────────────────────────────────────
+
+  // 첫 질문 다음에 오가는 글을 한 줄 추가한다.
+  // 학생의 추가 질문과 교사의 답변이 같은 함수를 쓴다 — 화면만 다르고
+  // 저장되는 모양은 같다.
+  async function addQnaMessage({ qnaId, authorId, authorRole, content, imagePaths = [] }) {
+    const { data: inserted, error } = await supabase
+      .from('qna_messages')
+      .insert([{
+        qna_id:      qnaId,
+        author_id:   authorId,
+        author_role: authorRole,
+        content,
+        image_paths: imagePaths,
+      }])
+      .select()
+      .single()
+
+    if (error) { console.error('Q&A 글 등록 실패:', error); return { error: error.message } }
+    const newMsg = toQnaMessage(inserted)
+    setQnaMessages((prev) => [...prev, newMsg])
+    return { message: newMsg }
+  }
+
+  async function updateQnaMessage(id, content) {
     const { data: updated, error } = await supabase
-      .from('qna')
-      .update({ answer, answered_at: now, answered_by: answeredBy })
+      .from('qna_messages')
+      .update({ content })
       .eq('id', id)
       .select()
 
-    if (error) { console.error('답변 등록 실패:', error); return { error: error.message } }
-    // 에러 없이 0건이면 RLS가 조용히 막은 것이다. 성공으로 치면 화면만 바뀌고
-    // 새로고침하면 답변이 사라져 있다.
+    if (error) { console.error('Q&A 글 수정 실패:', error); return { error: error.message } }
     if (!updated?.length) {
-      console.error('답변 등록 실패: 0 rows updated (RLS 정책 확인 필요)')
-      return { error: '답변을 저장할 권한이 없습니다.' }
+      console.error('Q&A 글 수정 실패: 0 rows updated (RLS 정책 확인 필요)')
+      return { error: '이 글을 고칠 권한이 없습니다.' }
     }
 
-    setQnaList((prev) =>
-      prev.map((q) => q.id === id ? { ...q, answer, answeredAt: now, answeredBy } : q)
-    )
+    setQnaMessages((prev) => prev.map((m) => m.id === id ? { ...m, content } : m))
     return {}
   }
 
-  // 답변만 지운다. 질문은 남고 다시 "답변 대기"가 된다.
-  // 잘못 단 답변을 되돌리려고 질문을 통째로 지우면 학생이 쓴 질문까지 사라진다.
-  async function deleteAnswer(id) {
-    const { data: updated, error } = await supabase
-      .from('qna')
-      .update({ answer: null, answered_at: null, answered_by: null })
-      .eq('id', id)
-      .select()
+  // 글을 먼저 지우고 사진을 나중에 지운다. 반대로 하면 사진 삭제 후
+  // 글 삭제가 실패했을 때 이미지가 깨진 글이 남는다.
+  async function deleteQnaMessage(id, imagePaths = []) {
+    const { data: deleted, error } = await supabase
+      .from('qna_messages').delete().eq('id', id).select()
 
-    if (error) { console.error('답변 삭제 실패:', error); return { error: error.message } }
-    if (!updated?.length) {
-      console.error('답변 삭제 실패: 0 rows updated (RLS 정책 확인 필요)')
-      return { error: '답변을 지울 권한이 없습니다.' }
+    if (error) { console.error('Q&A 글 삭제 실패:', error); return { error: error.message } }
+    if (!deleted?.length) {
+      console.error('Q&A 글 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)')
+      return { error: '이 글을 지울 권한이 없습니다.' }
     }
 
-    setQnaList((prev) => prev.map((q) =>
-      q.id === id ? { ...q, answer: null, answeredAt: null, answeredBy: null } : q
-    ))
+    if (imagePaths.length > 0) {
+      const { error: imgError } = await supabase.storage.from('qna-images').remove(imagePaths)
+      if (imgError) console.error('Q&A 글 사진 삭제 실패(글은 삭제됨):', imgError)
+    }
+
+    setQnaMessages((prev) => prev.filter((m) => m.id !== id))
     return {}
   }
 
@@ -487,12 +520,20 @@ export function DataProvider({ children }) {
       return { error: '삭제 권한이 없습니다. (docs/qna-delete.sql 실행 여부 확인)' }
     }
 
-    if (imagePaths.length > 0) {
-      const { error: imgError } = await supabase.storage.from('qna-images').remove(imagePaths)
+    // 대화에 붙은 사진까지 모아서 지운다. 표는 cascade로 따라 지워지지만
+    // 스토리지 파일은 아무도 안 지워 준다.
+    const threadPaths = qnaMessages
+      .filter((m) => m.qnaId === id)
+      .flatMap((m) => m.imagePaths ?? [])
+    const allPaths = [...imagePaths, ...threadPaths]
+
+    if (allPaths.length > 0) {
+      const { error: imgError } = await supabase.storage.from('qna-images').remove(allPaths)
       if (imgError) console.error('질문 사진 삭제 실패(질문은 삭제됨):', imgError)
     }
 
     setQnaList((prev) => prev.filter((q) => q.id !== id))
+    setQnaMessages((prev) => prev.filter((m) => m.qnaId !== id))
     return {}
   }
 
@@ -1043,7 +1084,8 @@ export function DataProvider({ children }) {
       reorderStudents, reorderClasses,
       upsertAttendance, deleteAttendance,
       addGrade, updateGrade, deleteGrade,
-      addQuestion, answerQuestion, deleteAnswer, deleteQuestion, uploadQnaImage, qnaImageUrl,
+      addQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
+      qnaMessages, addQnaMessage, updateQnaMessage, deleteQnaMessage,
       savePushSubscription, deletePushSubscription,
       addNotice, deleteNotice,
       addReport, updateReportChecks, deleteReport,
