@@ -60,8 +60,10 @@ describe('QnA 목록', () => {
   })
 
   it('미답변 건수를 교사에게 알린다', () => {
+    // 답변 여부는 이제 대화의 마지막 글로 정해진다. 글이 하나도 없으면
+    // 세 건 모두 답을 기다리는 상태다.
     render(<QnA />)
-    expect(screen.getByText('미답변 2건')).toBeInTheDocument()
+    expect(screen.getByText('미답변 3건')).toBeInTheDocument()
   })
 
   it('담당 반이 아닌 학생의 질문은 보이지 않는다', () => {

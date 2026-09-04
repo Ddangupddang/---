@@ -45,7 +45,53 @@ export function canDeleteQuestion(question, students = [], classes = [], user) {
   return ids.has(question.studentId)
 }
 
+// 이 질문이 답을 기다리는 중인가.
+//
+// 예전에는 "답변 칸이 비었나"로 판정했다. 이제 대화가 오가므로
+// "마지막 글을 누가 썼나"로 본다 — 교사가 답한 뒤 학생이 되물으면
+// 그건 다시 답을 기다리는 상태다. 완료로 두면 교사가 놓친다.
+export function qnaStatus(question, messages = []) {
+  const mine = messages.filter((m) => m.qnaId === question.id)
+  if (mine.length === 0) return 'waiting'
+
+  // 목록이 어떤 순서로 들어오든 시각으로 마지막을 고른다
+  const last = mine.reduce((a, b) => (a.createdAt > b.createdAt ? a : b))
+  return last.authorRole === 'teacher' ? 'answered' : 'waiting'
+}
+
 // 교사 화면·대시보드에 띄우는 "지금 답해야 할" 건수
-export function unansweredCount(qnaList = [], students = [], classes = [], user) {
-  return visibleQuestions(qnaList, students, classes, user).filter((q) => !q.answer).length
+export function unansweredCount(qnaList = [], students = [], classes = [], user, messages = []) {
+  return visibleQuestions(qnaList, students, classes, user)
+    .filter((q) => qnaStatus(q, messages) === 'waiting')
+    .length
+}
+
+// 이 글을 지울 수 있는가.
+//
+//   학생   — 본인이 쓴 글만
+//   교사   — 담당 반 학생의 스레드에 달린 모든 글 (학생 글 포함)
+//   관리자 — 전체
+//
+// 교사가 학생 글도 지울 수 있어야 하는 이유: 부적절한 사진을 지울 사람이
+// 필요하다. 질문 전체를 지우면 대화가 통째로 사라진다.
+export function canDeleteMessage(message, question, students = [], classes = [], user) {
+  if (!user || !message || !question) return false
+
+  if (user.role === 'student') {
+    if (!user.studentId) return false
+    return message.authorRole === 'student' && message.authorId === user.id
+  }
+
+  const ids = new Set(visibleStudents(students, classes, user).map((s) => s.id))
+  return ids.has(question.studentId)
+}
+
+// 이 글을 고칠 수 있는가 — 본인 글만.
+//
+// 삭제와 규칙이 다르다. 부적절한 글을 치우려면 교사가 남의 글도 지울 수 있어야
+// 하지만, 남이 한 말을 고쳐 쓰면 학생이 하지 않은 말이 학생 이름으로 남는다.
+// 문제가 있는 글은 지우면 된다.
+export function canEditMessage(message, user) {
+  if (!user || !message) return false
+  return message.authorId === user.id
 }
