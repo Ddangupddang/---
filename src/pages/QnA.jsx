@@ -36,10 +36,12 @@ export default function QnA() {
   const { user } = useAuth()
   const {
     qnaList, students, classes,
-    addQuestion, answerQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
+    addQuestion, answerQuestion, deleteAnswer, deleteQuestion, uploadQnaImage, qnaImageUrl,
   } = useData()
   const [view, setView]                         = useState('list') // list | detail | ask
-  const [selectedQuestion, setSelectedQuestion] = useState(null)
+  // 질문 자체가 아니라 id를 들고 있는다. 스냅샷을 들고 있으면 답변을 고쳐도
+  // 화면이 옛 내용 그대로 남는다.
+  const [selectedId,       setSelectedId]       = useState(null)
   const [filterCategory, setFilterCategory]     = useState('all')
 
   const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin'
@@ -107,7 +109,7 @@ export default function QnA() {
               <div
                 key={q.id}
                 data-testid={`question-${q.id}`}
-                onClick={() => { setSelectedQuestion(q); setView('detail') }}
+                onClick={() => { setSelectedId(q.id); setView('detail') }}
                 className="bg-surface border border-line rounded p-4 cursor-pointer hover:bg-surface-alt transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
@@ -145,6 +147,10 @@ export default function QnA() {
 
   // ────────── detail 뷰 ──────────
   if (view === 'detail') {
+    const selectedQuestion = myQuestions.find((q) => q.id === selectedId)
+    // 지워졌거나 더 이상 보이지 않는 질문이면 목록으로 돌려보낸다
+    if (!selectedQuestion) { setView('list'); return null }
+
     return (
       <Layout>
       <DetailView
@@ -163,6 +169,15 @@ export default function QnA() {
         onAnswer={async (answer) => {
           await answerQuestion(selectedQuestion.id, answer, user.id)
           setView('list')
+        }}
+        // 수정은 목록으로 나가지 않는다 — 고친 결과를 그 자리에서 봐야 한다
+        onUpdateAnswer={async (answer) => {
+          const res = await answerQuestion(selectedQuestion.id, answer, user.id)
+          return res?.error ?? null
+        }}
+        onDeleteAnswer={async () => {
+          const res = await deleteAnswer(selectedQuestion.id)
+          return res?.error ?? null
         }}
         onBack={() => setView('list')}
       />
@@ -196,7 +211,8 @@ export default function QnA() {
 
 // ────────── DetailView 컴포넌트 ──────────
 function DetailView({
-  question, displayName, isTeacherOrAdmin, qnaImageUrl, canDelete, onDelete, onAnswer, onBack,
+  question, displayName, isTeacherOrAdmin, qnaImageUrl, canDelete,
+  onDelete, onAnswer, onUpdateAnswer, onDeleteAnswer, onBack,
 }) {
   const [answerText, setAnswerText] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -204,6 +220,40 @@ function DetailView({
   const [confirming,   setConfirming]   = useState(false)
   const [deleting,     setDeleting]     = useState(false)
   const [deleteError,  setDeleteError]  = useState('')
+  // 답변 수정·삭제 (교사·관리자만)
+  const [editing,      setEditing]      = useState(false)
+  const [editText,     setEditText]     = useState('')
+  const [answerBusy,   setAnswerBusy]   = useState(false)
+  const [answerError,  setAnswerError]  = useState('')
+  const [confirmingAnswer, setConfirmingAnswer] = useState(false)
+
+  // 답변을 관리할 수 있는 사람 = 질문을 지울 수 있는 교사·관리자.
+  // 답변용 규칙을 따로 두면 규칙이 둘로 갈려 나중에 어긋난다.
+  const canManageAnswer = isTeacherOrAdmin && canDelete
+
+  function startEdit() {
+    setEditText(question.answer ?? '')
+    setEditing(true)
+    setAnswerError('')
+  }
+
+  async function saveEdit() {
+    if (!editText.trim() || answerBusy) return
+    setAnswerBusy(true)
+    const failed = await onUpdateAnswer(editText.trim())
+    if (failed) setAnswerError(failed)
+    else setEditing(false)
+    setAnswerBusy(false)
+  }
+
+  async function removeAnswer() {
+    if (answerBusy) return
+    setAnswerBusy(true)
+    const failed = await onDeleteAnswer()
+    if (failed) setAnswerError(failed)
+    setConfirmingAnswer(false)
+    setAnswerBusy(false)
+  }
 
   async function handleAnswer() {
     if (!answerText.trim() || submitting) return
@@ -241,15 +291,84 @@ function DetailView({
       </div>
 
       {/* 답변 영역 */}
-      {question.answer ? (
-        <Alert tone="info">
-          <p className="text-xs font-semibold text-navy mb-2">선생님 답변</p>
-          <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap font-normal">{question.answer}</p>
-          {/* Alert(info)의 남색 배경 위라 ink-faint는 2.66:1까지 떨어진다 */}
-          <p className="text-xs text-ink-mute mt-3 font-normal">
-            {question.answeredAt?.slice(0, 16).replace('T', ' ')}
-          </p>
-        </Alert>
+      {question.answer && editing ? (
+        <div className="bg-surface border border-line rounded p-5">
+          <p className="text-sm font-semibold text-ink-soft mb-3">답변 수정</p>
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            rows={5}
+            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none mb-3"
+          />
+          <div className="flex gap-2">
+            <Button onClick={saveEdit} disabled={!editText.trim() || answerBusy} className="flex-1">
+              {answerBusy ? '저장 중...' : '답변 저장'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setAnswerError('') }}
+              disabled={answerBusy}
+              className="text-sm border border-line rounded px-4 hover:bg-surface-alt transition-colors"
+            >
+              취소
+            </button>
+          </div>
+          {answerError && <p className="text-xs text-danger mt-2">{answerError}</p>}
+        </div>
+      ) : question.answer ? (
+        <div>
+          <Alert tone="info">
+            <p className="text-xs font-semibold text-navy mb-2">선생님 답변</p>
+            <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap font-normal">{question.answer}</p>
+            {/* Alert(info)의 남색 배경 위라 ink-faint는 2.66:1까지 떨어진다 */}
+            <p className="text-xs text-ink-mute mt-3 font-normal">
+              {question.answeredAt?.slice(0, 16).replace('T', ' ')}
+            </p>
+          </Alert>
+
+          {canManageAnswer && (
+            <div className="mt-2">
+              {confirmingAnswer ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-ink-soft flex-1">
+                    답변을 지우면 이 질문은 다시 답변 대기가 됩니다.
+                  </p>
+                  <button
+                    type="button"
+                    data-testid="answer-delete-confirm"
+                    onClick={removeAnswer}
+                    disabled={answerBusy}
+                    className="text-xs bg-danger text-white rounded px-3 py-2"
+                  >
+                    {answerBusy ? '삭제 중...' : '삭제'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingAnswer(false)}
+                    disabled={answerBusy}
+                    className="text-xs border border-line rounded px-3 py-2 hover:bg-surface-alt transition-colors"
+                  >
+                    취소
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <button type="button" onClick={startEdit} className="text-xs text-ink-mute hover:underline">
+                    답변 수정
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setConfirmingAnswer(true); setAnswerError('') }}
+                    className="text-xs text-danger hover:underline"
+                  >
+                    답변 삭제
+                  </button>
+                </div>
+              )}
+              {answerError && <p className="text-xs text-danger mt-2">{answerError}</p>}
+            </div>
+          )}
+        </div>
       ) : isTeacherOrAdmin ? (
         <div className="bg-surface border border-line rounded p-5">
           <p className="text-sm font-semibold text-ink-soft mb-3">답변 작성</p>

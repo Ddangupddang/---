@@ -422,15 +422,45 @@ export function DataProvider({ children }) {
 
   async function answerQuestion(id, answer, answeredBy) {
     const now = new Date().toISOString()
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('qna')
       .update({ answer, answered_at: now, answered_by: answeredBy })
       .eq('id', id)
+      .select()
 
-    if (error) { console.error('답변 등록 실패:', error); return }
+    if (error) { console.error('답변 등록 실패:', error); return { error: error.message } }
+    // 에러 없이 0건이면 RLS가 조용히 막은 것이다. 성공으로 치면 화면만 바뀌고
+    // 새로고침하면 답변이 사라져 있다.
+    if (!updated?.length) {
+      console.error('답변 등록 실패: 0 rows updated (RLS 정책 확인 필요)')
+      return { error: '답변을 저장할 권한이 없습니다.' }
+    }
+
     setQnaList((prev) =>
       prev.map((q) => q.id === id ? { ...q, answer, answeredAt: now, answeredBy } : q)
     )
+    return {}
+  }
+
+  // 답변만 지운다. 질문은 남고 다시 "답변 대기"가 된다.
+  // 잘못 단 답변을 되돌리려고 질문을 통째로 지우면 학생이 쓴 질문까지 사라진다.
+  async function deleteAnswer(id) {
+    const { data: updated, error } = await supabase
+      .from('qna')
+      .update({ answer: null, answered_at: null, answered_by: null })
+      .eq('id', id)
+      .select()
+
+    if (error) { console.error('답변 삭제 실패:', error); return { error: error.message } }
+    if (!updated?.length) {
+      console.error('답변 삭제 실패: 0 rows updated (RLS 정책 확인 필요)')
+      return { error: '답변을 지울 권한이 없습니다.' }
+    }
+
+    setQnaList((prev) => prev.map((q) =>
+      q.id === id ? { ...q, answer: null, answeredAt: null, answeredBy: null } : q
+    ))
+    return {}
   }
 
   // 질문과 거기 붙은 사진을 함께 지운다.
@@ -1008,7 +1038,7 @@ export function DataProvider({ children }) {
       reorderStudents, reorderClasses,
       upsertAttendance, deleteAttendance,
       addGrade, updateGrade, deleteGrade,
-      addQuestion, answerQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
+      addQuestion, answerQuestion, deleteAnswer, deleteQuestion, uploadQnaImage, qnaImageUrl,
       savePushSubscription, deletePushSubscription,
       addNotice, deleteNotice,
       addReport, updateReportChecks, deleteReport,

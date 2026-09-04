@@ -355,3 +355,63 @@ describe('질문 삭제', () => {
     expect(screen.getByText('지울 질문')).toBeInTheDocument()
   })
 })
+
+describe('답변 수정·삭제', () => {
+  beforeEach(() => {
+    state.data.qnaList = [
+      { id: 100, category: 'naesin', studentId: 1, content: '3번 문제요',
+        createdAt: '2026-09-04T09:00:00Z', imagePaths: [],
+        answer: '지문 2단락을 보세요', answeredAt: '2026-09-04T10:00:00Z', answeredBy: 't1' },
+    ]
+    state.data.answerQuestion = vi.fn().mockResolvedValue({})
+    state.data.deleteAnswer   = vi.fn().mockResolvedValue({})
+  })
+
+  it('교사는 답변을 고쳐 저장한다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.click(screen.getByRole('button', { name: '답변 수정' }))
+
+    const box = screen.getByDisplayValue('지문 2단락을 보세요')
+    await user.clear(box)
+    await user.type(box, '지문 3단락이 근거입니다')
+    await user.click(screen.getByRole('button', { name: '답변 저장' }))
+
+    await waitFor(() =>
+      expect(state.data.answerQuestion).toHaveBeenCalledWith(100, '지문 3단락이 근거입니다', 't1'))
+  })
+
+  it('수정을 취소하면 원래 답변이 그대로 남는다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.click(screen.getByRole('button', { name: '답변 수정' }))
+    await user.click(screen.getByRole('button', { name: '취소' }))
+
+    expect(screen.getByText('지문 2단락을 보세요')).toBeInTheDocument()
+    expect(state.data.answerQuestion).not.toHaveBeenCalled()
+  })
+
+  it('답변을 지우면 다시 답변 대기가 된다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.click(screen.getByRole('button', { name: '답변 삭제' }))
+    await user.click(screen.getByTestId('answer-delete-confirm'))
+
+    await waitFor(() => expect(state.data.deleteAnswer).toHaveBeenCalledWith(100))
+  })
+
+  it('학생에게는 수정·삭제 버튼이 보이지 않는다', async () => {
+    const user = userEvent.setup()
+    // 학생이 선생님 답변을 지울 수 있으면 안 된다
+    state.user = { id: 's1', role: 'student', studentId: 1, classId: 10 }
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+
+    expect(screen.getByText('지문 2단락을 보세요')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '답변 수정' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '답변 삭제' })).not.toBeInTheDocument()
+  })
+})
