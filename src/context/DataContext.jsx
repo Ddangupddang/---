@@ -2,16 +2,10 @@
 // Supabase에서 데이터를 불러와 앱 전체에 제공하는 컨텍스트
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { classes as mockClasses } from '../data/classes'
-import { students as mockStudents } from '../data/students'
-import { attendance as mockAttendance } from '../data/attendance'
-import { grades as mockGrades } from '../data/grades'
-import { qnaQuestions as mockQna } from '../data/qna'
 import { QNA_DEFAULT_CATEGORY } from '../constants/qna'
 import { resizeQnaImage, qnaImagePath, qnaImageToken } from '../utils/qnaImage'
 import { subscriptionRow } from '../utils/pushSubscription'
-import { notices as mockNotices } from '../data/notices'
-import { reports as mockReports } from '../data/reports'
+import { rowsOrNull } from '../utils/dbRows'
 import {
   toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission,
 } from '../utils/homeworkMappers'
@@ -137,13 +131,13 @@ function toSubmission(s) {
   }
 }
 export function DataProvider({ children }) {
-  const [classes,       setClasses]       = useState(mockClasses)
-  const [students,      setStudents]      = useState(mockStudents)
-  const [attendance,    setAttendance]    = useState(mockAttendance)
-  const [grades,        setGrades]        = useState(mockGrades)
-  const [qnaList,       setQnaList]       = useState(mockQna)
-  const [notices,       setNotices]       = useState(mockNotices)
-  const [reports,       setReports]       = useState(mockReports)
+  const [classes,       setClasses]       = useState([])
+  const [students,      setStudents]      = useState([])
+  const [attendance,    setAttendance]    = useState([])
+  const [grades,        setGrades]        = useState([])
+  const [qnaList,       setQnaList]       = useState([])
+  const [notices,       setNotices]       = useState([])
+  const [reports,       setReports]       = useState([])
   const [staffProfiles, setStaffProfiles] = useState([])
   const [videos,        setVideos]        = useState([])
   const [videoComments, setVideoComments] = useState([])
@@ -183,13 +177,16 @@ export function DataProvider({ children }) {
           supabase.from('profiles').select('student_id, username').eq('role', 'student'),
         ])
 
-      if (!cRes.error && cRes.data?.length > 0) setClasses(cRes.data.map(toClass))
-      if (!sRes.error && sRes.data)              setStudents(sRes.data.map(toStudent))
-      if (!aRes.error && aRes.data?.length > 0) setAttendance(aRes.data.map(toAttendance))
-      if (!gRes.error && gRes.data?.length > 0) setGrades(gRes.data.map(toGrade))
-      if (!qRes.error && qRes.data)              setQnaList(qRes.data.map(toQna))
-      if (!nRes.error && nRes.data?.length > 0) setNotices(nRes.data.map(toNotice))
-      if (!rRes.error && rRes.data?.length > 0) setReports(rRes.data.map(toReport))
+      // rowsOrNull이 null을 주면 못 읽은 것이라 화면을 건드리지 않는다.
+      // 0건이면 0건 그대로 반영한다 — 예전에는 여기서 화면을 안 건드려서
+      // 처음 넣어둔 Mock 자료가 유령처럼 남아 있었다(지워지지도 않았다).
+      const cRows = rowsOrNull(cRes); if (cRows) setClasses(cRows.map(toClass))
+      const sRows = rowsOrNull(sRes); if (sRows) setStudents(sRows.map(toStudent))
+      const aRows = rowsOrNull(aRes); if (aRows) setAttendance(aRows.map(toAttendance))
+      const gRows = rowsOrNull(gRes); if (gRows) setGrades(gRows.map(toGrade))
+      const qRows = rowsOrNull(qRes); if (qRows) setQnaList(qRows.map(toQna))
+      const nRows = rowsOrNull(nRes); if (nRows) setNotices(nRows.map(toNotice))
+      const rRows = rowsOrNull(rRes); if (rRows) setReports(rRows.map(toReport))
       if (!pRes.error && pRes.data)              setStaffProfiles(pRes.data)
       if (!vRes.error && vRes.data)              setVideos(vRes.data.map(toVideo))
       if (!vcRes.error && vcRes.data)            setVideoComments(vcRes.data.map(toVideoComment))
