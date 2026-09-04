@@ -7,7 +7,7 @@ import StudentHomeworkCard from '../components/homework/StudentHomeworkCard'
 import PageTitle from '../components/ui/PageTitle'
 import { visibleClasses, visibleStudents } from '../utils/classAccess'
 import { pendingHomeworkCount } from '../utils/homeworkPending'
-import { unansweredCount } from '../utils/qnaAccess'
+import { unansweredCount, qnaStatus } from '../utils/qnaAccess'
 import { formatDate } from '../utils/datetime'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -16,7 +16,7 @@ const today = new Date().toISOString().slice(0, 10)
 function AdminTeacherDashboard({ user }) {
   const navigate = useNavigate()
   const {
-    classes, students, attendance, qnaList, notices: dbNotices, tests, submissions,
+    classes, students, attendance, qnaList, qnaMessages, notices: dbNotices, tests, submissions,
     homeworkSets, homeworkDays, homeworkSubmissions,
   } = useData()
 
@@ -33,7 +33,7 @@ function AdminTeacherDashboard({ user }) {
   })
 
   // 질문은 이제 테스트에 매이지 않는다 — 질문한 학생을 볼 수 있는지로 판단한다
-  const unansweredQna = unansweredCount(qnaList, students, classes, user)
+  const unansweredQna = unansweredCount(qnaList, students, classes, user, qnaMessages)
 
   // 요약 통계
   const totalStudents = visibleStudents(students, classes, user).length
@@ -247,7 +247,7 @@ function AdminTeacherDashboard({ user }) {
 function StudentDashboard({ user }) {
   const navigate  = useNavigate()
   const thisMonth = today.slice(0, 7)
-  const { attendance, grades: dbGrades, qnaList, notices: dbNotices, tests, submissions } = useData()
+  const { attendance, grades: dbGrades, qnaList, qnaMessages, notices: dbNotices, tests, submissions } = useData()
 
   // 이번 달 출결 (Supabase 실제 데이터)
   const myRecords = attendance.filter(
@@ -278,10 +278,19 @@ function StudentDashboard({ user }) {
     .slice(0, 3)
 
   // 답변받은 Q&A (Supabase 실제 데이터)
-  const answeredQna = [...qnaList]
-    .filter((q) => q.studentId === user.studentId && q.answer)
-    .sort((a, b) => (b.answeredAt ?? '').localeCompare(a.answeredAt ?? ''))
+  // 답변받은 Q&A — 마지막 글이 교사인 내 질문을, 그 글이 최신인 순서로.
+  // 예전에는 q.answer를 봤는데 그 칸은 이제 비어 있다(대화로 옮겼다).
+  const answeredQna = qnaList
+    .filter((q) => q.studentId === user.studentId && qnaStatus(q, qnaMessages) === 'answered')
+    .map((q) => ({
+      question: q,
+      lastAt: qnaMessages
+        .filter((m) => m.qnaId === q.id && m.authorRole === 'teacher')
+        .reduce((a, m) => (m.createdAt > a ? m.createdAt : a), ''),
+    }))
+    .sort((a, b) => b.lastAt.localeCompare(a.lastAt))
     .slice(0, 2)
+    .map((x) => x.question)
 
   // 최근 공지사항 (Supabase 실제 데이터)
   const recentNotices = [...dbNotices]
