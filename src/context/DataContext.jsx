@@ -506,10 +506,13 @@ export function DataProvider({ children }) {
       .select()
       .single()
 
-    if (error) { console.error('공지 등록 실패:', error); return null }
+    // 실패 이유를 그대로 올려보낸다 — 화면에서 "왜 안 됐는지"를 보여줘야
+    // 올라간 줄 알고 지나가지 않는다. 공지는 실제로 작성자 칸 타입이 어긋나
+    // 한 건도 저장되지 않았는데, 조용히 실패해서 한참 뒤에야 알았다.
+    if (error) { console.error('공지 등록 실패:', error); return { error: error.message } }
     const newN = toNotice(inserted)
     setNotices((prev) => [newN, ...prev])
-    return newN
+    return { notice: newN }
   }
 
   async function deleteNotice(id) {
@@ -536,10 +539,11 @@ export function DataProvider({ children }) {
       .select()
       .single()
 
-    if (error) { console.error('리포트 등록 실패:', error); return null }
+    // 공지와 같은 이유로 사유를 올려보낸다
+    if (error) { console.error('리포트 등록 실패:', error); return { error: error.message } }
     const newR = toReport(inserted)
     setReports((prev) => [newR, ...prev])
-    return newR
+    return { report: newR }
   }
 
   async function deleteReport(id) {

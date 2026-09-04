@@ -155,8 +155,11 @@ export default function Notices() {
       <CreateView
         user={user}
         onSubmit={async (newNotice) => {
-          await addNotice(newNotice)
+          const res = await addNotice(newNotice)
+          // 실패했는데 목록으로 넘기면 올라간 줄 알고 지나간다
+          if (res?.error) return res.error
           setView('list')
+          return null
         }}
         onCancel={() => setView('list')}
       />
@@ -179,6 +182,7 @@ function CreateView({ user, onSubmit, onCancel }) {
   const [kakaoSending,    setKakaoSending]   = useState(false)
   const [kakaoSent,       setKakaoSent]      = useState(false)
   const [submitting,      setSubmitting]     = useState(false)
+  const [error,           setError]          = useState('')
 
   function toggleClass(id) {
     setSelectedClasses((prev) =>
@@ -200,13 +204,15 @@ function CreateView({ user, onSubmit, onCancel }) {
     e.preventDefault()
     if (!title.trim() || !content.trim() || selectedClasses.length === 0 || submitting) return
     setSubmitting(true)
-    await onSubmit({
+    setError('')
+    const failed = await onSubmit({
       title:          title.trim(),
       content:        content.trim(),
       authorId:       user.id,
       targetClassIds: selectedClasses,
       kakaoSent:      kakaoSent,
     })
+    if (failed) setError(failed)
     setSubmitting(false)
   }
 
@@ -318,6 +324,15 @@ function CreateView({ user, onSubmit, onCancel }) {
             </button>
           )}
         </div>
+
+        {error && (
+          <div data-testid="notice-error" className="bg-danger-soft border border-line rounded p-4">
+            <p className="text-sm text-danger font-medium">
+              공지 등록에 실패했습니다. 입력한 내용은 그대로 두었으니 다시 시도해 주세요.
+            </p>
+            <p className="text-xs text-danger mt-1">사유: {error}</p>
+          </div>
+        )}
 
         <Button type="submit" disabled={!title.trim() || !content.trim() || selectedClasses.length === 0 || submitting} className="w-full">
           {submitting ? '저장 중...' : '공지 저장'}

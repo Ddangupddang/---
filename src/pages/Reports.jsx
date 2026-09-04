@@ -172,8 +172,11 @@ export default function Reports() {
       <CreateView
         user={user}
         onSubmit={async (newReport) => {
-          await addReport(newReport)
+          const res = await addReport(newReport)
+          // 실패했는데 목록으로 넘기면 올라간 줄 알고 지나간다
+          if (res?.error) return res.error
           setView('list')
+          return null
         }}
         onCancel={() => setView('list')}
         classStudents={classStudents}
@@ -249,6 +252,7 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
   const [content,    setContent]    = useState('')
   const [homework,   setHomework]   = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [error,      setError]      = useState('')
   const [checks,     setChecks]     = useState({})
 
   const studs = classStudents(Number(classId))
@@ -272,7 +276,8 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
       done: checks[s.id] ?? false,
     }))
 
-    await onSubmit({
+    setError('')
+    const failed = await onSubmit({
       classId:       Number(classId),
       date,
       subject:       subject.trim(),
@@ -281,6 +286,7 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
       studentChecks,
       createdBy:     user.id,
     })
+    if (failed) setError(failed)
     setSubmitting(false)
   }
 
@@ -376,6 +382,15 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {error && (
+          <div data-testid="report-error" className="bg-danger-soft border border-line rounded p-4">
+            <p className="text-sm text-danger font-medium">
+              리포트 등록에 실패했습니다. 입력한 내용은 그대로 두었으니 다시 시도해 주세요.
+            </p>
+            <p className="text-xs text-danger mt-1">사유: {error}</p>
           </div>
         )}
 
