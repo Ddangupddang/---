@@ -16,6 +16,7 @@ import PushToggle from '../components/PushToggle'
 import { visibleQuestions, unansweredCount, canDeleteQuestion } from '../utils/qnaAccess'
 import { QNA_CATEGORIES, QNA_CATEGORY, qnaCategoryLabel } from '../constants/qna'
 import { MAX_QNA_IMAGES, validateQnaImage } from '../utils/qnaImage'
+import { formatDate, formatDateTime } from '../utils/datetime'
 
 // 말머리 알약 — 목록 필터와 작성 화면이 같은 모양을 쓴다
 function Pill({ active, children, ...rest }) {
@@ -124,7 +125,7 @@ export default function QnA() {
                 </div>
                 <p className="text-sm text-ink font-medium line-clamp-2">{q.content}</p>
                 <p className="text-xs text-ink-faint mt-1 flex items-center gap-1">
-                  {displayName(q.studentId)} · {q.createdAt?.slice(0, 10)}
+                  {displayName(q.studentId)} · {formatDate(q.createdAt)}
                   {q.imagePaths?.length > 0 && (
                     <span
                       data-testid={`photo-mark-${q.id}`}
@@ -286,7 +287,7 @@ function DetailView({
         <p className="text-ink leading-relaxed mb-3 mt-3">{question.content}</p>
         <QuestionPhotos paths={question.imagePaths} qnaImageUrl={qnaImageUrl} />
         <p className="text-xs text-ink-faint">
-          {displayName(question.studentId)} · {question.createdAt?.slice(0, 16).replace('T', ' ')}
+          {displayName(question.studentId)} · {formatDateTime(question.createdAt)}
         </p>
       </div>
 
@@ -322,7 +323,7 @@ function DetailView({
             <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap font-normal">{question.answer}</p>
             {/* Alert(info)의 남색 배경 위라 ink-faint는 2.66:1까지 떨어진다 */}
             <p className="text-xs text-ink-mute mt-3 font-normal">
-              {question.answeredAt?.slice(0, 16).replace('T', ' ')}
+              {formatDateTime(question.answeredAt)}
             </p>
           </Alert>
 

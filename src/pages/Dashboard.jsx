@@ -8,6 +8,7 @@ import PageTitle from '../components/ui/PageTitle'
 import { visibleClasses, visibleStudents } from '../utils/classAccess'
 import { pendingHomeworkCount } from '../utils/homeworkPending'
 import { unansweredCount } from '../utils/qnaAccess'
+import { formatDate } from '../utils/datetime'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -232,7 +233,7 @@ function AdminTeacherDashboard({ user }) {
                 className="bg-surface border border-line rounded p-3 text-left hover:bg-surface-alt transition-colors flex justify-between items-center"
               >
                 <p className="text-sm font-medium text-ink line-clamp-1 flex-1">{n.title}</p>
-                <span className="text-xs text-ink-faint ml-3 shrink-0">{n.createdAt.slice(0, 10)}</span>
+                <span className="text-xs text-ink-faint ml-3 shrink-0">{formatDate(n.createdAt)}</span>
               </button>
             ))}
           </div>
@@ -442,7 +443,7 @@ function StudentDashboard({ user }) {
               >
                 <p className="text-sm font-medium text-ink line-clamp-1 flex-1">{n.title}</p>
                 <span className="text-xs text-ink-faint ml-3 shrink-0">
-                  {n.createdAt.slice(0, 10)}
+                  {formatDate(n.createdAt)}
                 </span>
               </button>
             ))}

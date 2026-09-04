@@ -11,6 +11,7 @@ import ChoiceGrid from '../components/ChoiceGrid'
 import { distributePoints, evenTotalSuggestions } from '../utils/testPoints'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
+import { formatDateTime } from '../utils/datetime'
 
 // 상태 배지 톤 — 팔레트에 초록이 없어 진행중=navy(긍정)로 대응한다
 const statusBadge = {
@@ -261,7 +262,7 @@ export default function Tests() {
                   <div>
                     <p className="font-medium text-ink">{student?.name ?? '알 수 없음'}</p>
                     <p className="text-xs text-ink-faint mt-0.5">
-                      {sub.submittedAt?.slice(0, 16).replace('T', ' ')}
+                      {formatDateTime(sub.submittedAt)}
                     </p>
                   </div>
                   <div className="text-right">

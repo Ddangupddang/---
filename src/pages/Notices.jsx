@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { visibleClasses, visibleClassIds } from '../utils/classAccess'
+import { formatDate } from '../utils/datetime'
 import Layout from '../components/Layout'
 import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
@@ -80,7 +81,7 @@ export default function Notices() {
                       onClick={() => { setSelected(n); setView('detail') }}
                       className="flex items-center gap-2 text-xs text-ink-faint cursor-pointer"
                     >
-                      <span>{n.createdAt?.slice(0, 10)}</span>
+                      <span>{formatDate(n.createdAt)}</span>
                       <span>·</span>
                       <span>{author?.name ?? '알 수 없음'}</span>
                       <span>·</span>
@@ -134,7 +135,7 @@ export default function Notices() {
             {n.kakaoSent && <Badge tone="navy" className="shrink-0">카카오 전송</Badge>}
           </div>
           <div className="flex items-center gap-2 text-xs text-ink-faint mb-4 pb-4 border-b border-line">
-            <span>{n.createdAt?.slice(0, 10)}</span>
+            <span>{formatDate(n.createdAt)}</span>
             <span>·</span>
             <span>{author?.name}</span>
             <span>·</span>
