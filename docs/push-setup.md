@@ -52,6 +52,21 @@ Supabase → Database → Webhooks → Create a new hook
 | URL | `https://<배포주소>/api/notify-qna` |
 | HTTP Headers | `x-webhook-secret` : 2번에서 정한 `QNA_WEBHOOK_SECRET` 값 |
 
+### 추가 질문 알림 웹훅 (하나 더)
+
+같은 화면에서 두 번째 웹훅을 만듭니다. 첫 질문과 추가 질문은 서로 다른 표에
+저장되므로 웹훅도 두 개가 필요합니다.
+
+| 항목 | 값 |
+|------|-----|
+| Name | `notify-qna-message` |
+| Table | `qna_messages` |
+| Events | `Insert` 만 체크 |
+| Type | HTTP Request |
+| Method | `POST` |
+| URL | `https://www.sumunjae.com/api/notify-qna-message` |
+| HTTP Headers | `x-webhook-secret` : 위와 **같은 값** |
+
 ## 5. 교사 폰에서 알림 켜기
 
 교사마다 한 번씩 한다.
