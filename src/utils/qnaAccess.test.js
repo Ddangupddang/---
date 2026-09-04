@@ -1,6 +1,6 @@
 // src/utils/qnaAccess.test.js
 import { describe, it, expect } from 'vitest'
-import { visibleQuestions, unansweredCount } from './qnaAccess'
+import { visibleQuestions, unansweredCount, canDeleteQuestion } from './qnaAccess'
 
 const CLASSES = [
   { id: 10, name: 'A반', teacherId: 't1' },
@@ -64,5 +64,41 @@ describe('unansweredCount', () => {
     expect(unansweredCount(QNA, STUDENTS, CLASSES, { id: 't2', role: 'teacher' })).toBe(0)
     // 관리자는 100, 300 두 건
     expect(unansweredCount(QNA, STUDENTS, CLASSES, { id: 'a', role: 'admin' })).toBe(2)
+  })
+})
+
+describe('canDeleteQuestion', () => {
+  const q = (studentId) => ({ id: 1, studentId })
+  const can = (question, user) => canDeleteQuestion(question, STUDENTS, CLASSES, user)
+
+  it('학생은 본인이 쓴 질문을 지울 수 있다', () => {
+    // 답안지를 잘못 찍어 올렸을 때 선생님께 부탁하지 않고 직접 지울 수 있어야 한다
+    expect(can(q(1), { id: 's1', role: 'student', studentId: 1 })).toBe(true)
+  })
+
+  it('학생은 남의 질문을 지울 수 없다', () => {
+    expect(can(q(2), { id: 's1', role: 'student', studentId: 1 })).toBe(false)
+  })
+
+  it('계정에 학생 정보가 없으면 지울 수 없다', () => {
+    // studentId가 없는데 통과시키면 studentId 없는 질문을 아무나 지운다
+    expect(can(q(1), { id: 's9', role: 'student', studentId: null })).toBe(false)
+  })
+
+  it('교사는 담당 반 학생의 질문을 지울 수 있다', () => {
+    expect(can(q(1), { id: 't1', role: 'teacher' })).toBe(true)
+  })
+
+  it('교사는 다른 반 학생의 질문을 지울 수 없다', () => {
+    expect(can(q(2), { id: 't1', role: 'teacher' })).toBe(false)
+  })
+
+  it('관리자는 반이 없는 학생의 질문까지 지울 수 있다', () => {
+    expect(can(q(3), { id: 'a', role: 'admin' })).toBe(true)
+  })
+
+  it('로그인 정보나 질문이 없으면 지울 수 없다', () => {
+    expect(can(q(1), null)).toBe(false)
+    expect(canDeleteQuestion(null, STUDENTS, CLASSES, { id: 'a', role: 'admin' })).toBe(false)
   })
 })

@@ -436,6 +436,32 @@ export function DataProvider({ children }) {
     )
   }
 
+  // 질문과 거기 붙은 사진을 함께 지운다.
+  //
+  // 순서가 중요하다. 질문을 먼저 지운다 — 사진부터 지우면 그다음 질문 삭제가
+  // 실패했을 때 이미지가 깨진 질문이 화면에 남는다.
+  // 사진 삭제가 실패해도 되돌리지 않는다. 질문이 없어져 아무도 볼 수 없는
+  // 파일이고, docs의 정리 쿼리로 나중에 치울 수 있다.
+  async function deleteQuestion(id, imagePaths = []) {
+    const { data: deleted, error } = await supabase.from('qna').delete().eq('id', id).select()
+
+    if (error) { console.error('질문 삭제 실패:', error); return { error: error.message } }
+    // 에러 없이 0건 지워지는 건 RLS가 조용히 막은 것이다.
+    // 화면만 지워지고 새로고침하면 되살아나는 상황을 만들지 않는다.
+    if (!deleted?.length) {
+      console.error('질문 삭제 실패: 0 rows deleted (RLS 정책 확인 필요)')
+      return { error: '삭제 권한이 없습니다. (docs/qna-delete.sql 실행 여부 확인)' }
+    }
+
+    if (imagePaths.length > 0) {
+      const { error: imgError } = await supabase.storage.from('qna-images').remove(imagePaths)
+      if (imgError) console.error('질문 사진 삭제 실패(질문은 삭제됨):', imgError)
+    }
+
+    setQnaList((prev) => prev.filter((q) => q.id !== id))
+    return {}
+  }
+
   // ── 알림 구독 ──────────────────────────────────────────
 
   // 이 기기에서 알림을 받겠다고 등록한다.
@@ -981,7 +1007,7 @@ export function DataProvider({ children }) {
       reorderStudents, reorderClasses,
       upsertAttendance, deleteAttendance,
       addGrade, updateGrade, deleteGrade,
-      addQuestion, answerQuestion, uploadQnaImage, qnaImageUrl,
+      addQuestion, answerQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
       savePushSubscription, deletePushSubscription,
       addNotice, deleteNotice,
       addReport, updateReportChecks, deleteReport,

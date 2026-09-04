@@ -13,7 +13,7 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
 import PushToggle from '../components/PushToggle'
-import { visibleQuestions, unansweredCount } from '../utils/qnaAccess'
+import { visibleQuestions, unansweredCount, canDeleteQuestion } from '../utils/qnaAccess'
 import { QNA_CATEGORIES, QNA_CATEGORY, qnaCategoryLabel } from '../constants/qna'
 import { MAX_QNA_IMAGES, validateQnaImage } from '../utils/qnaImage'
 
@@ -36,7 +36,7 @@ export default function QnA() {
   const { user } = useAuth()
   const {
     qnaList, students, classes,
-    addQuestion, answerQuestion, uploadQnaImage, qnaImageUrl,
+    addQuestion, answerQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
   } = useData()
   const [view, setView]                         = useState('list') // list | detail | ask
   const [selectedQuestion, setSelectedQuestion] = useState(null)
@@ -152,6 +152,14 @@ export default function QnA() {
         displayName={displayName}
         isTeacherOrAdmin={isTeacherOrAdmin}
         qnaImageUrl={qnaImageUrl}
+        canDelete={canDeleteQuestion(selectedQuestion, students, classes, user)}
+        onDelete={async () => {
+          const res = await deleteQuestion(selectedQuestion.id, selectedQuestion.imagePaths ?? [])
+          // 실패했는데 목록으로 넘기면 지워진 줄 알고 지나간다 — 새로고침하면 되살아난다
+          if (res?.error) return res.error
+          setView('list')
+          return null
+        }}
         onAnswer={async (answer) => {
           await answerQuestion(selectedQuestion.id, answer, user.id)
           setView('list')
@@ -187,15 +195,30 @@ export default function QnA() {
 }
 
 // ────────── DetailView 컴포넌트 ──────────
-function DetailView({ question, displayName, isTeacherOrAdmin, qnaImageUrl, onAnswer, onBack }) {
+function DetailView({
+  question, displayName, isTeacherOrAdmin, qnaImageUrl, canDelete, onDelete, onAnswer, onBack,
+}) {
   const [answerText, setAnswerText] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // 사진까지 함께 사라지는 동작이라 한 번 물어본다
+  const [confirming,   setConfirming]   = useState(false)
+  const [deleting,     setDeleting]     = useState(false)
+  const [deleteError,  setDeleteError]  = useState('')
 
   async function handleAnswer() {
     if (!answerText.trim() || submitting) return
     setSubmitting(true)
     await onAnswer(answerText.trim())
     setSubmitting(false)
+  }
+
+  async function handleDelete() {
+    if (deleting) return
+    setDeleting(true)
+    setDeleteError('')
+    const failed = await onDelete()
+    if (failed) { setDeleteError(failed); setConfirming(false) }
+    setDeleting(false)
   }
 
   return (
@@ -246,6 +269,53 @@ function DetailView({ question, displayName, isTeacherOrAdmin, qnaImageUrl, onAn
         <div className="bg-surface-alt rounded p-6 text-center">
           <p className="text-sm text-ink-mute">아직 답변이 등록되지 않았습니다.</p>
           <p className="text-xs text-ink-mute mt-1">선생님이 곧 답변 드릴 예정입니다.</p>
+        </div>
+      )}
+
+      {/* 삭제 — 권한이 있는 사람에게만 보인다 */}
+      {canDelete && (
+        <div className="mt-6 pt-4 border-t border-line">
+          {confirming ? (
+            <div>
+              <p className="text-sm text-ink-soft mb-3">
+                이 질문을 삭제할까요?
+                {question.imagePaths?.length > 0 && ' 첨부한 사진도 함께 지워집니다.'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  data-testid="delete-confirm"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-xs bg-danger text-white rounded px-3 py-2"
+                >
+                  {deleting ? '삭제 중...' : '삭제'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirming(false)}
+                  disabled={deleting}
+                  className="text-xs border border-line rounded px-3 py-2 hover:bg-surface-alt transition-colors"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setConfirming(true); setDeleteError('') }}
+              className="text-xs text-danger hover:underline"
+            >
+              질문 삭제
+            </button>
+          )}
+
+          {deleteError && (
+            <p data-testid="delete-error" className="text-xs text-danger mt-2">
+              삭제하지 못했습니다. 사유: {deleteError}
+            </p>
+          )}
         </div>
       )}
     </div>

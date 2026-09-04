@@ -26,6 +26,25 @@ export function visibleQuestions(qnaList = [], students = [], classes = [], user
   return qnaList.filter((q) => ids.has(q.studentId))
 }
 
+// 이 질문을 지울 수 있는가.
+//
+//   학생   — 본인이 쓴 질문만. 답안지를 잘못 찍어 올렸을 때 선생님께 부탁하지
+//            않고 직접 지울 수 있어야 한다.
+//   교사   — 담당 반 학생의 질문
+//   관리자 — 전체
+export function canDeleteQuestion(question, students = [], classes = [], user) {
+  if (!user || !question) return false
+
+  if (user.role === 'student') {
+    // studentId가 없는 계정을 통과시키면 studentId가 빈 질문을 아무나 지운다
+    if (!user.studentId) return false
+    return question.studentId === user.studentId
+  }
+
+  const ids = new Set(visibleStudents(students, classes, user).map((s) => s.id))
+  return ids.has(question.studentId)
+}
+
 // 교사 화면·대시보드에 띄우는 "지금 답해야 할" 건수
 export function unansweredCount(qnaList = [], students = [], classes = [], user) {
   return visibleQuestions(qnaList, students, classes, user).filter((q) => !q.answer).length

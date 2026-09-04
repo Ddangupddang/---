@@ -290,3 +290,68 @@ describe('질문에 붙은 사진 보기', () => {
     expect(state.data.qnaImageUrl).toHaveBeenCalledWith('1/a.jpg')
   })
 })
+
+describe('질문 삭제', () => {
+  beforeEach(() => {
+    state.data.qnaList = [
+      { id: 100, category: 'naesin', studentId: 1, content: '지울 질문',
+        createdAt: '2026-09-04T09:00:00Z', answer: null, imagePaths: ['1/a.jpg'] },
+    ]
+    state.data.deleteQuestion = vi.fn().mockResolvedValue({})
+  })
+
+  it('교사는 담당 반 학생의 질문을 지운다 — 사진 경로도 함께 넘긴다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.click(screen.getByRole('button', { name: '질문 삭제' }))
+    await user.click(screen.getByTestId('delete-confirm'))
+
+    await waitFor(() =>
+      expect(state.data.deleteQuestion).toHaveBeenCalledWith(100, ['1/a.jpg']))
+  })
+
+  it('확인을 거치지 않으면 지우지 않는다', async () => {
+    const user = userEvent.setup()
+    // 사진까지 사라지는 동작이라 한 번 물어본다
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.click(screen.getByRole('button', { name: '질문 삭제' }))
+
+    expect(state.data.deleteQuestion).not.toHaveBeenCalled()
+    expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
+  })
+
+  it('학생은 본인 질문을 지울 수 있다', async () => {
+    const user = userEvent.setup()
+    state.user = { id: 's1', role: 'student', studentId: 1, classId: 10 }
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+
+    expect(screen.getByRole('button', { name: '질문 삭제' })).toBeInTheDocument()
+  })
+
+  it('관리자는 반이 배정되지 않은 학생의 질문도 지울 수 있다', async () => {
+    const user = userEvent.setup()
+    // 담당 교사가 없어 아무도 못 지우는 질문이 남으면 안 된다
+    state.user = { id: 'a', role: 'admin' }
+    state.data.students = [{ id: 1, name: '홍길동', classId: null }]
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+
+    expect(screen.getByRole('button', { name: '질문 삭제' })).toBeInTheDocument()
+  })
+
+  it('삭제에 실패하면 화면에 남고 사유를 보여준다', async () => {
+    const user = userEvent.setup()
+    // 지워진 줄 알고 넘어가면 새로고침했을 때 되살아나 혼란스럽다
+    state.data.deleteQuestion = vi.fn().mockResolvedValue({ error: '삭제 권한이 없습니다.' })
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await user.click(screen.getByRole('button', { name: '질문 삭제' }))
+    await user.click(screen.getByTestId('delete-confirm'))
+
+    expect(await screen.findByTestId('delete-error')).toHaveTextContent('권한')
+    expect(screen.getByText('지울 질문')).toBeInTheDocument()
+  })
+})
