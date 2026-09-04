@@ -152,6 +152,17 @@ export function DataProvider({ children }) {
   const [studentAccountIds, setStudentAccountIds] = useState([])
   // 학생 ID → 로그인 아이디(username) 매핑. 학생 관리 목록에 아이디를 보여줄 때 사용.
   const [studentUsernameById, setStudentUsernameById] = useState({})
+  // 학생 ID → 계정 uuid. 계정을 지우려면 이 값이 필요하다.
+  const [studentAccountIdByStudentId, setStudentAccountIdByStudentId] = useState({})
+
+  // 학생 계정 조회 결과를 화면이 쓰는 세 모양으로 펼친다.
+  // 세 곳에서 같은 변환을 반복하지 않도록 한곳에 모은다.
+  function applyStudentAccounts(rows) {
+    const withId = rows.filter((r) => r.student_id)
+    setStudentAccountIds(withId.map((r) => r.student_id))
+    setStudentUsernameById(Object.fromEntries(withId.map((r) => [r.student_id, r.username])))
+    setStudentAccountIdByStudentId(Object.fromEntries(withId.map((r) => [r.student_id, r.id])))
+  }
 
   useEffect(() => {
     async function load() {
@@ -174,7 +185,7 @@ export function DataProvider({ children }) {
           supabase.from('homework_questions').select('*'),
           supabase.from('homework_submissions_v2').select('*'),
           supabase.from('weekly_report_notes').select('*'),
-          supabase.from('profiles').select('student_id, username').eq('role', 'student'),
+          supabase.from('profiles').select('id, student_id, username').eq('role', 'student'),
         ])
 
       // rowsOrNull이 null을 주면 못 읽은 것이라 화면을 건드리지 않는다.
@@ -197,11 +208,7 @@ export function DataProvider({ children }) {
       if (!hwQRes.error && hwQRes.data)       setHomeworkQuestions(hwQRes.data.map(toHomeworkQuestion))
       if (!hwSubRes.error && hwSubRes.data)   setHomeworkSubmissions(hwSubRes.data.map(toHomeworkSubmission))
       if (!wnRes.error && wnRes.data) setWeeklyNotes(wnRes.data.map(toWeeklyNote))
-      if (!saRes.error && saRes.data) {
-        const withId = saRes.data.filter((r) => r.student_id)
-        setStudentAccountIds(withId.map((r) => r.student_id))
-        setStudentUsernameById(Object.fromEntries(withId.map((r) => [r.student_id, r.username])))
-      }
+      if (!saRes.error && saRes.data) applyStudentAccounts(saRes.data)
 
       setDataLoading(false)
     }
@@ -1018,18 +1025,16 @@ export function DataProvider({ children }) {
 
   // 일괄 계정 생성 후 학생 계정 목록 다시 로드
   async function refreshStudentAccounts() {
-    const { data, error } = await supabase.from('profiles').select('student_id, username').eq('role', 'student')
-    if (!error && data) {
-      const withId = data.filter((r) => r.student_id)
-      setStudentAccountIds(withId.map((r) => r.student_id))
-      setStudentUsernameById(Object.fromEntries(withId.map((r) => [r.student_id, r.username])))
-    }
+    const { data, error } = await supabase
+      .from('profiles').select('id, student_id, username').eq('role', 'student')
+    if (!error && data) applyStudentAccounts(data)
   }
 
   return (
     <DataContext.Provider value={{
       classes, students, attendance, grades, qnaList, notices, reports,
-      staffProfiles, studentAccountIds, studentUsernameById, refreshStudentAccounts,
+      staffProfiles, studentAccountIds, studentUsernameById,
+      studentAccountIdByStudentId, refreshStudentAccounts,
       videos, videoComments,
       tests, submissions,
       dataLoading,

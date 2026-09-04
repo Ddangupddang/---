@@ -26,7 +26,7 @@ function Students() {
     addStudent, updateStudent, deleteStudent, bulkAddStudents, bulkDeleteStudents,
     addClass, updateClass, deleteClass,
     reorderClasses, reorderStudents,
-    studentAccountIds, studentUsernameById, refreshStudentAccounts,
+    studentAccountIds, studentUsernameById, studentAccountIdByStudentId, refreshStudentAccounts,
     staffProfiles,
   } = useData()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -90,7 +90,14 @@ function Students() {
 
   const handleBulkDelete = async () => {
     setBulkDeleting(true)
+    // 계정을 먼저 정리한다. 하나가 실패해도 나머지는 계속 지운다 —
+    // 중간에 멈추면 어디까지 됐는지 알 수 없는 상태가 된다.
+    for (const id of selectedIds) {
+      const failed = await deleteAccountOf(id)
+      if (failed) console.error('계정 삭제 실패:', id, failed)
+    }
     await bulkDeleteStudents(selectedIds)
+    await refreshStudentAccounts()
     setBulkDeleting(false)
     setBulkDeleteConfirm(false)
     exitSelectMode()
@@ -155,10 +162,49 @@ function Students() {
     setForm({ name: '', phone: '', classId: '', parentPhone: '', grade: '', jeongsiLevel: '' })
   }
 
+  // 학생 계정 하나를 지운다. 실패 사유는 그대로 돌려준다.
+  //
+  // 계정을 남겨두면 유령 계정이 된다 — 명부에 없는 학생 번호를 든 계정으로
+  // 로그인하면 화면은 열리는데 질문 등록 같은 동작이 외래키 오류로 실패한다.
+  const deleteAccountOf = async (studentId) => {
+    const userId = studentAccountIdByStudentId[studentId]
+    if (!userId) return null   // 계정이 없으면 지울 것도 없다
+
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/delete-student-account', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ userId }),
+    })
+    if (res.ok) return null
+    const data = await res.json().catch(() => ({}))
+    return data.error ?? '계정 삭제에 실패했습니다.'
+  }
+
+  // 계정만 지운다 (학생은 명부에 남는다) — 아이디를 잘못 만들었을 때 쓴다
+  const handleDeleteAccount = async (student) => {
+    if (!confirm(`${student.name} 학생의 로그인 계정을 삭제할까요?\n명부에는 그대로 남고, 계정만 지워집니다.`)) return
+    const failed = await deleteAccountOf(student.id)
+    if (failed) { alert(failed); return }
+    await refreshStudentAccounts()
+  }
+
   const handleDelete = async (id) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
-      await deleteStudent(id)
-    }
+    const hasAccount = studentAccountIds.includes(id)
+    const message = hasAccount
+      ? '이 학생을 삭제하면 로그인 계정도 함께 지워집니다. 계속할까요?'
+      : '정말 삭제하시겠습니까?'
+    if (!confirm(message)) return
+
+    // 계정을 먼저 지운다. 명부만 지우고 계정이 남으면 그 계정은 못 쓰는 상태가 된다.
+    const failed = await deleteAccountOf(id)
+    if (failed) { alert(failed); return }
+
+    await deleteStudent(id)
+    await refreshStudentAccounts()
   }
 
   const handleEdit = (student) => {
@@ -404,6 +450,7 @@ function Students() {
                         onEdit={() => handleEdit(student)}
                         onDelete={() => handleDelete(student.id)}
                         onCreateAccount={() => openAccountModal(student)}
+                        onDeleteAccount={() => handleDeleteAccount(student)}
                         selectMode={selectMode}
                         selected={selectedIds.includes(student.id)}
                         onToggle={() => toggleSelect(student.id)}
@@ -695,7 +742,7 @@ function SortableClassCard({ cls, count, isAdmin, teacherName, onEdit, onDelete,
 // ── 드래그 가능한 학생 행 ──────────────────────────────
 function SortableStudentRow({
   student, isAdmin, canReorder = true, getClassName, username,
-  onEdit, onDelete, onCreateAccount,
+  onEdit, onDelete, onCreateAccount, onDeleteAccount,
   selectMode, selected, onToggle,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -748,7 +795,19 @@ function SortableStudentRow({
       {isAdmin && !selectMode && (
         <td className="px-2 py-3 text-center">
           {username
-            ? <span className="font-mono text-xs text-ink whitespace-nowrap">{username}</span>
+            ? (
+              <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                <span className="font-mono text-xs text-ink">{username}</span>
+                {/* 아이디를 잘못 만들었을 때 계정만 지우고 다시 만든다 */}
+                <button
+                  onClick={onDeleteAccount}
+                  title="로그인 계정만 삭제"
+                  className="text-xs text-ink-faint hover:text-danger transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            )
             : <button onClick={onCreateAccount} className="text-xs text-navy hover:underline whitespace-nowrap">
                 계정 생성
               </button>}
