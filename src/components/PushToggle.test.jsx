@@ -55,9 +55,14 @@ describe('PushToggle', () => {
     expect(screen.getByRole('button', { name: /알림 끄기/ })).toBeInTheDocument()
   })
 
-  it('학생에게는 아무것도 보여주지 않는다', () => {
-    // 학생이 받을 알림이 아직 없다
+  it('학생에게도 보여준다 — 선생님 답변 알림을 받는다', () => {
     state.user = { id: 's1', role: 'student', studentId: 1 }
+    render(<PushToggle />)
+    expect(screen.getByRole('button', { name: /알림 받기/ })).toBeInTheDocument()
+  })
+
+  it('로그인 정보가 없으면 아무것도 보여주지 않는다', () => {
+    state.user = null
     const { container } = render(<PushToggle />)
     expect(container).toBeEmptyDOMElement()
   })

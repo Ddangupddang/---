@@ -9,12 +9,15 @@ import webpush from 'web-push'
 import {
   notifyTargets, isDeadSubscription, endpointsToRemove, isAuthorizedWebhook,
 } from './notify-qna.js'
+import { qnaCategoryLabel } from '../src/constants/qna.js'
 
-// 교사가 쓴 글에는 보내지 않는다 — 받을 학생 구독이 없다.
-// (알림 켜기는 교사·관리자 화면에만 있다)
-export function shouldNotifyMessage(record) {
-  if (!record?.qna_id) return false
-  return record.author_role === 'student'
+// 이 글의 알림을 누가 받아야 하는가.
+// 학생이 물으면 교사가, 교사가 답하면 학생이 받는다.
+export function messageAudience(record) {
+  if (!record?.qna_id) return null
+  if (record.author_role === 'student') return 'teacher'
+  if (record.author_role === 'teacher') return 'student'
+  return null
 }
 
 // 잠금화면에 그대로 뜨는 내용이다. 글 본문은 넣지 않는다.
@@ -25,6 +28,15 @@ export function messageNotification(student) {
   }
 }
 
+// 학생에게 가는 알림. 마찬가지로 답변 내용은 넣지 않는다 —
+// 학생 폰 잠금화면도 옆 사람에게 보인다.
+export function answerNotification(question) {
+  return {
+    title: '새 답변',
+    body: `선생님 답변 · ${qnaCategoryLabel(question?.category)}`,
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -32,8 +44,9 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const record = req.body?.record
-  if (!shouldNotifyMessage(record)) {
+  const record   = req.body?.record
+  const audience = messageAudience(record)
+  if (!audience) {
     return res.status(200).json({ sent: 0, removed: 0, reason: '보낼 대상 아님' })
   }
 
@@ -55,18 +68,32 @@ export default async function handler(req, res) {
 
   // 글에는 qna_id만 있다. 누구의 질문인지는 부모를 봐야 안다.
   const { data: question } = await admin
-    .from('qna').select('student_id').eq('id', record.qna_id).single()
+    .from('qna').select('student_id, category').eq('id', record.qna_id).single()
 
   if (!question) return res.status(200).json({ sent: 0, removed: 0, reason: '질문 없음' })
 
-  const [studentsRes, classesRes, adminsRes] = await Promise.all([
-    admin.from('students').select('id, name, class_id'),
-    admin.from('classes').select('id, teacher_id'),
-    admin.from('profiles').select('id').eq('role', 'admin'),
-  ])
+  let targets = []
+  let payload = ''
 
-  const students = studentsRes.data ?? []
-  const targets  = notifyTargets(question, students, classesRes.data ?? [], adminsRes.data ?? [])
+  if (audience === 'teacher') {
+    const [studentsRes, classesRes, adminsRes] = await Promise.all([
+      admin.from('students').select('id, name, class_id'),
+      admin.from('classes').select('id, teacher_id'),
+      admin.from('profiles').select('id').eq('role', 'admin'),
+    ])
+    const students = studentsRes.data ?? []
+    targets = notifyTargets(question, students, classesRes.data ?? [], adminsRes.data ?? [])
+    const student = students.find((s) => s.id === question.student_id)
+    payload = JSON.stringify({ ...messageNotification(student), url: '/qna' })
+  } else {
+    // 질문을 쓴 학생의 계정을 찾는다. 학생 한 명에 계정이 하나지만
+    // 배열로 받아 그대로 넘긴다 — 아래 발송 코드가 같은 모양을 쓴다.
+    const { data: owners } = await admin
+      .from('profiles').select('id').eq('role', 'student').eq('student_id', question.student_id)
+    targets = (owners ?? []).map((p) => p.id)
+    payload = JSON.stringify({ ...answerNotification(question), url: '/qna' })
+  }
+
   if (targets.length === 0) {
     return res.status(200).json({ sent: 0, removed: 0, reason: '받을 사람 없음' })
   }
@@ -75,9 +102,6 @@ export default async function handler(req, res) {
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
     .in('profile_id', targets)
-
-  const student = students.find((s) => s.id === question.student_id)
-  const payload = JSON.stringify({ ...messageNotification(student), url: '/qna' })
 
   // 한 기기가 실패해도 나머지는 계속 보낸다
   const results = await Promise.all((subs ?? []).map(async (s) => {
@@ -89,7 +113,7 @@ export default async function handler(req, res) {
       return { endpoint: s.endpoint }
     } catch (e) {
       if (!isDeadSubscription(e.statusCode)) {
-        console.error('추가 질문 알림 발송 실패:', s.endpoint, e.statusCode, e.body)
+        console.error('Q&A 알림 발송 실패:', s.endpoint, e.statusCode, e.body)
       }
       return { endpoint: s.endpoint, statusCode: e.statusCode }
     }

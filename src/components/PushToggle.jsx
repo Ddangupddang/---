@@ -1,5 +1,7 @@
 // src/components/PushToggle.jsx
-// 이 기기에서 새 질문 알림을 받을지 정하는 버튼.
+// 이 기기에서 Q&A 알림을 받을지 정하는 버튼.
+//
+// 교사는 새 질문과 추가 질문을, 학생은 선생님 답변을 받는다.
 //
 // "이 기기에서"라고 쓰는 건 실제로 기기 단위이기 때문이다.
 // 교사가 PC에서만 켜면 폰은 조용하다.
@@ -24,20 +26,22 @@ export default function PushToggle() {
   const [busy,       setBusy]       = useState(false)
   const [error,      setError]      = useState('')
 
-  const isStaff = user?.role === 'teacher' || user?.role === 'admin'
+  // 학생도 받는다 — 선생님이 답을 달면 알림이 온다.
+  // 교사는 새 질문·추가 질문을, 학생은 답변을 받는다.
+  const canSubscribe = Boolean(user)
 
   // 이 기기가 이미 구독 중인지 브라우저에 물어본다
   useEffect(() => {
-    if (!isStaff || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+    if (!canSubscribe || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
     let alive = true
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
       .then((sub) => { if (alive) setSubscribed(Boolean(sub)) })
       .catch(() => {})
     return () => { alive = false }
-  }, [isStaff])
+  }, [canSubscribe])
 
-  if (!isStaff) return null
+  if (!canSubscribe) return null
 
   const status = pushEnvironment(readPushEnvironment(subscribed))
 
@@ -96,7 +100,9 @@ export default function PushToggle() {
   return (
     <div className="border border-line rounded p-3 mb-4 flex items-center justify-between gap-3">
       <div>
-        <p className="text-sm font-medium text-ink-soft">새 질문 알림</p>
+        <p className="text-sm font-medium text-ink-soft">
+          {user.role === 'student' ? '답변 알림' : '새 질문 알림'}
+        </p>
         {note
           ? <p className="text-xs text-ink-mute mt-1">{note}</p>
           : <p className="text-xs text-ink-mute mt-1">

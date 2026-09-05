@@ -85,7 +85,7 @@ export default function QnA() {
           <p className="text-sm text-danger mb-4">미답변 {unanswered}건</p>
         )}
 
-        {/* 교사·관리자에게만 보인다 (컴포넌트 안에서 역할을 본다) */}
+        {/* 교사는 새 질문·추가 질문, 학생은 답변 알림을 받는다 */}
         <PushToggle />
 
 
