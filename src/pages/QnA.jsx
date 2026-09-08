@@ -25,7 +25,7 @@ import { MAX_QNA_IMAGES } from '../utils/qnaImage'
 import { formatDate, formatDateTime } from '../utils/datetime'
 
 // 한 쪽에 보여줄 질문 수
-const QUESTIONS_PER_PAGE = 15
+const QUESTIONS_PER_PAGE = 10
 
 // 말머리 알약 — 목록 필터와 작성 화면이 같은 모양을 쓴다
 function Pill({ active, children, ...rest }) {

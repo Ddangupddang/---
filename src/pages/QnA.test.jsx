@@ -501,9 +501,10 @@ describe('Q&A 목록 쪽 나누기', () => {
   it('한 쪽에 다 안 들어가면 쪽 번호가 나온다', () => {
     render(<QnA />)
     expect(screen.getByRole('navigation', { name: '쪽 이동' })).toBeInTheDocument()
-    // 첫 쪽에는 15건까지만
+    // 첫 쪽에는 10건까지만 — 1000~1009
     expect(screen.getByTestId('question-1000')).toBeInTheDocument()
-    expect(screen.queryByTestId('question-1015')).not.toBeInTheDocument()
+    expect(screen.getByTestId('question-1009')).toBeInTheDocument()
+    expect(screen.queryByTestId('question-1010')).not.toBeInTheDocument()
   })
 
   it('2쪽을 누르면 나머지가 보인다', async () => {
@@ -511,8 +512,9 @@ describe('Q&A 목록 쪽 나누기', () => {
     render(<QnA />)
     await user.click(screen.getByRole('button', { name: '2' }))
 
-    expect(screen.getByTestId('question-1015')).toBeInTheDocument()
-    expect(screen.queryByTestId('question-1000')).not.toBeInTheDocument()
+    // 2쪽은 1010부터
+    expect(screen.getByTestId('question-1010')).toBeInTheDocument()
+    expect(screen.queryByTestId('question-1009')).not.toBeInTheDocument()
   })
 
   it('말머리를 바꾸면 1쪽으로 돌아간다', async () => {
