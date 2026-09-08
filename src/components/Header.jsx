@@ -1,7 +1,8 @@
 // src/components/Header.jsx
 import { useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { KeyRound, Menu } from 'lucide-react'
+import { KeyRound, Menu, RotateCw } from 'lucide-react'
+import { useData } from '../context/DataContext'
 
 const pageTitles = {
   '/dashboard':       '대시보드',
@@ -18,6 +19,7 @@ const pageTitles = {
 
 function Header({ onMenuClick }) {
   const { user, logout } = useAuth()
+  const { refreshAll, refreshing } = useData()
   const location = useLocation()
   const isStudent = user?.role === 'student'
   const title = pageTitles[location.pathname] ?? '수문재'
@@ -49,6 +51,18 @@ function Header({ onMenuClick }) {
         {isStudent && (
           <span className="text-sm text-ink-mute">{title}</span>
         )}
+        {/* 홈 화면 앱(PWA)에는 주소창이 없어 브라우저 새로고침을 할 수 없다.
+            다른 사람이 올린 자료를 보려면 앱 안에 이 버튼이 있어야 한다. */}
+        <button
+          onClick={refreshAll}
+          disabled={refreshing}
+          aria-label="새로고침"
+          title="새로고침"
+          className="text-ink-mute hover:text-ink-soft disabled:opacity-50 transition-colors"
+        >
+          <RotateCw size={16} strokeWidth={1.8} className={refreshing ? 'animate-spin' : ''} />
+        </button>
+
         <span className="text-sm text-ink-soft">{user?.name}</span>
         {/* 학생: 비밀번호 변경 아이콘 버튼 */}
         {isStudent && (

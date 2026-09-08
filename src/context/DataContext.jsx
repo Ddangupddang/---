@@ -161,6 +161,7 @@ export function DataProvider({ children }) {
   const [homeworkSubmissions, setHomeworkSubmissions] = useState([])
   const [weeklyNotes, setWeeklyNotes] = useState([])
   const [dataLoading,   setDataLoading]   = useState(true)
+  const [refreshing,    setRefreshing]    = useState(false)
   const [studentAccountIds, setStudentAccountIds] = useState([])
   // 학생 ID → 로그인 아이디(username) 매핑. 학생 관리 목록에 아이디를 보여줄 때 사용.
   const [studentUsernameById, setStudentUsernameById] = useState({})
@@ -176,8 +177,12 @@ export function DataProvider({ children }) {
     setStudentAccountIdByStudentId(Object.fromEntries(withId.map((r) => [r.student_id, r.id])))
   }
 
-  useEffect(() => {
-    async function load() {
+  // 처음 한 번 부르고, 새로고침 버튼이 다시 부른다.
+  //
+  // 홈 화면 앱(PWA)에는 주소창이 없어 브라우저 새로고침을 할 수 없다.
+  // 그래서 앱 안에 다시 불러올 수단이 있어야 한다 — 없으면 앱을 완전히
+  // 종료했다 켜는 것 말고는 방법이 없다.
+  async function loadAll() {
       const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, wnRes, saRes] =
         await Promise.all([
           supabase.from('classes').select('*').order('sort_order').order('id'),
@@ -225,9 +230,20 @@ export function DataProvider({ children }) {
       if (!saRes.error && saRes.data) applyStudentAccounts(saRes.data)
 
       setDataLoading(false)
-    }
-    load()
-  }, [])
+  }
+
+  // 앱을 열 때 한 번 불러온다. loadAll이 상태를 채우는 건 이 함수의 일이고,
+  // 새로고침 버튼도 같은 함수를 부른다 — 두 경로가 갈리면 한쪽만 고치게 된다.
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { loadAll() }, [])
+
+  // 화면에서 누르는 새로고침. 도는 동안 두 번 눌러도 한 번만 돈다.
+  async function refreshAll() {
+    if (refreshing) return
+    setRefreshing(true)
+    await loadAll()
+    setRefreshing(false)
+  }
 
   // ── 학생 CRUD ──────────────────────────────────────────
 
@@ -1078,7 +1094,7 @@ export function DataProvider({ children }) {
       studentAccountIdByStudentId, refreshStudentAccounts,
       videos, videoComments,
       tests, submissions,
-      dataLoading,
+      dataLoading, refreshing, refreshAll,
       addStudent, updateStudent, deleteStudent, bulkAddStudents, bulkDeleteStudents,
       addClass,  updateClass,  deleteClass,
       reorderStudents, reorderClasses,
