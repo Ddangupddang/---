@@ -13,6 +13,8 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
 import PushToggle from '../components/PushToggle'
+import Pagination from '../components/ui/Pagination'
+import { pageCount, pageSlice } from '../utils/paginate'
 import {
   visibleQuestions, unansweredCount, canDeleteQuestion,
   qnaStatus, canDeleteMessage, canEditMessage,
@@ -21,6 +23,9 @@ import { QNA_CATEGORIES, QNA_CATEGORY, qnaCategoryLabel } from '../constants/qna
 import QnaImagePicker from '../components/qna/QnaImagePicker'
 import { MAX_QNA_IMAGES } from '../utils/qnaImage'
 import { formatDate, formatDateTime } from '../utils/datetime'
+
+// 한 쪽에 보여줄 질문 수
+const QUESTIONS_PER_PAGE = 15
 
 // 말머리 알약 — 목록 필터와 작성 화면이 같은 모양을 쓴다
 function Pill({ active, children, ...rest }) {
@@ -49,6 +54,11 @@ export default function QnA() {
   // 화면이 옛 내용 그대로 남는다.
   const [selectedId,       setSelectedId]       = useState(null)
   const [filterCategory, setFilterCategory]     = useState('all')
+  const [page,           setPage]               = useState(1)
+
+  // 말머리를 바꾸면 첫 쪽으로 돌아간다. 2쪽을 보던 중에 걸러내면
+  // 그 자리에 남아 엉뚱한 데를 보게 된다.
+  function pickCategory(c) { setFilterCategory(c); setPage(1) }
 
   const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin'
 
@@ -58,6 +68,10 @@ export default function QnA() {
     (q) => filterCategory === 'all' || q.category === filterCategory
   )
   const unanswered = unansweredCount(qnaList, students, classes, user, qnaMessages)
+
+  // 질문이 쌓이면 화면이 한없이 길어진다. 쪽으로 나눈다.
+  const totalPages = pageCount(filteredQuestions.length, QUESTIONS_PER_PAGE)
+  const shownQuestions = pageSlice(filteredQuestions, page, QUESTIONS_PER_PAGE)
 
   // 이름 표시 규칙: 교사/관리자→실명, 학생→본인 질문뿐이므로 "나"
   function displayName(studentId) {
@@ -91,14 +105,14 @@ export default function QnA() {
 
         {/* 말머리 필터 */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-          <Pill active={filterCategory === 'all'} onClick={() => setFilterCategory('all')}>
+          <Pill active={filterCategory === 'all'} onClick={() => pickCategory('all')}>
             전체
           </Pill>
           {QNA_CATEGORIES.map((c) => (
             <Pill
               key={c}
               active={filterCategory === c}
-              onClick={() => setFilterCategory(c)}
+              onClick={() => pickCategory(c)}
               data-testid={`filter-${c}`}
             >
               {qnaCategoryLabel(c)}
@@ -111,7 +125,7 @@ export default function QnA() {
           <p className="text-center text-ink-faint py-12">질문이 없습니다.</p>
         ) : (
           <div className="flex flex-col gap-3">
-            {filteredQuestions.map((q) => (
+            {shownQuestions.map((q) => (
               <div
                 key={q.id}
                 data-testid={`question-${q.id}`}
@@ -146,6 +160,8 @@ export default function QnA() {
             ))}
           </div>
         )}
+
+        <Pagination page={page} total={totalPages} onChange={setPage} />
       </div>
       </Layout>
     )

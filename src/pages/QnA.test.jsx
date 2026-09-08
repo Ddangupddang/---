@@ -481,3 +481,53 @@ describe('Q&A 대화', () => {
     expect(screen.getByTestId('question-100')).toHaveTextContent('답변 대기')
   })
 })
+
+describe('Q&A 목록 쪽 나누기', () => {
+  // 질문 21건 — 내신 20 + 기타 1
+  const many = [
+    ...Array.from({ length: 20 }, (_, i) => ({
+      id: 1000 + i, category: 'naesin', studentId: 1,
+      content: `내신 질문 ${i + 1}`, createdAt: '2026-09-04T00:00:00Z', imagePaths: [],
+    })),
+    { id: 2000, category: 'etc', studentId: 1,
+      content: '기타 질문', createdAt: '2026-09-04T00:00:00Z', imagePaths: [] },
+  ]
+
+  beforeEach(() => {
+    state.data.qnaList = many
+    state.data.qnaMessages = []
+  })
+
+  it('한 쪽에 다 안 들어가면 쪽 번호가 나온다', () => {
+    render(<QnA />)
+    expect(screen.getByRole('navigation', { name: '쪽 이동' })).toBeInTheDocument()
+    // 첫 쪽에는 15건까지만
+    expect(screen.getByTestId('question-1000')).toBeInTheDocument()
+    expect(screen.queryByTestId('question-1015')).not.toBeInTheDocument()
+  })
+
+  it('2쪽을 누르면 나머지가 보인다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByRole('button', { name: '2' }))
+
+    expect(screen.getByTestId('question-1015')).toBeInTheDocument()
+    expect(screen.queryByTestId('question-1000')).not.toBeInTheDocument()
+  })
+
+  it('말머리를 바꾸면 1쪽으로 돌아간다', async () => {
+    const user = userEvent.setup()
+    // 2쪽을 보던 중에 걸러내면, 그 자리에 남아 있어 엉뚱한 데를 보게 된다
+    render(<QnA />)
+    await user.click(screen.getByRole('button', { name: '2' }))
+    await user.click(screen.getByTestId('filter-naesin'))
+
+    expect(screen.getByTestId('question-1000')).toBeInTheDocument()
+  })
+
+  it('한 쪽에 다 들어가면 쪽 번호를 그리지 않는다', () => {
+    state.data.qnaList = many.slice(0, 3)
+    render(<QnA />)
+    expect(screen.queryByRole('navigation', { name: '쪽 이동' })).not.toBeInTheDocument()
+  })
+})
