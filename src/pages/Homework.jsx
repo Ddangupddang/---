@@ -14,6 +14,7 @@ import Card from '../components/ui/Card'
 import { HW_CATEGORY, CATEGORY_LABELS } from '../constants/homework'
 import { visibleClasses } from '../utils/classAccess'
 import { setTargetLabel } from '../utils/homeworkGroup'
+import { visibleSets } from '../utils/homeworkList'
 
 export default function Homework() {
   const { user } = useAuth()
@@ -87,16 +88,8 @@ export default function Homework() {
 
 // 교사 목록: 이 종류의 세트들 (주차 최신순) + 수정/삭제
 function TeacherSetList({ category, sets, classes = [], onEdit, onDelete, userRole, userId }) {
-  const mine = sets
-    .filter((s) => {
-      if (s.category !== category) return false
-      // 정시는 레벨 단위 학원 공용
-      if (category === HW_CATEGORY.JEONGSI) return true
-      // 내신은 담당 반 것만. 반별 전환 이전의 학년 세트는 정리할 수 있게 관리자에게만 남긴다
-      if (s.classId != null) return classes.some((c) => c.id === s.classId)
-      return userRole === 'admin'
-    })
-    .sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1))
+  // 무엇이 어떤 순서로 보이는지는 utils/homeworkList에 모아뒀다
+  const mine = visibleSets(sets, category, classes, userRole)
   if (mine.length === 0) return <p className="text-center text-ink-faint py-12">등록된 {CATEGORY_LABELS[category]}가 없습니다.</p>
   return (
     <div className="flex flex-col gap-3">
