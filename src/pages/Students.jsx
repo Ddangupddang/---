@@ -18,6 +18,7 @@ import PageTitle from '../components/ui/PageTitle'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
 import { filterStudents } from '../utils/studentSearch'
+import { groupBy } from '../utils/groupList'
 
 function Students() {
   const { user } = useAuth()
@@ -73,7 +74,12 @@ function Students() {
   const displayStudents = filterStudents(studentList, { classId: selectedClass, search })
 
   // 걸러진 일부만 놓고 순서를 바꾸면 화면에 없는 학생들과 순서가 뒤엉킨다
-  const canReorder = search.trim() === ''
+  // 전체 보기에서는 반별로 접어 둔다. 55명이 한 번에 펼쳐지면 화면이 너무 길다.
+  // 검색 중에는 접지 않는다 — 찾으려고 검색했는데 접혀 있으면 안 된다.
+  const grouped = selectedClass === null && search.trim() === ''
+  // 접힌 섹션이 있는 채로 끌면 안 보이는 학생 사이로 떨어진다.
+  // 순서는 반 안에서만 의미가 있으므로 반을 골랐을 때만 켠다.
+  const canReorder = search.trim() === '' && !grouped
 
   const allSelected = displayStudents.length > 0 && selectedIds.length === displayStudents.length
 
@@ -438,8 +444,8 @@ function Students() {
                 onDragEnd={handleStudentDragEnd}
               >
                 <SortableContext items={displayStudents.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                  <tbody>
-                    {displayStudents.map((student) => (
+                  {(() => {
+                    const row = (student) => (
                       <SortableStudentRow
                         key={student.id}
                         student={student}
@@ -455,8 +461,21 @@ function Students() {
                         selected={selectedIds.includes(student.id)}
                         onToggle={() => toggleSelect(student.id)}
                       />
-                    ))}
-                  </tbody>
+                    )
+
+                    if (!grouped) return <tbody>{displayStudents.map(row)}</tbody>
+
+                    // 전체 보기 — 반별로 접어 둔다
+                    return groupBy(displayStudents, (st) => st.classId).map((g) => (
+                      <ClassGroupBody
+                        key={g.key ?? 'none'}
+                        label={g.key == null ? '반 미배정' : getClassName(g.key)}
+                        count={g.items.length}
+                      >
+                        {g.items.map(row)}
+                      </ClassGroupBody>
+                    ))
+                  })()}
                 </SortableContext>
               </DndContext>
             </table>
@@ -740,6 +759,37 @@ function SortableClassCard({ cls, count, isAdmin, teacherName, onEdit, onDelete,
 }
 
 // ── 드래그 가능한 학생 행 ──────────────────────────────
+// 표 안에서는 div를 쓸 수 없어 tbody 하나를 묶음으로 쓴다.
+// 표시 방식은 CollapsibleSection과 맞춘다 — 펼쳐진 묶음만 왼쪽에 선이 서고
+// 글씨가 굵어진다. 닫혔다고 회색으로 죽이지 않는다.
+// 접힌 채로도 인원수는 보여준다.
+function ClassGroupBody({ label, count, children }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <tbody className="border-t border-line">
+      <tr>
+        <td colSpan={7} className="p-0">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className={`w-full flex items-baseline gap-3 px-4 py-3 text-left border-l-2 transition-colors hover:bg-surface-alt ${
+              open ? 'border-navy' : 'border-transparent'
+            }`}
+          >
+            <span className={`text-base text-ink flex-1 ${open ? 'font-semibold' : 'font-medium'}`}>
+              {label}
+            </span>
+            <span className="text-sm text-ink-mute shrink-0 tabular-nums">{count}명</span>
+          </button>
+        </td>
+      </tr>
+      {open && children}
+    </tbody>
+  )
+}
+
 function SortableStudentRow({
   student, isAdmin, canReorder = true, getClassName, username,
   onEdit, onDelete, onCreateAccount, onDeleteAccount,

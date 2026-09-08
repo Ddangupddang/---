@@ -58,7 +58,7 @@ function SidebarContent({ onClose }) {
       </div>
 
       {/* 섹션 그룹 네비게이션 */}
-      <nav className="flex flex-col gap-4 flex-1">
+      <nav className="flex flex-col gap-4 flex-1 overflow-y-auto">
         {navSections.map((section) => (
           <div key={section.label}>
             <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-ink-faint uppercase">
@@ -146,7 +146,9 @@ function Sidebar({ isOpen, onClose }) {
   return (
     <>
       {/* 데스크탑 사이드바 */}
-      <aside className="hidden md:flex flex-col w-56 min-h-screen bg-surface-alt border-r border-line px-3 py-5">
+      {/* 화면에 고정한다. min-h-screen이면 본문이 길어질 때 사이드바도 같이 늘어나
+          비밀번호 변경·로그아웃이 화면 밑으로 밀려 내려간다. */}
+      <aside className="hidden md:flex flex-col w-56 h-screen sticky top-0 bg-surface-alt border-r border-line px-3 py-5">
         <SidebarContent onClose={() => {}} />
       </aside>
 
