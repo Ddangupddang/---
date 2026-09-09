@@ -6,6 +6,7 @@ import { QNA_DEFAULT_CATEGORY } from '../constants/qna'
 import { resizeQnaImage, qnaImagePath, qnaImageToken } from '../utils/qnaImage'
 import { subscriptionRow } from '../utils/pushSubscription'
 import { rowsOrNull } from '../utils/dbRows'
+import { fetchAllRows } from '../utils/fetchAll'
 import {
   toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission,
 } from '../utils/homeworkMappers'
@@ -185,25 +186,25 @@ export function DataProvider({ children }) {
   async function loadAll() {
       const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, wnRes, saRes] =
         await Promise.all([
-          supabase.from('classes').select('*').order('sort_order').order('id'),
-          supabase.from('students').select('*').order('sort_order').order('id'),
-          supabase.from('attendance').select('*').order('date', { ascending: false }),
-          supabase.from('grades').select('*').order('date', { ascending: false }),
-          supabase.from('qna').select('*').order('created_at', { ascending: false }),
-          supabase.from('qna_messages').select('*').order('created_at'),
-          supabase.from('notices').select('*').order('created_at', { ascending: false }),
-          supabase.from('reports').select('*').order('date', { ascending: false }),
-          supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher']),
-          supabase.from('videos').select('*').order('created_at', { ascending: false }),
-          supabase.from('video_comments').select('*').order('created_at'),
-          supabase.from('tests').select('*').order('created_at', { ascending: false }),
-          supabase.from('submissions').select('*').order('submitted_at', { ascending: false }),
-          supabase.from('homework_sets').select('*').order('week_start', { ascending: false }),
-          supabase.from('homework_days').select('*'),
-          supabase.from('homework_questions').select('*'),
-          supabase.from('homework_submissions_v2').select('*'),
-          supabase.from('weekly_report_notes').select('*'),
-          supabase.from('profiles').select('id, student_id, username').eq('role', 'student'),
+          fetchAllRows(() => supabase.from('classes').select('*').order('sort_order').order('id')),
+          fetchAllRows(() => supabase.from('students').select('*').order('sort_order').order('id')),
+          fetchAllRows(() => supabase.from('attendance').select('*').order('date', { ascending: false })),
+          fetchAllRows(() => supabase.from('grades').select('*').order('date', { ascending: false })),
+          fetchAllRows(() => supabase.from('qna').select('*').order('created_at', { ascending: false })),
+          fetchAllRows(() => supabase.from('qna_messages').select('*').order('created_at')),
+          fetchAllRows(() => supabase.from('notices').select('*').order('created_at', { ascending: false })),
+          fetchAllRows(() => supabase.from('reports').select('*').order('date', { ascending: false })),
+          fetchAllRows(() => supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher'])),
+          fetchAllRows(() => supabase.from('videos').select('*').order('created_at', { ascending: false })),
+          fetchAllRows(() => supabase.from('video_comments').select('*').order('created_at')),
+          fetchAllRows(() => supabase.from('tests').select('*').order('created_at', { ascending: false })),
+          fetchAllRows(() => supabase.from('submissions').select('*').order('submitted_at', { ascending: false })),
+          fetchAllRows(() => supabase.from('homework_sets').select('*').order('week_start', { ascending: false })),
+          fetchAllRows(() => supabase.from('homework_days').select('*')),
+          fetchAllRows(() => supabase.from('homework_questions').select('*')),
+          fetchAllRows(() => supabase.from('homework_submissions_v2').select('*')),
+          fetchAllRows(() => supabase.from('weekly_report_notes').select('*')),
+          fetchAllRows(() => supabase.from('profiles').select('id, student_id, username').eq('role', 'student')),
         ])
 
       // rowsOrNull이 null을 주면 못 읽은 것이라 화면을 건드리지 않는다.
@@ -810,7 +811,9 @@ export function DataProvider({ children }) {
           day_solution_file_url:  day.daySolutionFileUrl || null,
         }])
         .select().single()
-      if (dayErr) { console.error('과제 요일 생성 실패:', dayErr); continue }
+      // 예전에는 여기서 continue였다. 요일이나 문항이 하나도 안 들어가도
+      // 저장 성공으로 처리돼, 교사는 정상인 줄 알고 넘어갔다.
+      if (dayErr) { console.error('과제 요일 생성 실패:', dayErr); return null }
       newDays.push(toHomeworkDay(dayRow))
 
       if (day.questions?.length) {
@@ -823,7 +826,7 @@ export function DataProvider({ children }) {
         }))
         const { data: qRows, error: qErr } = await supabase
           .from('homework_questions').insert(rows).select()
-        if (qErr) { console.error('과제 문항 생성 실패:', qErr); continue }
+        if (qErr) { console.error('과제 문항 생성 실패:', qErr); return null }
         newQuestions.push(...qRows.map(toHomeworkQuestion))
       }
     }
@@ -1082,8 +1085,8 @@ export function DataProvider({ children }) {
 
   // 일괄 계정 생성 후 학생 계정 목록 다시 로드
   async function refreshStudentAccounts() {
-    const { data, error } = await supabase
-      .from('profiles').select('id, student_id, username').eq('role', 'student')
+    const { data, error } = await fetchAllRows(() =>
+      supabase.from('profiles').select('id, student_id, username').eq('role', 'student'))
     if (!error && data) applyStudentAccounts(data)
   }
 
