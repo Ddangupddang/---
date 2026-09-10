@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { supabase } from '../lib/supabase'
 import { GRADES, GRADE_LABELS, JEONGSI_LEVELS, JEONGSI_LEVEL_LABELS } from '../constants/homework'
+import { DEFAULT_STUDENT_PASSWORD } from '../constants/account'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -188,6 +189,38 @@ function Students() {
     if (res.ok) return null
     const data = await res.json().catch(() => ({}))
     return data.error ?? '계정 삭제에 실패했습니다.'
+  }
+
+  // 비밀번호만 초기값으로 되돌린다 (계정·아이디·기록은 그대로).
+  //
+  // 예전에는 비밀번호를 잊으면 계정을 지우고 다시 만드는 수밖에 없었다.
+  // 그러면 아이디가 바뀌고 그 계정에 딸린 제출·질문 기록이 끊긴다.
+  const handleResetPassword = async (student) => {
+    const userId = studentAccountIdByStudentId[student.id]
+    if (!userId) { alert('로그인 계정이 없는 학생입니다.'); return }
+    if (!confirm(
+      `${student.name} 학생의 비밀번호를 ${DEFAULT_STUDENT_PASSWORD}(으)로 되돌립니다.\n` +
+      `아이디와 지금까지의 기록은 그대로 남습니다.\n` +
+      `학생은 다음 로그인 때 새 비밀번호를 정하게 됩니다.\n\n계속할까요?`
+    )) return
+
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/reset-student-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ userId }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { alert(data.error ?? '비밀번호를 되돌리지 못했습니다.'); return }
+
+    alert(
+      `${student.name} 학생의 비밀번호를 ${data.password}(으)로 되돌렸습니다.\n` +
+      `학생에게 알려 주세요.` +
+      (data.mustChange ? '' : '\n\n(다만 "새 비밀번호 정하기" 안내는 뜨지 않습니다)')
+    )
   }
 
   // 계정만 지운다 (학생은 명부에 남는다) — 아이디를 잘못 만들었을 때 쓴다
@@ -457,6 +490,7 @@ function Students() {
                         onDelete={() => handleDelete(student.id)}
                         onCreateAccount={() => openAccountModal(student)}
                         onDeleteAccount={() => handleDeleteAccount(student)}
+                        onResetPassword={() => handleResetPassword(student)}
                         selectMode={selectMode}
                         selected={selectedIds.includes(student.id)}
                         onToggle={() => toggleSelect(student.id)}
@@ -792,7 +826,7 @@ function ClassGroupBody({ label, count, children }) {
 
 function SortableStudentRow({
   student, isAdmin, canReorder = true, getClassName, username,
-  onEdit, onDelete, onCreateAccount, onDeleteAccount,
+  onEdit, onDelete, onCreateAccount, onDeleteAccount, onResetPassword,
   selectMode, selected, onToggle,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -848,10 +882,20 @@ function SortableStudentRow({
             ? (
               <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <span className="font-mono text-xs text-ink">{username}</span>
+                {/* 비밀번호를 잊었을 때 — 계정은 그대로 두고 비밀번호만 되돌린다 */}
+                <button
+                  onClick={onResetPassword}
+                  title="비밀번호 초기화"
+                  aria-label={`${student.name} 비밀번호 초기화`}
+                  className="text-xs text-ink-faint hover:text-navy transition-colors"
+                >
+                  ↺
+                </button>
                 {/* 아이디를 잘못 만들었을 때 계정만 지우고 다시 만든다 */}
                 <button
                   onClick={onDeleteAccount}
                   title="로그인 계정만 삭제"
+                  aria-label={`${student.name} 로그인 계정 삭제`}
                   className="text-xs text-ink-faint hover:text-danger transition-colors"
                 >
                   ×
