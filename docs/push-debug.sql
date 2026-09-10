@@ -45,3 +45,25 @@ order by p.role, 이름;
 -- ── 3. 구독이 아예 하나도 없나 ────────────────────────────────
 -- 0이면 이 학원에서 아무도 알림을 안 켠 상태다.
 select count(*) as 전체구독수 from public.push_subscriptions;
+
+
+-- ── 4. 웹훅이 실제로 쐈나, 우리 서버가 뭐라고 답했나 ──────────
+-- Supabase 웹훅은 pg_net으로 나가고 응답이 여기 쌓인다.
+-- 이게 알림 문제에서 가장 결정적인 자료다.
+--
+--   행이 없다        → 웹훅이 아예 안 쐈다 (표·URL·Events 설정 확인)
+--   status_code 401  → x-webhook-secret 값이 Vercel 값과 다르다
+--   status_code 200  → 우리 서버는 보냈다. content의 sent 숫자를 볼 것
+--   status_code 500  → 서버 환경변수 문제
+select
+  id,
+  status_code   as 응답코드,
+  content       as 응답내용,
+  created       as 시각
+from net._http_response
+order by created desc
+limit 10;
+
+
+-- 4번이 "relation net._http_response does not exist"로 실패하면
+-- 이 프로젝트는 응답을 남기지 않는 설정이다. 그때는 Vercel Logs를 본다.
