@@ -137,6 +137,40 @@ Supabase → Database → Webhooks → Create a new hook
 
 안 오면 Vercel → 프로젝트 → Logs에서 해당 `/api/...` 호출을 찾는다.
 
+### 누가 알림을 켰는지 보기
+
+`200 sent:0`이 나오면 대부분 "받을 사람이 안 켰다"이다. 누가 켰는지는 DB로 본다.
+
+```sql
+-- 알림을 켠 사람과 기기 수
+select
+  p.role                     as 역할,
+  coalesce(st.name, p.name)  as 이름,
+  c.name                     as 반,
+  count(ps.id)               as 켠기기수
+from public.profiles p
+left join public.students st          on st.id = p.student_id
+left join public.classes  c           on c.id  = st.class_id
+join      public.push_subscriptions ps on ps.profile_id = p.id
+group by p.role, st.name, p.name, c.name
+order by p.role, c.name, 이름;
+```
+
+```sql
+-- 아직 안 켠 학생 (여기 있는 학생에게는 과제 알림이 가지 않는다)
+select c.name as 반, st.name as 학생
+from public.profiles p
+join public.students st on st.id = p.student_id
+left join public.classes c on c.id = st.class_id
+where p.role = 'student'
+  and not exists (
+    select 1 from public.push_subscriptions ps where ps.profile_id = p.id
+  )
+order by c.name, st.name;
+```
+
+기기 단위라 한 사람이 폰·PC 둘 다 켜면 2로 나온다.
+
 | 응답 | 원인 |
 |------|------|
 | 호출 자체가 없음 | 4번 웹훅이 등록되지 않았거나 URL이 틀렸다 |
