@@ -88,12 +88,31 @@ where jsonb_array_length(sub.answers) <> d.question_count
 order by d.date desc, c.name, st.name;
 
 
--- ── 5. 다시 풀게 할 제출을 지운다 (확인한 뒤에만!) ────────────
+-- ── 5. 다시 풀게 할 제출을 지운다 ────────────────────────────
 -- 사라진 답은 되살릴 수 없다. 학생이 고른 값이 애초에 전송되지 않았다.
--- 해당 제출을 지우면 학생 화면에서 그 요일이 다시 "미제출"이 되어 다시 낼 수 있다.
--- 3번·4번 결과를 눈으로 확인하고, 지울 대상을 정한 뒤에 주석을 풀 것.
+-- 이 제출을 지우면 학생 화면에서 그 요일이 다시 "미제출"이 되어 다시 낼 수 있다.
 --
--- delete from public.homework_submissions_v2 sub
--- using public.homework_days d
--- where d.id = sub.day_id
---   and jsonb_array_length(sub.answers) <> d.question_count;
+-- 4번과 똑같은 조건만 지우므로, 4번 결과에 없는 행은 지워지지 않는다.
+-- returning이 지운 내용을 그대로 보여준다 — 4번 결과와 같은지 확인할 것.
+
+delete from public.homework_submissions_v2 sub
+using public.homework_days d, public.homework_sets s, public.students st
+where d.id = sub.day_id
+  and s.id = d.set_id
+  and st.id = sub.student_id
+  and jsonb_array_length(sub.answers) <> d.question_count
+returning
+  st.name                         as 학생,
+  s.title                         as 세트,
+  d.date                          as 마감일,
+  d.question_count                as 출제문항수,
+  jsonb_array_length(sub.answers) as 지운답수;
+
+
+-- ── 확인 결과 (2026-09-10) ───────────────────────────────────
+-- 1번: 미확인
+-- 2번: 미확인
+-- 3번: 0행 — 답이 빈 채로 저장된 제출은 없었다
+-- 4번: 1행 — 권혜윤 / 2_토_10_봉담고 / 9월2주차 / 15문항 중 7개만 저장
+--            (제출 2026-09-08 21:42 KST — 1,000행 문제를 고치기 직전)
+--       → 5번으로 지우고 다시 풀게 했다.
