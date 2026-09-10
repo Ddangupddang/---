@@ -13,6 +13,7 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Alert from '../components/ui/Alert'
 import PushToggle from '../components/PushToggle'
+import GrowTextarea from '../components/ui/GrowTextarea'
 import Pagination from '../components/ui/Pagination'
 import { pageCount, pageSlice } from '../utils/paginate'
 import {
@@ -368,10 +369,10 @@ function DetailView({
 
             {editingId === m.id ? (
               <div>
-                <textarea
+                <GrowTextarea
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
-                  rows={4}
+                  minRows={6} maxRows={15}
                   className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none mb-2"
                 />
                 <div className="flex gap-2">
@@ -430,11 +431,11 @@ function DetailView({
 
       {/* 글쓰기 — 학생·교사가 같은 칸을 쓴다 */}
       <div className="bg-surface border border-line rounded p-4">
-        <textarea
+        <GrowTextarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="이어서 쓸 내용을 입력하세요"
-          rows={3}
+          minRows={6} maxRows={15}
           className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none mb-3"
         />
         <QnaImagePicker
@@ -623,11 +624,11 @@ function AskView({ studentId, uploadQnaImage, onSubmit, onBack }) {
         {/* 질문 내용 */}
         <div>
           <label className="block text-sm font-medium text-ink-soft mb-1">질문 내용</label>
-          <textarea
+          <GrowTextarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="궁금한 점을 자유롭게 입력하세요"
-            rows={5}
+            minRows={5} maxRows={15}
             className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy resize-none"
             required
           />
