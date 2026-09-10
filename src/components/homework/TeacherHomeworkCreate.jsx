@@ -45,7 +45,7 @@ function daysFromSet(editSet, allDays, allQuestions) {
 export default function TeacherHomeworkCreate({ category, editSet = null, copySet = null, onDone }) {
   const { user } = useAuth()
   const {
-    addHomeworkSet, updateHomeworkSet, uploadSolutionFile, deleteSolutionFile,
+    addHomeworkSet, updateHomeworkSet, uploadSolutionFile, deleteSolutionFile, notifyNewHomework,
     classes = [], homeworkSets = [], homeworkDays = [], homeworkQuestions = [], homeworkSubmissions = [],
   } = useData()
 
@@ -187,6 +187,16 @@ export default function TeacherHomeworkCreate({ category, editSet = null, copySe
       setError('저장에 실패했습니다. 입력한 내용은 그대로 두었으니 잠시 후 다시 시도해 주세요.')
       return
     }
+    // 새로 낸 과제(복제 포함)만 학생에게 알린다. 수정은 이미 아는 과제라 알리지 않는다.
+    // 알림이 실패해도 과제는 저장됐으므로, 되돌리지 않고 교사에게만 알린다 —
+    // 학생이 못 받은 걸 모르면 "왜 아무도 안 내지?"로 이어진다.
+    if (!editSet && notifyNewHomework) {
+      const notified = await notifyNewHomework(saved.id)
+      if (!notified) {
+        window.alert('과제는 저장되었습니다.\n다만 학생 알림을 보내지 못했습니다 — 직접 알려 주세요.')
+      }
+    }
+
     // 저장이 끝난 뒤에야 안 쓰는 해설 파일을 스토리지에서 지운다.
     // 복제본은 원본과 같은 파일 주소를 가리키므로, 다른 요일이 아직 쓰고 있으면
     // 남겨 둔다 — 지우면 그쪽 화면의 링크가 소리 없이 깨진다.

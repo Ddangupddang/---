@@ -1,6 +1,6 @@
 // src/utils/homeworkSelect.js
 // 학생↔과제 매칭과 요일 제출 상태 판정.
-import { isLateSubmission } from './homework'
+import { isLateSubmission } from './homework.js'
 
 // 세트가 이 학생에게 보이는지: 내신은 반, 정시는 정시레벨로 매칭.
 // 반별로 바꾸기 전에 만든 내신 세트는 class_id가 비어 있고 target에 학년이 들어 있다.

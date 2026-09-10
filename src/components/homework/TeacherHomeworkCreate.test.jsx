@@ -25,6 +25,7 @@ beforeEach(() => {
     updateHomeworkSet: vi.fn().mockResolvedValue({ id: 11 }),
     uploadSolutionFile: vi.fn(),
     deleteSolutionFile: vi.fn().mockResolvedValue(true),
+    notifyNewHomework: vi.fn().mockResolvedValue(true),
     homeworkDays: [], homeworkQuestions: [], homeworkSubmissions: [],
   }
 })
@@ -408,5 +409,59 @@ describe('TeacherHomeworkCreate (복제)', () => {
     expect(screen.getByRole('button', { name: '복제해서 저장' })).toBeDisabled()
     expect(screen.getByTestId('save-blocked')).toHaveTextContent(/먼저 낸 과제/)
     expect(screen.getByTestId('save-blocked')).toHaveTextContent(/대상이나 주를 바꿔/)
+  })
+})
+
+// ── 새 과제 알림 (2번) ───────────────────────────────────────
+describe('TeacherHomeworkCreate (학생 알림)', () => {
+  it('새로 내면 그 과제를 받는 학생들에게 알린다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkCreate category="naesin" onDone={vi.fn()} />)
+
+    await user.type(screen.getByPlaceholderText(/세트 제목/), '9월 2주차')
+    await user.click(screen.getByLabelText(/월요일 과제 사용/))
+    await user.type(screen.getByRole('spinbutton'), '1')
+    await user.click(screen.getByTestId('cell-1-③'))
+    await user.click(screen.getByRole('button', { name: '주간 과제 저장' }))
+
+    await waitFor(() => expect(state.data.notifyNewHomework).toHaveBeenCalledWith(1))
+  })
+
+  it('복제해서 내도 알린다', async () => {
+    const user = userEvent.setup()
+    withExistingSet()
+    render(<TeacherHomeworkCreate category="naesin" copySet={EDIT_SET} onDone={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: '복제해서 저장' }))
+    await waitFor(() => expect(state.data.notifyNewHomework).toHaveBeenCalledWith(1))
+  })
+
+  it('이미 낸 과제를 고칠 때는 알리지 않는다 — 학생이 이미 아는 과제다', async () => {
+    const user = userEvent.setup()
+    withExistingSet()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<TeacherHomeworkCreate category="naesin" editSet={EDIT_SET} onDone={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: '수정 저장' }))
+
+    await waitFor(() => expect(state.data.updateHomeworkSet).toHaveBeenCalled())
+    expect(state.data.notifyNewHomework).not.toHaveBeenCalled()
+    window.confirm.mockRestore()
+  })
+
+  it('알림이 실패해도 저장은 유지하고 교사에게만 알린다', async () => {
+    const user = userEvent.setup()
+    const onDone = vi.fn()
+    state.data.notifyNewHomework = vi.fn().mockResolvedValue(false)
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    withExistingSet()
+    render(<TeacherHomeworkCreate category="naesin" copySet={EDIT_SET} onDone={onDone} />)
+
+    await user.click(screen.getByRole('button', { name: '복제해서 저장' }))
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalled())
+    expect(alertSpy.mock.calls[0][0]).toMatch(/저장되었습니다/)
+    expect(onDone).toHaveBeenCalled()   // 저장은 끝났으므로 목록으로 돌아간다
+    alertSpy.mockRestore()
   })
 })

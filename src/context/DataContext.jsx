@@ -978,6 +978,34 @@ export function DataProvider({ children }) {
     return true
   }
 
+  // 새 과제를 그 과제를 받는 학생들에게 알린다. 저장이 전부 끝난 뒤에 부른다.
+  //
+  // 웹훅이 아니라 앱이 부르는 이유: 세트 하나가 세 표에 나눠 저장돼서,
+  // 표 하나의 INSERT를 웹훅으로 잡으면 문항이 아직 없는 시점에 알림이 나간다.
+  //
+  // 알림이 실패해도 과제는 이미 저장됐다. 저장을 되돌리지 않고 실패만 알린다.
+  async function notifyNewHomework(setId) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/notify-homework', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ setId }),
+      })
+      if (!res.ok) {
+        console.error('과제 알림 실패:', res.status, await res.text())
+        return false
+      }
+      return true
+    } catch (e) {
+      console.error('과제 알림 실패:', e)
+      return false
+    }
+  }
+
   // 해설 파일 업로드 → 공개 URL 반환
   async function uploadSolutionFile(file, prefix = 'sol') {
     const safe = file.name.replace(/[^\w.\-가-힣]/g, '_')
@@ -1118,6 +1146,7 @@ export function DataProvider({ children }) {
       addSubmission, updateSubmissionScores,
       homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
       addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission,
+      notifyNewHomework,
       deleteHomeworkSubmission,
       uploadSolutionFile, deleteSolutionFile,
       weeklyNotes, upsertWeeklyNote,

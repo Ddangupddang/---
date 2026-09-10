@@ -9,6 +9,7 @@ import TeacherHomeworkCreate from '../components/homework/TeacherHomeworkCreate'
 import TeacherHomeworkStatus from '../components/homework/TeacherHomeworkStatus'
 import HomeworkReport from '../components/homework/HomeworkReport'
 import PageTitle from '../components/ui/PageTitle'
+import PushToggle from '../components/PushToggle'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import { HW_CATEGORY, CATEGORY_LABELS } from '../constants/homework'
@@ -57,6 +58,10 @@ export default function Homework() {
             }`}>{CATEGORY_LABELS[c]}</button>
         ))}
       </div>
+
+      {/* 알림 스위치 — 학생은 새 과제를, 교사는 학생 제출을 받는다.
+          구독은 기기 하나당 하나라 Q&A 화면의 스위치와 같은 스위치다. */}
+      {mode === 'list' && <PushToggle label="과제 알림" />}
 
       {/* 학생 */}
       {!isStaff && <StudentHomeworkView category={category} />}

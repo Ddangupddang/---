@@ -5,6 +5,9 @@
 //
 // "이 기기에서"라고 쓰는 건 실제로 기기 단위이기 때문이다.
 // 교사가 PC에서만 켜면 폰은 조용하다.
+//
+// 구독은 기기 하나당 하나뿐이라 이 스위치는 Q&A·과제 알림을 함께 켜고 끈다.
+// 화면마다 이름만 달리 붙인다(label) — 그 화면에서 무엇을 받는지가 궁금하기 때문이다.
 import { useState, useEffect } from 'react'
 import { Bell, BellOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -19,7 +22,7 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)))
 }
 
-export default function PushToggle() {
+export default function PushToggle({ label }) {
   const { user } = useAuth()
   const { savePushSubscription, deletePushSubscription } = useData()
   const [subscribed, setSubscribed] = useState(false)
@@ -101,7 +104,7 @@ export default function PushToggle() {
     <div className="border border-line rounded p-3 mb-4 flex items-center justify-between gap-3">
       <div>
         <p className="text-sm font-medium text-ink-soft">
-          {user.role === 'student' ? '답변 알림' : '새 질문 알림'}
+          {label ?? (user.role === 'student' ? '답변 알림' : '새 질문 알림')}
         </p>
         {note
           ? <p className="text-xs text-ink-mute mt-1">{note}</p>
