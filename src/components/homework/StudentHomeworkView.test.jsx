@@ -187,3 +187,63 @@ describe('StudentHomeworkView — 반 미배정', () => {
     expect(screen.getByText(/반이 배정되지 않았습니다/)).toBeInTheDocument()
   })
 })
+
+// ── 문항 번호가 1..N이 아닐 때 ──────────────────────────────
+// 화면은 1번부터 세어 칸을 그리는데 제출은 실제 문항 번호로 답을 찾는다.
+// 둘이 어긋나면 학생이 다 채워도 답이 밀리거나 사라진다.
+describe('StudentHomeworkView (문항 번호에 구멍이 있을 때)', () => {
+  beforeEach(() => {
+    // 5번·6번 두 문항 (1번·2번이 아니다 — 불러오다 앞부분이 빠진 상태)
+    state.data.homeworkQuestions = [
+      { id: 100, dayId: 10, number: 5, answer: '①', solutionVideoUrl: '', solutionFileUrl: '' },
+      { id: 101, dayId: 10, number: 6, answer: '②', solutionVideoUrl: '', solutionFileUrl: '' },
+    ]
+  })
+
+  it('학생이 고른 답이 그대로 제출된다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+
+    // 칸은 실제 문항 번호(5·6)로 그려져야 한다 — 1·2로 그리면 답이 어긋난다
+    expect(screen.getByText('5번')).toBeInTheDocument()
+    expect(screen.getByText('6번')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('cell-5-①'))
+    await user.click(screen.getByTestId('cell-6-②'))
+    await user.click(screen.getByRole('button', { name: '제출하기' }))
+
+    expect(state.data.upsertHomeworkSubmission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        answers: [
+          { number: 5, answer: '①' },
+          { number: 6, answer: '②' },
+        ],
+      })
+    )
+  })
+})
+
+// ── 문항을 덜 불러온 상태 ────────────────────────────────
+// 출제한 문항 수보다 적게 들어오면 그대로 내는 순간 못 받은 문항이 오답이 된다.
+describe('StudentHomeworkView (문항을 덜 불러왔을 때)', () => {
+  beforeEach(() => {
+    // 5문항짜리 과제인데 2개만 도착했다
+    state.data.homeworkDays = [
+      { id: 10, setId: 1, weekday: 1, date: WEEK, questionCount: 5, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+    ]
+  })
+
+  it('다 채워도 제출을 막고 새로고침을 안내한다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-②'))
+
+    expect(screen.getByText(/과제를 다 불러오지 못했습니다/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '제출하기' })).toBeDisabled()
+    expect(state.data.upsertHomeworkSubmission).not.toHaveBeenCalled()
+  })
+})

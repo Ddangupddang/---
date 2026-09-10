@@ -54,8 +54,15 @@ export default function StudentHomeworkView({ category }) {
     : []
 
   const subOf = (dayId) => homeworkSubmissions.find((s) => s.dayId === dayId && s.studentId === me.id)
-  const questionsOf = (dayId) =>
-    homeworkQuestions.filter((q) => q.dayId === dayId).sort((a, b) => a.number - b.number)
+  // 같은 번호가 두 번 들어오면(불러오는 중 겹침) 문항 수가 부풀어 점수가 낮아진다.
+  // 번호 하나당 하나만 남긴다.
+  const questionsOf = (dayId) => {
+    const byNumber = new Map()
+    for (const q of homeworkQuestions) {
+      if (q.dayId === dayId && !byNumber.has(q.number)) byNumber.set(q.number, q)
+    }
+    return [...byNumber.values()].sort((a, b) => a.number - b.number)
+  }
 
   // ── 특정 요일 열기(제출/결과) ──
   if (openDayId != null) {
@@ -64,6 +71,10 @@ export default function StudentHomeworkView({ category }) {
     const qs = questionsOf(day.id)
     const sub = subOf(day.id)
     const beforeDue = today <= day.date
+    // 출제할 때 정해둔 문항 수와 지금 불러온 문항 수가 다르면 자료가 덜 온 것이다.
+    // 이대로 제출하면 못 받은 문항이 통째로 오답이 되어 점수가 폭락한다.
+    // 조용히 넘어가는 대신 제출을 막고 새로고침을 안내한다.
+    const loadedAll = qs.length === day.questionCount
 
     // 결과 보기 — 한 번 제출하면 수정 없이 결과·해설만 본다
     if (sub) {
@@ -78,7 +89,7 @@ export default function StudentHomeworkView({ category }) {
             <p className="text-sm text-white/60 mb-1">정답</p>
             <p className="text-4xl font-bold">{correctCount}<span className="text-2xl text-white/50"> / {total}</span></p>
           </div>
-          <ChoiceGrid count={qs.length} mode="result" values={valueMap} answerKey={answerKey} onChange={() => {}} />
+          <ChoiceGrid numbers={qs.map((q) => q.number)} mode="result" values={valueMap} answerKey={answerKey} onChange={() => {}} />
           <SolutionViewer videoUrl={day.daySolutionVideoUrl} fileUrl={day.daySolutionFileUrl} label="요일 해설" />
           {qs.filter((q) => q.solutionVideoUrl || q.solutionFileUrl).map((q) => (
             <SolutionViewer key={q.id} videoUrl={q.solutionVideoUrl} fileUrl={q.solutionFileUrl} label={`${q.number}번 해설`} />
@@ -93,7 +104,7 @@ export default function StudentHomeworkView({ category }) {
     const allAnswered = answeredNum === qs.length && qs.length > 0
     async function handleSubmit() {
       // 제출은 한 번뿐이라 중복 클릭도 막아야 한다
-      if (!allAnswered || submitting) return
+      if (!allAnswered || submitting || !loadedAll) return
       setSubmitting(true)
       setSubmitError('')
       const payload = qs.map((q) => ({ number: q.number, answer: answers[q.number] }))
@@ -116,15 +127,21 @@ export default function StudentHomeworkView({ category }) {
           <span className="text-sm font-medium text-ink-soft">답안 입력</span>
           <span className="text-xs text-ink-faint">{answeredNum}/{qs.length} 입력됨</span>
         </div>
-        <ChoiceGrid count={qs.length} values={answers} mode="input"
+        <ChoiceGrid numbers={qs.map((q) => q.number)} values={answers} mode="input"
           onChange={(number, choice) => setAnswers((prev) => ({ ...prev, [number]: choice }))} />
+        {!loadedAll && (
+          <Alert tone="danger" className="mt-3">
+            과제를 다 불러오지 못했습니다 ({qs.length}/{day.questionCount}문항).
+            새로고침한 뒤 다시 열어 주세요. 이대로 내면 점수가 잘못 나옵니다.
+          </Alert>
+        )}
         {submitError && (
           <Alert tone="danger" className="mt-3">{submitError}</Alert>
         )}
         <Alert tone="danger" className="mt-3">
           제출한 뒤에는 답을 수정할 수 없습니다. 답을 다시 확인하고 제출하세요.
         </Alert>
-        <Button variant="primary" onClick={handleSubmit} disabled={!allAnswered || submitting} className="w-full mt-3">
+        <Button variant="primary" onClick={handleSubmit} disabled={!allAnswered || submitting || !loadedAll} className="w-full mt-3">
           {submitting ? '제출 중...' : '제출하기'}
         </Button>
       </div>

@@ -2,15 +2,31 @@
 // ①②③④⑤ 객관식 선택 격자 — 과제/테스트 공용 재사용 컴포넌트
 // mode='input'  : 입력 가능 (클릭/숫자키 1~5로 토글, Enter·화살표로 이동)
 // mode='result' : 읽기 전용, answerKey와 비교해 정답/오답 표시
+//
+// 문항 번호는 numbers로 받는다. 주지 않으면 1..count로 센다.
+// 예전에는 count만 받아 항상 1번부터 셌는데, 부르는 쪽은 실제 문항 번호로
+// 답을 찾았다. 번호가 1..N이 아닌 순간 학생이 고른 답이 엉뚱한 번호에 붙거나
+// 통째로 사라졌다 — 화면에는 아무 표시도 없이.
 import { useState } from 'react'
 import { toggleChoice } from '../utils/answerSet'
 
 const CHOICES = ['①', '②', '③', '④', '⑤']
 
-export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input', answerKey = {} }) {
-  // 키보드 입력 중인 칸 (1-based 문항 번호)
-  const [focused, setFocused] = useState(1)
-  const numbers = Array.from({ length: count }, (_, i) => i + 1)
+export default function ChoiceGrid({
+  count, numbers: numbersProp, values = {}, onChange, mode = 'input', answerKey = {},
+}) {
+  const numbers = numbersProp ?? Array.from({ length: count ?? 0 }, (_, i) => i + 1)
+  // 키보드 입력 중인 칸 (문항 번호)
+  const [focused, setFocused] = useState(() => numbers[0] ?? 1)
+
+  // 번호가 띄엄띄엄해도 옆 칸으로 옮겨야 하므로 번호가 아니라 자리로 센다
+  function move(delta) {
+    setFocused((n) => {
+      const at = numbers.indexOf(n)
+      const next = Math.max(0, Math.min(numbers.length - 1, (at < 0 ? 0 : at) + delta))
+      return numbers[next] ?? n
+    })
+  }
 
   function handleKeyDown(e) {
     if (mode !== 'input') return
@@ -21,10 +37,10 @@ export default function ChoiceGrid({ count, values = {}, onChange, mode = 'input
       onChange(focused, toggleChoice(values[focused], CHOICES[Number(e.key) - 1]))
     } else if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       e.preventDefault()
-      setFocused((n) => Math.min(count, n + 1))
+      move(1)
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
       e.preventDefault()
-      setFocused((n) => Math.max(1, n - 1))
+      move(-1)
     }
   }
 

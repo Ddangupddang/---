@@ -184,27 +184,32 @@ export function DataProvider({ children }) {
   // 그래서 앱 안에 다시 불러올 수단이 있어야 한다 — 없으면 앱을 완전히
   // 종료했다 켜는 것 말고는 방법이 없다.
   async function loadAll() {
+      // 모든 질의가 id로 끝나는 이유:
+      // 1,000행이 넘으면 여러 쪽에 나눠 받는데(fetchAll), 정렬 기준이 같은 행이
+      // 여럿이면 쪽 경계에서 순서가 흔들려 어떤 행은 두 번 오고 어떤 행은 빠진다.
+      // 과제 문항이 빠지면 학생 답안이 엉뚱한 번호에 붙는다. id는 겹치지 않으므로
+      // 마지막 기준으로 두면 순서가 항상 같아진다.
       const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, wnRes, saRes] =
         await Promise.all([
           fetchAllRows(() => supabase.from('classes').select('*').order('sort_order').order('id')),
           fetchAllRows(() => supabase.from('students').select('*').order('sort_order').order('id')),
-          fetchAllRows(() => supabase.from('attendance').select('*').order('date', { ascending: false })),
-          fetchAllRows(() => supabase.from('grades').select('*').order('date', { ascending: false })),
-          fetchAllRows(() => supabase.from('qna').select('*').order('created_at', { ascending: false })),
-          fetchAllRows(() => supabase.from('qna_messages').select('*').order('created_at')),
-          fetchAllRows(() => supabase.from('notices').select('*').order('created_at', { ascending: false })),
-          fetchAllRows(() => supabase.from('reports').select('*').order('date', { ascending: false })),
-          fetchAllRows(() => supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher'])),
-          fetchAllRows(() => supabase.from('videos').select('*').order('created_at', { ascending: false })),
-          fetchAllRows(() => supabase.from('video_comments').select('*').order('created_at')),
-          fetchAllRows(() => supabase.from('tests').select('*').order('created_at', { ascending: false })),
-          fetchAllRows(() => supabase.from('submissions').select('*').order('submitted_at', { ascending: false })),
-          fetchAllRows(() => supabase.from('homework_sets').select('*').order('week_start', { ascending: false })),
-          fetchAllRows(() => supabase.from('homework_days').select('*')),
-          fetchAllRows(() => supabase.from('homework_questions').select('*')),
-          fetchAllRows(() => supabase.from('homework_submissions_v2').select('*')),
-          fetchAllRows(() => supabase.from('weekly_report_notes').select('*')),
-          fetchAllRows(() => supabase.from('profiles').select('id, student_id, username').eq('role', 'student')),
+          fetchAllRows(() => supabase.from('attendance').select('*').order('date', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('grades').select('*').order('date', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('qna').select('*').order('created_at', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('qna_messages').select('*').order('created_at').order('id')),
+          fetchAllRows(() => supabase.from('notices').select('*').order('created_at', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('reports').select('*').order('date', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher']).order('id')),
+          fetchAllRows(() => supabase.from('videos').select('*').order('created_at', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('video_comments').select('*').order('created_at').order('id')),
+          fetchAllRows(() => supabase.from('tests').select('*').order('created_at', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('submissions').select('*').order('submitted_at', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('homework_sets').select('*').order('week_start', { ascending: false }).order('id')),
+          fetchAllRows(() => supabase.from('homework_days').select('*').order('id')),
+          fetchAllRows(() => supabase.from('homework_questions').select('*').order('id')),
+          fetchAllRows(() => supabase.from('homework_submissions_v2').select('*').order('id')),
+          fetchAllRows(() => supabase.from('weekly_report_notes').select('*').order('id')),
+          fetchAllRows(() => supabase.from('profiles').select('id, student_id, username').eq('role', 'student').order('id')),
         ])
 
       // rowsOrNull이 null을 주면 못 읽은 것이라 화면을 건드리지 않는다.
