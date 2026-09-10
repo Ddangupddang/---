@@ -360,3 +360,53 @@ describe('TeacherHomeworkCreate — 저장이 막힌 이유 안내', () => {
     expect(screen.getByRole('button', { name: '주간 과제 저장' })).toBeEnabled()
   })
 })
+
+// ── 복제 (11번) ──────────────────────────────────────────────
+// 이미 낸 과제를 문항·정답 그대로 다른 반에 내보낸다. 원본은 건드리지 않는다.
+describe('TeacherHomeworkCreate (복제)', () => {
+  it('원본 내용을 그대로 가져오고 대상은 원본과 다른 반이 골라져 있다', () => {
+    withExistingSet()
+    render(<TeacherHomeworkCreate category="naesin" copySet={EDIT_SET} onDone={vi.fn()} />)
+
+    // 제목과 문항·정답이 채워져 있다
+    expect(screen.getByDisplayValue('8월 2주차')).toBeInTheDocument()
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('cell-2-②')).toHaveAttribute('data-selected', 'true')
+
+    // 원본은 고2B반 → 복제 대상은 고2A반이 먼저 골라진다
+    expect(screen.getByDisplayValue('고2A반')).toBeInTheDocument()
+    expect(screen.getByText(/그대로 가져왔습니다/)).toBeInTheDocument()
+  })
+
+  it('저장하면 원본을 고치지 않고 새 세트를 만든다', async () => {
+    const user = userEvent.setup()
+    withExistingSet()
+    render(<TeacherHomeworkCreate category="naesin" copySet={EDIT_SET} onDone={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: '복제해서 저장' }))
+
+    await waitFor(() => expect(state.data.addHomeworkSet).toHaveBeenCalled())
+    expect(state.data.updateHomeworkSet).not.toHaveBeenCalled()
+
+    const payload = state.data.addHomeworkSet.mock.calls[0][0]
+    expect(payload.classId).toBe(7)              // 원본(8)이 아니라 새 반
+    expect(payload.weekStart).toBe(WEEK)
+    expect(payload.days[0].questions).toEqual([
+      { number: 1, answer: '①', solutionVideoUrl: '', solutionFileUrl: '' },
+      { number: 2, answer: '②', solutionVideoUrl: '', solutionFileUrl: '' },
+    ])
+  })
+
+  it('그 반에 그 주 과제가 이미 있으면 저장을 막고 이유를 말한다', () => {
+    withExistingSet()
+    // 고2A반에도 이미 이번 주 세트가 있다
+    state.data.homeworkSets = [
+      { id: 12, category: 'naesin', classId: 7, target: null, weekStart: WEEK, title: '먼저 낸 과제' },
+    ]
+    render(<TeacherHomeworkCreate category="naesin" copySet={EDIT_SET} onDone={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: '복제해서 저장' })).toBeDisabled()
+    expect(screen.getByTestId('save-blocked')).toHaveTextContent(/먼저 낸 과제/)
+    expect(screen.getByTestId('save-blocked')).toHaveTextContent(/대상이나 주를 바꿔/)
+  })
+})

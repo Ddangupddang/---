@@ -30,8 +30,10 @@ export default function Homework() {
   const [category, setCategory] = useState(HW_CATEGORY.NAESIN)
   const [mode, setMode] = useState('list') // list | form | status
   const [editSet, setEditSet] = useState(null) // null이면 새로 출제, 세트가 있으면 수정
+  // 복제할 원본. 문항·정답·해설을 그대로 가져와 다른 반에 새로 내는 데 쓴다.
+  const [copySet, setCopySet] = useState(null)
 
-  function openList() { setEditSet(null); setMode('list') }
+  function openList() { setEditSet(null); setCopySet(null); setMode('list') }
 
   return (
     <Layout>
@@ -41,7 +43,7 @@ export default function Homework() {
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => setMode('report')}>리포트</Button>
             <Button variant="ghost" onClick={() => setMode('status')}>제출 현황</Button>
-            <Button variant="primary" onClick={() => { setEditSet(null); setMode('form') }}>+ 주간 과제</Button>
+            <Button variant="primary" onClick={() => { setEditSet(null); setCopySet(null); setMode('form') }}>+ 주간 과제</Button>
           </div>
         )}
       </div>
@@ -62,8 +64,8 @@ export default function Homework() {
       {/* 교사 */}
       {isStaff && mode === 'form' && (
         <TeacherHomeworkCreate
-          key={editSet?.id ?? 'new'}
-          category={category} editSet={editSet} onDone={openList}
+          key={editSet?.id ?? (copySet ? `copy-${copySet.id}` : 'new')}
+          category={category} editSet={editSet} copySet={copySet} onDone={openList}
         />
       )}
       {isStaff && mode === 'status' && (
@@ -84,7 +86,8 @@ export default function Homework() {
           // 3쪽에 있다가 넘어가면 있지도 않은 쪽을 보게 된다.
           key={category}
           category={category} sets={homeworkSets} classes={myClasses}
-          onEdit={(s) => { setEditSet(s); setMode('form') }}
+          onEdit={(s) => { setCopySet(null); setEditSet(s); setMode('form') }}
+          onCopy={(s) => { setEditSet(null); setCopySet(s); setMode('form') }}
           onDelete={deleteHomeworkSet}
           userRole={user.role} userId={user.id}
         />
@@ -97,7 +100,7 @@ export default function Homework() {
 // 한 쪽에 보여줄 주차 수. 10주면 두 달 반이라 한 학기의 절반쯤 된다.
 const WEEKS_PER_PAGE = 10
 
-function TeacherSetList({ category, sets, classes = [], onEdit, onDelete, userRole, userId }) {
+function TeacherSetList({ category, sets, classes = [], onEdit, onCopy, onDelete, userRole, userId }) {
   const [page, setPage] = useState(1)
 
   // 무엇이 어떤 순서로 보이는지는 utils/homeworkList에 모아뒀다
@@ -129,14 +132,19 @@ function TeacherSetList({ category, sets, classes = [], onEdit, onDelete, userRo
               <p className="font-semibold text-ink">{s.title}</p>
               <p className="text-xs text-ink-faint mt-1">{s.weekStart} 주 · {setTargetLabel(s, classes)}</p>
             </div>
-            {canManage && (
-              <div className="flex items-center gap-3">
-                <button onClick={() => onEdit(s)}
-                  className="text-xs text-ink-mute hover:text-navy">수정</button>
-                <button onClick={() => { if (confirm(`"${s.title}" 세트를 삭제하시겠습니까?`)) onDelete(s.id) }}
-                  className="text-xs text-ink-faint hover:text-danger">삭제</button>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {/* 복제는 원본을 건드리지 않는다 — 다른 선생님이 낸 과제도 내 반에 가져올 수 있다 */}
+              <button onClick={() => onCopy(s)}
+                className="text-xs text-ink-mute hover:text-navy">복제</button>
+              {canManage && (
+                <>
+                  <button onClick={() => onEdit(s)}
+                    className="text-xs text-ink-mute hover:text-navy">수정</button>
+                  <button onClick={() => { if (confirm(`"${s.title}" 세트를 삭제하시겠습니까?`)) onDelete(s.id) }}
+                    className="text-xs text-ink-faint hover:text-danger">삭제</button>
+                </>
+              )}
+            </div>
           </Card>
         )
       })}

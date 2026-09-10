@@ -1,6 +1,8 @@
 // src/components/homework/TeacherHomeworkCreate.jsx
 // 교사: 한 종류(내신/정시) 주간 세트(월~토)를 한 번에 출제.
 // editSet을 받으면 그 세트를 불러와 수정하는 화면이 된다(입력 항목이 출제와 같아 화면을 공유한다).
+// copySet을 받으면 그 세트의 문항·정답·해설을 그대로 가져와 다른 반에 새로 내는 화면이 된다.
+// 수정과 다른 점은 저장할 때 원본을 건드리지 않고 새 세트를 만든다는 것뿐이다.
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useData } from '../../context/DataContext'
@@ -13,6 +15,7 @@ import { mondayOf } from '../../utils/homeworkWeek'
 import { homeworkEditImpact } from '../../utils/homeworkEdit'
 import { solutionFileName } from '../../utils/homework'
 import { homeworkGroups, setInGroup } from '../../utils/homeworkGroup'
+import { defaultCopyGroupKey, findConflictingSet, urlsSafeToDelete } from '../../utils/homeworkCopy'
 import { visibleClasses } from '../../utils/classAccess'
 import {
   HW_CATEGORY, CATEGORY_LABELS, WEEKDAYS, WEEKDAY_LABELS,
@@ -39,29 +42,33 @@ function daysFromSet(editSet, allDays, allQuestions) {
   return state
 }
 
-export default function TeacherHomeworkCreate({ category, editSet = null, onDone }) {
+export default function TeacherHomeworkCreate({ category, editSet = null, copySet = null, onDone }) {
   const { user } = useAuth()
   const {
     addHomeworkSet, updateHomeworkSet, uploadSolutionFile, deleteSolutionFile,
-    classes = [], homeworkDays = [], homeworkQuestions = [], homeworkSubmissions = [],
+    classes = [], homeworkSets = [], homeworkDays = [], homeworkQuestions = [], homeworkSubmissions = [],
   } = useData()
 
   const isNaesin = category === HW_CATEGORY.NAESIN
+  // 내용을 가져올 원본. 수정이든 복제든 화면을 채우는 방법은 같다.
+  const source = editSet ?? copySet
   // 내신은 반, 정시는 레벨이 대상이다. 교사에게는 담당 반만 고를 수 있게 한다.
   const groups = homeworkGroups(category, visibleClasses(classes, user))
 
-  const [groupKey, setGroupKey] = useState(
-    () => groups.find((g) => setInGroup(editSet, g))?.key ?? groups[0]?.key ?? ''
-  )
+  const [groupKey, setGroupKey] = useState(() => {
+    // 복제는 "다른 반에도 낸다"는 뜻이라 원본과 다른 반을 먼저 보여준다
+    if (copySet) return defaultCopyGroupKey(groups, copySet)
+    return groups.find((g) => setInGroup(editSet, g))?.key ?? groups[0]?.key ?? ''
+  })
   const group = groups.find((g) => g.key === groupKey) ?? null
-  const [title, setTitle]     = useState(editSet?.title ?? '')
+  const [title, setTitle]     = useState(source?.title ?? '')
   const [weekStart, setWeekStart] = useState(
-    editSet?.weekStart ?? mondayOf(new Date().toISOString().slice(0, 10))
+    source?.weekStart ?? mondayOf(new Date().toISOString().slice(0, 10))
   )
-  const [days, setDays] = useState(() => daysFromSet(editSet, homeworkDays, homeworkQuestions))
-  // 수정 화면은 실제로 과제가 있는 첫 요일부터 보여준다
+  const [days, setDays] = useState(() => daysFromSet(source, homeworkDays, homeworkQuestions))
+  // 수정·복제 화면은 실제로 과제가 있는 첫 요일부터 보여준다
   const [activeWd, setActiveWd] = useState(
-    () => WEEKDAYS.find((wd) => daysFromSet(editSet, homeworkDays, homeworkQuestions)[wd].enabled) ?? 1
+    () => WEEKDAYS.find((wd) => daysFromSet(source, homeworkDays, homeworkQuestions)[wd].enabled) ?? 1
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -105,8 +112,14 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
     const dd = days[wd]
     return !(dd.count > 0 && answeredCount(dd.answers) === dd.count)
   })
+  // 한 대상에 그 주 세트는 하나뿐이다(DB 제약).
+  // 저장을 눌러서야 알면 입력한 걸 다시 손봐야 하니 미리 막고 이유를 말해 준다.
+  const conflict = findConflictingSet(homeworkSets, {
+    category, group, weekStart, exceptId: editSet?.id ?? null,
+  })
+
   const canSave = Boolean(group) && Boolean(title.trim())
-    && enabledDays.length > 0 && incompleteDays.length === 0
+    && enabledDays.length > 0 && incompleteDays.length === 0 && !conflict
 
   // 버튼이 꺼져 있는 이유 — 교사가 화면만 보고 알 수 있어야 한다
   const blockedReasons = []
@@ -116,6 +129,9 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
   if (incompleteDays.length > 0) {
     const names = incompleteDays.map((wd) => WEEKDAY_LABELS[wd]).join(', ')
     blockedReasons.push(`${names}요일의 문항 수와 정답을 마저 채워 주세요.`)
+  }
+  if (conflict) {
+    blockedReasons.push(`${group?.label}에는 ${weekStart} 주 과제("${conflict.title}")가 이미 있습니다. 대상이나 주를 바꿔 주세요.`)
   }
 
   // 저장에 보낼 요일 목록 — 경고 계산과 저장이 같은 값을 보게 한다
@@ -172,15 +188,28 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
       return
     }
     // 저장이 끝난 뒤에야 안 쓰는 해설 파일을 스토리지에서 지운다.
+    // 복제본은 원본과 같은 파일 주소를 가리키므로, 다른 요일이 아직 쓰고 있으면
+    // 남겨 둔다 — 지우면 그쪽 화면의 링크가 소리 없이 깨진다.
     // 정리에 실패해도 저장은 이미 끝났으므로 화면을 막지 않는다.
-    await Promise.all(staleFileUrls.map((url) => deleteSolutionFile(url)))
+    const removable = urlsSafeToDelete(staleFileUrls, homeworkDays, setDayIds)
+    await Promise.all(removable.map((url) => deleteSolutionFile(url)))
     onDone()
   }
 
   return (
     <div>
       <button onClick={onDone} className="text-sm text-ink-mute mb-4">← 목록</button>
-      <PageTitle title={`${CATEGORY_LABELS[category]} ${editSet ? '수정' : '만들기'}`} />
+      <PageTitle title={`${CATEGORY_LABELS[category]} ${editSet ? '수정' : copySet ? '복제' : '만들기'}`} />
+
+      {copySet && (
+        <Alert tone="info" className="mb-4">
+          <p className="font-medium mb-1">&quot;{copySet.title}&quot;을 그대로 가져왔습니다</p>
+          <p className="font-normal">
+            문항·정답·해설이 모두 복사되어 있습니다. 대상만 바꿔 저장하면 새 과제가 됩니다.
+            원본은 그대로 남습니다.
+          </p>
+        </Alert>
+      )}
 
       <div className="flex flex-col gap-4">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="세트 제목 (예: 8월 2주차)"
@@ -290,7 +319,7 @@ export default function TeacherHomeworkCreate({ category, editSet = null, onDone
         )}
 
         <Button variant="primary" onClick={handleSave} disabled={!canSave || saving} className="w-full">
-          {saving ? '저장 중...' : editSet ? '수정 저장' : '주간 과제 저장'}
+          {saving ? '저장 중...' : editSet ? '수정 저장' : copySet ? '복제해서 저장' : '주간 과제 저장'}
         </Button>
       </div>
     </div>
