@@ -3,10 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import StudentHomeworkView from './StudentHomeworkView'
-import { mondayOf } from '../../utils/homeworkWeek'
+import { mondayOf, addDays } from '../../utils/homeworkWeek'
+import { todayKST } from '../../utils/datetime'
 
 // 이번 주 월요일(테스트 실행 시점 기준)
-const WEEK = mondayOf(new Date().toISOString().slice(0, 10))
+const TODAY = todayKST()
+const WEEK = mondayOf(TODAY)
 
 const state = {}
 vi.mock('../../context/AuthContext', () => ({ useAuth: () => ({ user: { studentId: 7, role: 'student' } }) }))
@@ -20,7 +22,7 @@ beforeEach(() => {
       { id: 2, category: 'naesin', classId: 4, target: null, weekStart: WEEK, title: '다른반 세트' },
     ],
     homeworkDays: [
-      { id: 10, setId: 1, weekday: 1, date: WEEK, questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+      { id: 10, setId: 1, weekday: 1, date: TODAY, questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
     ],
     homeworkQuestions: [
       { id: 100, dayId: 10, number: 1, answer: '①', solutionVideoUrl: '', solutionFileUrl: '' },
@@ -139,7 +141,7 @@ describe('StudentHomeworkView (결과·해설)', () => {
   beforeEach(() => {
     // 요일 해설이 달린 과제 + 1번만 맞힌 제출
     state.data.homeworkDays = [
-      { id: 10, setId: 1, weekday: 1, date: WEEK, questionCount: 2,
+      { id: 10, setId: 1, weekday: 1, date: TODAY, questionCount: 2,
         daySolutionVideoUrl: 'https://youtu.be/dQw4w9WgXcQ', daySolutionFileUrl: 'https://example.com/sol.pdf' },
     ]
     state.data.homeworkSubmissions = [
@@ -237,7 +239,7 @@ describe('StudentHomeworkView (문항을 덜 불러왔을 때)', () => {
   beforeEach(() => {
     // 5문항짜리 과제인데 2개만 도착했다
     state.data.homeworkDays = [
-      { id: 10, setId: 1, weekday: 1, date: WEEK, questionCount: 5, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+      { id: 10, setId: 1, weekday: 1, date: TODAY, questionCount: 5, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
     ]
   })
 
@@ -478,5 +480,62 @@ describe('StudentHomeworkView (확인한 요일 다시 열기)', () => {
     expect(state.data.upsertHomeworkSubmission).not.toHaveBeenCalled()
 
     finish({ id: 800, dayId: 10, studentId: 7, answers: [], checkedAt: '2026-09-11T01:00:00Z' })
+  })
+})
+
+// ── 제출 기한 (2단계) ────────────────────────────────────────
+// 규칙: 마감 다음날까지만 받는다. 월요일 과제는 화요일까지.
+describe('StudentHomeworkView (제출 기한)', () => {
+  // 마감이 한참 지난 요일 — 오늘 기준 열흘 전
+  const OLD_DATE = addDays(TODAY, -10)
+
+  beforeEach(() => {
+    state.data.homeworkDays = [
+      { id: 10, setId: 1, weekday: 1, date: OLD_DATE, questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+    ]
+  })
+
+  it('기한이 지난 요일은 미제출이 아니라 마감으로 보인다', () => {
+    render(<StudentHomeworkView category="naesin" />)
+    expect(screen.getByText('마감')).toBeInTheDocument()
+    expect(screen.queryByText('미제출')).not.toBeInTheDocument()
+  })
+
+  it('기한이 지나면 다 채워도 제출할 수 없고 언제까지였는지 알려준다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+
+    expect(screen.getByText(/제출 기한이 지났습니다/)).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(addDays(OLD_DATE, 1)))).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '제출하기' })).toBeDisabled()
+  })
+
+  it('기한이 지나면 확인도 막는다 — 낼 수 없는 답을 채점해 기회만 축내지 않는다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+
+    expect(screen.getByRole('button', { name: '확인하기' })).toBeDisabled()
+    expect(state.data.addHomeworkCheck).not.toHaveBeenCalled()
+  })
+
+  it('마감 다음날까지는 낼 수 있다 (지각으로 표시된다)', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkDays = [
+      { id: 10, setId: 1, weekday: 1, date: addDays(TODAY, -1), questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+    ]
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+
+    expect(screen.getByRole('button', { name: '제출하기' })).toBeEnabled()
+    expect(screen.getByText(/지금 제출하면 지각으로 표시됩니다/)).toBeInTheDocument()
   })
 })

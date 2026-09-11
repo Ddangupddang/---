@@ -10,15 +10,18 @@ import Button from '../ui/Button'
 import Alert from '../ui/Alert'
 import { gradeHomework } from '../../utils/homework'
 import { checkSummary } from '../../utils/homeworkCheck'
-import { matchesStudent, dayStatus } from '../../utils/homeworkSelect'
+import { matchesStudent, dayStatus, canSubmitOn, submitDeadlineOf } from '../../utils/homeworkSelect'
 import { mondayOf } from '../../utils/homeworkWeek'
 import { WEEKDAY_LABELS, CATEGORY_LABELS } from '../../constants/homework'
 import { todayKST } from '../../utils/datetime'
 
 const BADGE = {
-  none: { label: '미제출', tone: 'neutral' },
-  done: { label: '제출완료', tone: 'navy' },
-  late: { label: '지각제출', tone: 'danger' },
+  none:   { label: '미제출',   tone: 'neutral' },
+  done:   { label: '제출완료', tone: 'navy' },
+  late:   { label: '지각제출', tone: 'danger' },
+  // 기한까지 지나 더는 못 내는 상태. 미제출과 같은 뱃지로 보이면
+  // 학생은 아직 낼 수 있는 줄 알고 기다린다.
+  closed: { label: '마감',     tone: 'danger' },
 }
 
 export default function StudentHomeworkView({ category }) {
@@ -96,6 +99,8 @@ export default function StudentHomeworkView({ category }) {
     const qs = questionsOf(day.id)
     const sub = subOf(day.id)
     const beforeDue = today <= day.date
+    // 마감 다음날까지만 받는다. 지나면 화면에서 막고, 서버에서도 막힌다.
+    const canSubmit = canSubmitOn(day, today)
     // 출제할 때 정해둔 문항 수와 지금 불러온 문항 수가 다르면 자료가 덜 온 것이다.
     // 이대로 제출하면 못 받은 문항이 통째로 오답이 되어 점수가 폭락한다.
     // 조용히 넘어가는 대신 제출을 막고 새로고침을 안내한다.
@@ -129,7 +134,9 @@ export default function StudentHomeworkView({ category }) {
     const allAnswered = answeredNum === qs.length && qs.length > 0
     // 이 요일을 이미 확인했나 — 확인은 요일당 한 번뿐이다
     const checkedAlready = homeworkChecks.some((c) => c.dayId === day.id && c.studentId === me.id)
-    const canCheck = allAnswered && !checkedAlready && !checking && loadedAll
+    // 기한이 지나면 확인도 막는다 — 제출하지 못할 답을 채점해 줄 이유가 없고,
+    // 하루 한 번뿐인 확인 기회만 축낸다.
+    const canCheck = allAnswered && !checkedAlready && !checking && loadedAll && canSubmit
 
     async function handleCheck() {
       if (!canCheck) return
@@ -152,7 +159,7 @@ export default function StudentHomeworkView({ category }) {
 
     async function handleSubmit() {
       // 제출은 한 번뿐이라 중복 클릭도 막아야 한다
-      if (!allAnswered || submitting || !loadedAll) return
+      if (!allAnswered || submitting || !loadedAll || !canSubmit) return
       setSubmitting(true)
       setSubmitError('')
       const payload = qs.map((q) => ({ number: q.number, answer: answers[q.number] }))
@@ -171,7 +178,11 @@ export default function StudentHomeworkView({ category }) {
         <button onClick={() => { setOpenDayId(null); setAnswers({}); setCheckResult(null) }} className="text-sm text-ink-mute mb-3">← 요일 목록</button>
         <h2 className="text-lg font-bold text-ink mb-1">{WEEKDAY_LABELS[day.weekday]}요일 과제</h2>
         <p className="text-sm text-ink-mute mb-1">{qs.length}문항 · 마감 {day.date}</p>
-        {!beforeDue && <p className="text-xs text-danger mb-3">마감이 지났습니다. 지금 제출하면 지각으로 표시됩니다.</p>}
+        {!canSubmit
+          ? <Alert tone="danger" className="mb-3">
+              제출 기한이 지났습니다 ({submitDeadlineOf(day)}까지). 선생님께 말씀드리면 다시 열어 주실 수 있습니다.
+            </Alert>
+          : !beforeDue && <p className="text-xs text-danger mb-3">마감이 지났습니다. 지금 제출하면 지각으로 표시됩니다.</p>}
         <div className="flex justify-between items-center my-2">
           <span className="text-sm font-medium text-ink-soft">답안 입력</span>
           <span className="text-xs text-ink-faint">{answeredNum}/{qs.length} 입력됨</span>
@@ -218,7 +229,7 @@ export default function StudentHomeworkView({ category }) {
             </Button>
           )}
           <Button variant="primary" onClick={handleSubmit}
-            disabled={!allAnswered || submitting || checking || !loadedAll} className="flex-1">
+            disabled={!allAnswered || submitting || checking || !loadedAll || !canSubmit} className="flex-1">
             {submitting ? '제출 중...' : '제출하기'}
           </Button>
         </div>

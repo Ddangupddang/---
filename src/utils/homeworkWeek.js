@@ -18,6 +18,15 @@ export function dateForWeekday(weekStart, weekday) {
   return dt.toISOString().slice(0, 10)
 }
 
+// 'YYYY-MM-DD'에 며칠을 더한 날짜.
+// 문자열 날짜끼리의 산술이라 시간대가 끼어들 자리가 없다 — UTC로만 센다.
+export function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  dt.setUTCDate(dt.getUTCDate() + n)
+  return dt.toISOString().slice(0, 10)
+}
+
 // 주 시작(월요일) → 그 주 월~토 6일의 날짜 배열.
 // 출석·테스트처럼 "그 주에 속하는가"를 날짜로 판정하는 곳에서 공통으로 쓴다.
 export function weekDates(weekStart) {
