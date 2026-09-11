@@ -150,9 +150,13 @@ drop policy if exists hw_sub_delete on public.homework_submissions_v2;
 create policy hw_sub_select on public.homework_submissions_v2
 for select to authenticated using (true);
 
--- 수정 — 지금과 같다. 앱은 제출을 고치지 않지만, 좁혀 두면 나중에 조용히 막힌다.
-create policy hw_sub_update on public.homework_submissions_v2
-for update to authenticated using (true) with check (true);
+-- 고치기 정책은 만들지 않는다 → 아무도 제출을 수정할 수 없다.
+--
+-- ⚠️ 여기를 열어 두면 기한 잠금이 통째로 무의미해진다. 기한은 INSERT만 보므로,
+--    학생이 기한 안에 아무 답이나 내고 나중에 그 행을 UPDATE해서 고치면 그만이다.
+--    남의 제출을 고치는 것도 막을 수 없다.
+--    앱은 제출을 수정하지 않는다(insert / select / delete만 쓴다). 확인함.
+--    나중에 수정이 필요해지면 그때 INSERT와 같은 기한 조건을 달아 만든다.
 
 -- 삭제 — 지금과 같다. 교사의 "제출 취소"가 여기 걸린다.
 create policy hw_sub_delete on public.homework_submissions_v2
@@ -179,7 +183,7 @@ with check (
   )
 );
 
--- 확인 (4행: delete / insert / select / update)
+-- 확인 (3행: delete / insert / select — update는 없어야 정상이다)
 select policyname, cmd, qual, with_check from pg_policies
  where schemaname = 'public' and tablename = 'homework_submissions_v2' order by cmd;
 
@@ -244,7 +248,6 @@ limit 15;
 --
 -- drop policy if exists hw_sub_select on public.homework_submissions_v2;
 -- drop policy if exists hw_sub_insert on public.homework_submissions_v2;
--- drop policy if exists hw_sub_update on public.homework_submissions_v2;
 -- drop policy if exists hw_sub_delete on public.homework_submissions_v2;
 -- create policy hw_sub_all on public.homework_submissions_v2
 -- for all to authenticated using (true) with check (true);
