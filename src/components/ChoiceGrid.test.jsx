@@ -154,3 +154,42 @@ describe('ChoiceGrid (다중선택)', () => {
     expect(screen.getByTestId('cell-1-②')).toHaveAttribute('data-result', 'none')
   })
 })
+
+describe('ChoiceGrid (check 모드 — 확인 결과)', () => {
+  it('틀린 문항만 표시하고 정답은 드러내지 않는다', () => {
+    render(
+      <ChoiceGrid
+        mode="check"
+        numbers={[1, 2, 3]}
+        values={{ 1: '①', 2: '⑤', 3: '③' }}
+        wrong={[2, 3]}
+        onChange={() => {}}
+      />
+    )
+    expect(screen.getByTestId('cell-1')).toHaveAttribute('data-wrong', 'false')
+    expect(screen.getByTestId('cell-2')).toHaveAttribute('data-wrong', 'true')
+    expect(screen.getByTestId('cell-3')).toHaveAttribute('data-wrong', 'true')
+
+    // 정답 표시(result 모드의 'answer')는 어디에도 없어야 한다
+    const marked = document.querySelectorAll('[data-result="answer"]')
+    expect(marked.length).toBe(0)
+  })
+
+  it('확인 뒤에도 답을 고칠 수 있다', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <ChoiceGrid
+        mode="check"
+        numbers={[1, 2]}
+        values={{ 1: '①', 2: '⑤' }}
+        wrong={[2]}
+        onChange={onChange}
+      />
+    )
+    await user.click(screen.getByTestId('cell-2-②'))
+    // 선지는 토글이라 ⑤가 켜진 채로 ②를 누르면 둘 다 켜진다(다중정답 입력용).
+    // 값은 항상 ①②③④⑤ 순서로 정렬된다.
+    expect(onChange).toHaveBeenCalledWith(2, '②⑤')
+  })
+})

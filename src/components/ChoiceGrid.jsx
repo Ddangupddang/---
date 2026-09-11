@@ -1,6 +1,8 @@
 // src/components/ChoiceGrid.jsx
 // ①②③④⑤ 객관식 선택 격자 — 과제/테스트 공용 재사용 컴포넌트
 // mode='input'  : 입력 가능 (클릭/숫자키 1~5로 토글, Enter·화살표로 이동)
+// mode='check'  : 제출 전 확인 — 틀린 문항만 알려주고 계속 고칠 수 있다.
+//                 정답은 받지도 보여주지도 않는다(answerKey를 쓰지 않는다).
 // mode='result' : 읽기 전용, answerKey와 비교해 정답/오답 표시
 //
 // 문항 번호는 numbers로 받는다. 주지 않으면 1..count로 센다.
@@ -13,9 +15,13 @@ import { toggleChoice } from '../utils/answerSet'
 const CHOICES = ['①', '②', '③', '④', '⑤']
 
 export default function ChoiceGrid({
-  count, numbers: numbersProp, values = {}, onChange, mode = 'input', answerKey = {},
+  count, numbers: numbersProp, values = {}, onChange,
+  mode = 'input', answerKey = {}, wrong = [],
 }) {
   const numbers = numbersProp ?? Array.from({ length: count ?? 0 }, (_, i) => i + 1)
+  // check 모드에서도 답을 고쳐야 한다 — 고칠 수 없으면 확인할 이유가 없다
+  const editable = mode === 'input' || mode === 'check'
+  const wrongSet = new Set(wrong)
   // 키보드 입력 중인 칸 (문항 번호)
   const [focused, setFocused] = useState(() => numbers[0] ?? 1)
 
@@ -29,7 +35,7 @@ export default function ChoiceGrid({
   }
 
   function handleKeyDown(e) {
-    if (mode !== 'input') return
+    if (!editable) return
     if (e.key >= '1' && e.key <= '5') {
       e.preventDefault()
       // 다중선택을 키보드로 넣을 수 있어야 해서 자동 이동을 하지 않는다.
@@ -82,19 +88,21 @@ export default function ChoiceGrid({
   return (
     <div
       data-testid="choice-grid"
-      tabIndex={mode === 'input' ? 0 : -1}
+      tabIndex={editable ? 0 : -1}
       onKeyDown={handleKeyDown}
       className="grid grid-cols-[repeat(auto-fill,minmax(208px,1fr))] gap-1.5 focus:outline-none"
     >
       {numbers.map((number) => {
-        const isFocused = mode === 'input' && number === focused
+        const isFocused = editable && number === focused
+        const isWrong = mode === 'check' && wrongSet.has(number)
         return (
           <div
             key={number}
             data-testid={`cell-${number}`}
-            onClick={() => mode === 'input' && setFocused(number)}
+            data-wrong={String(isWrong)}
+            onClick={() => editable && setFocused(number)}
             className={`flex items-center gap-2 px-2 py-1.5 rounded ${
-              isFocused ? 'ring-2 ring-navy bg-navy-soft' : ''
+              isWrong ? 'ring-2 ring-danger bg-danger-soft' : isFocused ? 'ring-2 ring-navy bg-navy-soft' : ''
             }`}
           >
             <span className="text-xs font-semibold text-ink-mute w-7 shrink-0">{number}번</span>
@@ -108,7 +116,7 @@ export default function ChoiceGrid({
                   data-result={cellResult(number, choice)}
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (mode !== 'input') return
+                    if (!editable) return
                     setFocused(number)
                     onChange(number, toggleChoice(values[number], choice))
                   }}
