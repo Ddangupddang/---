@@ -209,7 +209,9 @@ describe('ChoiceGrid (check 모드 — 확인 결과)', () => {
       />
     )
     await user.click(screen.getByTestId('cell-2-②'))
-    expect(onChange).toHaveBeenCalledWith(2, '②')
+    // 선지는 토글이라 ⑤가 켜진 채로 ②를 누르면 둘 다 켜진다(다중정답 입력용).
+    // 값은 항상 ①②③④⑤ 순서로 정렬된다.
+    expect(onChange).toHaveBeenCalledWith(2, '②⑤')
   })
 })
 ```
@@ -687,6 +689,10 @@ describe('StudentHomeworkView (제출 전 확인)', () => {
 
 - [ ] **Step 3: 화면을 고친다**
 
+> 사전 점검에서 정한 것: `setCheckResult(null)`은 **세 곳**에 넣는다 —
+> ① 뒤로 가기 버튼, ② 요일 목록의 카드 클릭, ③ 제출에 성공한 직후.
+> 세 번째를 빠뜨리면 다음에 연 요일에 이전 확인 결과가 남는다.
+
 `src/components/homework/StudentHomeworkView.jsx`에서 다섯 곳을 고친다.
 
 (a) import 두 줄을 더한다:
@@ -787,8 +793,10 @@ import { checkSummary } from '../../utils/homeworkCheck'
         </Alert>
 ```
 
-(g) 요일을 닫을 때 확인 결과도 지운다. `setAnswers({})`를 하는 두 곳에
-`setCheckResult(null)`을 함께 넣는다 — 뒤로 가기 버튼과 요일 목록의 카드 클릭이다.
+(g) 확인 결과를 지운다. `setAnswers({})`를 하는 **세 곳** 전부에
+`setCheckResult(null)`을 함께 넣는다 — 뒤로 가기 버튼, 요일 목록의 카드 클릭,
+그리고 `handleSubmit`이 성공한 직후다. 마지막을 빠뜨리면 다음에 연 요일에
+이전 확인 결과가 남는다.
 
 - [ ] **Step 4: 통과를 확인한다**
 
