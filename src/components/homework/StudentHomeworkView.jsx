@@ -124,7 +124,10 @@ export default function StudentHomeworkView({ category }) {
         setSubmitError('확인에 실패했습니다. 잠시 후 다시 시도해 주세요.')
         return
       }
-      setCheckResult(checkSummary(qs, payload))
+      // 지금 입력된 payload가 아니라 DB가 돌려준 saved.answers로 채점한다.
+      // 이미 확인한 요일이면 서버가 그때 저장된 답을 돌려주는데, 화면 입력값으로
+      // 다시 채점해버리면 답을 바꿔가며 몇 번이든 눌러 정답표를 알아낼 수 있다.
+      setCheckResult(checkSummary(qs, saved.answers ?? []))
     }
 
     async function handleSubmit() {

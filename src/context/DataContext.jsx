@@ -950,12 +950,20 @@ export function DataProvider({ children }) {
       .insert({ day_id: dayId, student_id: studentId, answers })
       .select().single()
 
-    // 다른 기기에서 이미 확인한 경우(unique 위반) — 먼저 한 기록이 맞다
+    // 다른 기기(탭)에서 이미 확인한 경우(unique 위반) — 먼저 한 기록이 맞다
     if (error?.code === '23505') {
       const { data: existing } = await supabase
         .from('homework_checks')
         .select('*').eq('day_id', dayId).eq('student_id', studentId).single()
-      return existing ? toHomeworkCheck(existing) : null
+      if (!existing) return null
+      const record = toHomeworkCheck(existing)
+      // 로컬 상태도 갱신해야 "확인하기" 버튼이 사라진다. 갱신하지 않으면 이 탭은
+      // 계속 확인 가능한 것처럼 보이고, 화면은 그때마다 지금 입력한 답으로 다시
+      // 채점해 보여주게 되어 — 답을 바꿔가며 눌러 정답표 전체를 알아내는 통로가 된다.
+      setHomeworkChecks((prev) =>
+        prev.some((c) => c.dayId === dayId && c.studentId === studentId) ? prev : [...prev, record]
+      )
+      return record
     }
     if (error) { console.error('확인 기록 실패:', error); return null }
 

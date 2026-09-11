@@ -17,7 +17,11 @@ create table if not exists public.homework_checks (
   -- 확인을 누른 순간의 답안. 고치기 전 실력이 여기 남는다.
   answers    jsonb  not null default '[]'::jsonb,
   checked_at timestamptz not null default now(),
-  -- 확인은 요일당 한 번뿐이다. 화면에서도 막지만 진짜 잠금은 여기다.
+  -- unique는 "같은 (day_id, student_id) 행이 두 개 생기는 것"만 막는다.
+  -- 지금 정책이 authenticated에게 using(true)/with check(true)라 학생이 API를
+  -- 직접 두드려 자기 행을 지우고 다시 넣으면 이 제약을 우회해 재확인할 수 있고,
+  -- 남의 행도 조회할 수 있다. 정책을 좁히는 일은 2단계로 미뤄뒀다(RLS 실제
+  -- 상태를 먼저 조회해 확인한 뒤 교체해야 한다) — 그때까지는 진짜 잠금이 아니다.
   unique (day_id, student_id)
 );
 

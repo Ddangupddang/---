@@ -30,7 +30,12 @@ beforeEach(() => {
     // 실제 upsertHomeworkSubmission은 성공 시 제출 레코드를, 실패 시 null을 반환한다
     upsertHomeworkSubmission: vi.fn().mockResolvedValue({ id: 900, dayId: 10, studentId: 7 }),
     homeworkChecks: [],
-    addHomeworkCheck: vi.fn().mockResolvedValue({ id: 800, dayId: 10, studentId: 7 }),
+    // 실제 addHomeworkCheck는 방금 저장한 answers를 그대로 되돌려준다.
+    // 화면은 이 saved.answers로 채점하므로, 목도 입력값을 그대로 echo해야
+    // "확인하면 맞은 개수가 나온다" 같은 테스트가 진짜 동작을 반영한다.
+    addHomeworkCheck: vi.fn().mockImplementation(({ dayId, studentId, answers }) =>
+      Promise.resolve({ id: 800, dayId, studentId, answers, checkedAt: '2026-09-11T01:00:00Z' })
+    ),
   }
 })
 
@@ -351,5 +356,41 @@ describe('StudentHomeworkView (제출 전 확인)', () => {
 
     await waitFor(() => expect(state.data.upsertHomeworkSubmission).toHaveBeenCalled())
     expect(state.data.addHomeworkCheck).not.toHaveBeenCalled()
+  })
+
+  it('확인 기록에 실패하면 결과를 보여주지 않고 에러를 띄운다', async () => {
+    const user = userEvent.setup()
+    // DB 오류로 addHomeworkCheck가 null을 반환하는 상황 —
+    // 이때 결과를 보여주면 기록 없이 새로고침해 몇 번이든 다시 확인할 수 있다
+    state.data.addHomeworkCheck = vi.fn().mockResolvedValue(null)
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+
+    expect(await screen.findByText(/확인에 실패했습니다/)).toBeInTheDocument()
+    expect(screen.queryByTestId('check-score')).not.toBeInTheDocument()
+  })
+
+  it('확인에 성공하면 확인하기 버튼이 사라진다', async () => {
+    const user = userEvent.setup()
+    // 실제 DataContext처럼 확인에 성공하면 homeworkChecks에 기록이 쌓인다.
+    // 여기서도 그렇게 해야 "요일당 한 번" 게이트가 화면에서 실제로 작동하는지가
+    // 이 테스트로 검증된다(안 그러면 회귀가 나도 계속 통과한다).
+    state.data.addHomeworkCheck = vi.fn().mockImplementation(({ dayId, studentId, answers }) => {
+      const record = { id: 800, dayId, studentId, answers, checkedAt: '2026-09-11T01:00:00Z' }
+      state.data.homeworkChecks.push(record)
+      return Promise.resolve(record)
+    })
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: '확인하기' })).not.toBeInTheDocument()
+    )
   })
 })
