@@ -20,16 +20,36 @@
 
 
 -- ══════════════════════════════════════════════════════════
--- PART 1 — "누구인가"를 판정하는 도우미 함수
+-- PART 0 — 이미 있는 도우미 함수를 먼저 본다 (읽기만)
 -- ══════════════════════════════════════════════════════════
--- security definer로 만든다. 정책 안에서 profiles를 직접 조회하면
+-- ⚠️ 이 DB에는 이미 is_staff(), get_my_role() 이 있다(다른 경로로 만들어진 것).
+--    create or replace 로 덮어쓰면 그 함수를 쓰는 **다른 표의 정책이 조용히
+--    바뀐다.** 그래서 아래 PART 1은 이름이 겹치지 않는 함수를 새로 만든다.
+--    여기서는 무엇이 있는지 눈으로만 확인한다.
+
+select p.proname as 함수, pg_get_functiondef(p.oid) as 정의
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('is_staff','get_my_role','is_admin','my_student_id',
+                    'hw_is_staff','hw_my_student_id')
+order by p.proname;
+
+
+-- ══════════════════════════════════════════════════════════
+-- PART 1 — 과제 정책 전용 도우미 함수 (이름을 겹치지 않게 둔다)
+-- ══════════════════════════════════════════════════════════
+-- 이름 앞에 hw_를 붙인다. 기존 is_staff()를 덮어쓰면 그것을 쓰는 다른 정책까지
+-- 같이 바뀌는데, 그 정책들이 무엇을 기대하는지 모른 채 건드릴 수는 없다.
+-- 조금 중복되더라도 이번 변경의 영향 범위를 과제 표 안에 가둔다.
+--
+-- security definer로 만드는 이유: 정책 안에서 profiles를 직접 조회하면
 -- profiles의 RLS가 다시 걸려 재귀하거나, 정책이 조금만 달라져도 조용히
 -- false가 되어 멀쩡한 동작이 막힌다. 이 함수는 그 영향을 받지 않는다.
 --
 -- search_path를 못박는 이유: security definer 함수에서 이것을 비워 두면
 -- 남이 만든 같은 이름의 표를 보게 만들 수 있다.
 
-create or replace function public.is_staff()
+create or replace function public.hw_is_staff()
 returns boolean
 language sql
 stable
@@ -43,7 +63,7 @@ as $$
 $$;
 
 -- 로그인한 사람에게 딸린 학생 명부 번호. 학생이 아니면 null이다.
-create or replace function public.my_student_id()
+create or replace function public.hw_my_student_id()
 returns bigint
 language sql
 stable
@@ -53,15 +73,15 @@ as $$
   select student_id from public.profiles where id = auth.uid();
 $$;
 
-revoke all on function public.is_staff()      from public;
-revoke all on function public.my_student_id() from public;
-grant execute on function public.is_staff()      to authenticated;
-grant execute on function public.my_student_id() to authenticated;
+revoke all on function public.hw_is_staff()       from public;
+revoke all on function public.hw_my_student_id()  from public;
+grant execute on function public.hw_is_staff()      to authenticated;
+grant execute on function public.hw_my_student_id() to authenticated;
 
 -- 확인 (2행) — 지금 로그인한 사람(SQL Editor는 보통 관리자) 기준 값도 함께 본다
-select 'is_staff' as 함수, public.is_staff()::text as 내값
+select 'hw_is_staff' as 함수, public.hw_is_staff()::text as 내값
 union all
-select 'my_student_id', coalesce(public.my_student_id()::text, '(없음 — 학생 계정이 아님)');
+select 'hw_my_student_id', coalesce(public.hw_my_student_id()::text, '(없음 — 학생 계정이 아님)');
 
 
 -- ══════════════════════════════════════════════════════════
@@ -99,13 +119,13 @@ for select to authenticated using (true);
 -- ⚠️ 쓰기는 교사·관리자만. 여기를 열어 두면 학생이 자기 이름으로 "열어줌" 행을
 -- 직접 넣어 기한 잠금 전체를 무력화할 수 있다. 이 표의 존재 이유가 사라진다.
 create policy hw_reopens_insert on public.homework_reopens
-for insert to authenticated with check (public.is_staff());
+for insert to authenticated with check (public.hw_is_staff());
 
 create policy hw_reopens_update on public.homework_reopens
-for update to authenticated using (public.is_staff()) with check (public.is_staff());
+for update to authenticated using (public.hw_is_staff()) with check (public.hw_is_staff());
 
 create policy hw_reopens_delete on public.homework_reopens
-for delete to authenticated using (public.is_staff());
+for delete to authenticated using (public.hw_is_staff());
 
 -- 확인 (4행: delete / insert / select / update)
 select policyname, cmd, qual, with_check from pg_policies
@@ -178,16 +198,16 @@ drop policy if exists hw_checks_delete on public.homework_checks;
 -- 읽기 — 교사는 전부, 학생은 자기 것만. 남의 답안을 볼 이유가 없다.
 create policy hw_checks_select on public.homework_checks
 for select to authenticated
-using (public.is_staff() or student_id = public.my_student_id());
+using (public.hw_is_staff() or student_id = public.hw_my_student_id());
 
 -- 쓰기 — 자기 이름으로만. 남의 확인 기록을 만들어 그 학생의 기회를 태울 수 없게 한다.
 create policy hw_checks_insert on public.homework_checks
 for insert to authenticated
-with check (student_id = public.my_student_id());
+with check (student_id = public.hw_my_student_id());
 
 -- 지우기 — 교사·관리자만. 이것이 "확인은 한 번"을 실제로 지키는 부분이다.
 create policy hw_checks_delete on public.homework_checks
-for delete to authenticated using (public.is_staff());
+for delete to authenticated using (public.hw_is_staff());
 
 -- 고치기 정책은 만들지 않는다 → 아무도 확인 기록을 수정할 수 없다.
 -- 확인은 그 순간의 기록이므로 나중에 바뀌면 안 된다.
