@@ -393,4 +393,28 @@ describe('StudentHomeworkView (제출 전 확인)', () => {
       expect(screen.queryByRole('button', { name: '확인하기' })).not.toBeInTheDocument()
     )
   })
+
+  // 화면이 지금 입력한 답(payload)이 아니라 addHomeworkCheck가 돌려준 saved.answers로
+  // 채점해야 한다. 저장된 답 대신 입력값으로 채점하면, 답을 바꿔가며 확인 버튼을
+  // 몇 번이든 눌러(또는 탭을 새로 열어) 정답표 전체를 알아낼 수 있게 된다.
+  it('확인 결과는 지금 입력한 답이 아니라 저장된 답 기준으로 나온다', async () => {
+    const user = userEvent.setup()
+    // 다른 기기에서 먼저 확인해 저장된 답은 1·2번 다 오답(⑤)인데,
+    // 지금 이 화면에는 1·2번 다 정답(①·②)을 입력해둔 상황을 흉내낸다.
+    state.data.addHomeworkCheck = vi.fn().mockResolvedValue({
+      id: 800, dayId: 10, studentId: 7,
+      answers: [{ number: 1, answer: '⑤' }, { number: 2, answer: '⑤' }],
+      checkedAt: '2026-09-11T01:00:00Z',
+    })
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-②'))
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+
+    // 지금 입력값 기준이면 2/2가 나와야 하지만, 저장된 답 기준이면 0/2다.
+    await waitFor(() => expect(screen.getByTestId('check-score')).toHaveTextContent('0'))
+    expect(screen.getByTestId('cell-1')).toHaveAttribute('data-wrong', 'true')
+    expect(screen.getByTestId('cell-2')).toHaveAttribute('data-wrong', 'true')
+  })
 })
