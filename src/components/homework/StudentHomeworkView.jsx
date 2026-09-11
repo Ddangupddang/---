@@ -1,6 +1,6 @@
 // src/components/homework/StudentHomeworkView.jsx
 // 학생: 한 종류(내신/정시) 이번 주(월~토) 요일별 과제 제출·결과.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useData } from '../../context/DataContext'
 import ChoiceGrid from '../ChoiceGrid'
@@ -39,6 +39,34 @@ export default function StudentHomeworkView({ category }) {
   const today = new Date().toISOString().slice(0, 10)
   const thisWeek = mondayOf(today)
 
+  // 같은 번호가 두 번 들어오면(불러오는 중 겹침) 문항 수가 부풀어 점수가 낮아진다.
+  // 번호 하나당 하나만 남긴다.
+  const questionsOf = (dayId) => {
+    const byNumber = new Map()
+    for (const q of homeworkQuestions) {
+      if (q.dayId === dayId && !byNumber.has(q.number)) byNumber.set(q.number, q)
+    }
+    return [...byNumber.values()].sort((a, b) => a.number - b.number)
+  }
+
+  // 이미 확인한 요일을 다시 열면 그때 넣은 답과 결과를 되살린다.
+  //
+  // 뒤로 한 번 잘못 누르거나 모바일 브라우저가 탭을 버리기만 해도 확인은 이미
+  // 써버린 채(기록은 DB에 남는다) 답만 통째로 사라진다. 그러면 학생은 확인 버튼도
+  // 없는 빈 화면에서 전부 다시 풀어야 한다 — 그럴 바에는 이 기능이 없는 편이 낫다.
+  // 되살리는 내용은 확인할 때 이미 그 학생에게 보여준 것 그대로라 새로 드러나는 건 없다.
+  useEffect(() => {
+    if (openDayId == null || !me) return
+    const check = homeworkChecks.find((c) => c.dayId === openDayId && c.studentId === me.id)
+    if (!check) return   // 확인 기록이 없으면 평소대로 빈 화면에서 시작한다
+    const saved = check.answers ?? []
+    setAnswers(Object.fromEntries(saved.map((a) => [a.number, a.answer])))
+    setCheckResult(checkSummary(questionsOf(openDayId), saved))
+    // 요일을 열 때 딱 한 번만 되살린다. 확인 기록·문항 목록까지 의존성에 넣으면
+    // 자료를 새로 불러올 때마다 학생이 고치던 답을 저장본으로 덮어쓴다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openDayId])
+
   // 정시 레벨 미배정 안내
   if (category === 'jeongsi' && (!me || me.jeongsiLevel == null)) {
     return <p className="text-center text-ink-faint py-12">정시 레벨이 배정되지 않았습니다. 선생님께 문의하세요.</p>
@@ -59,15 +87,6 @@ export default function StudentHomeworkView({ category }) {
     : []
 
   const subOf = (dayId) => homeworkSubmissions.find((s) => s.dayId === dayId && s.studentId === me.id)
-  // 같은 번호가 두 번 들어오면(불러오는 중 겹침) 문항 수가 부풀어 점수가 낮아진다.
-  // 번호 하나당 하나만 남긴다.
-  const questionsOf = (dayId) => {
-    const byNumber = new Map()
-    for (const q of homeworkQuestions) {
-      if (q.dayId === dayId && !byNumber.has(q.number)) byNumber.set(q.number, q)
-    }
-    return [...byNumber.values()].sort((a, b) => a.number - b.number)
-  }
 
   // ── 특정 요일 열기(제출/결과) ──
   if (openDayId != null) {
@@ -188,7 +207,7 @@ export default function StudentHomeworkView({ category }) {
         )}
         <Alert tone={checkResult ? 'info' : 'danger'} className="mt-3">
           {checkResult
-            ? '틀린 문항을 고쳐 제출하세요. 확인은 한 번뿐이라 다시 눌러도 채점되지 않습니다.'
+            ? '표시된 문항을 고쳐 제출하세요. 정답과 해설은 제출한 뒤에 공개됩니다.'
             : '확인은 한 번만 할 수 있습니다. 제출한 뒤에는 답을 수정할 수 없습니다.'}
         </Alert>
         <div className="flex gap-2 mt-3">
@@ -198,7 +217,7 @@ export default function StudentHomeworkView({ category }) {
             </Button>
           )}
           <Button variant="primary" onClick={handleSubmit}
-            disabled={!allAnswered || submitting || !loadedAll} className="flex-1">
+            disabled={!allAnswered || submitting || checking || !loadedAll} className="flex-1">
             {submitting ? '제출 중...' : '제출하기'}
           </Button>
         </div>

@@ -418,3 +418,65 @@ describe('StudentHomeworkView (제출 전 확인)', () => {
     expect(screen.getByTestId('cell-2')).toHaveAttribute('data-wrong', 'true')
   })
 })
+
+// ── 확인한 요일을 다시 열었을 때 ─────────────────────────────
+// 확인 기록은 DB에 남는데 화면 상태는 요일을 닫으면 사라진다. 되살리지 않으면
+// 뒤로 한 번 잘못 눌렀을 뿐인데 확인은 이미 써버렸고 답도 전부 날아간 상태가 된다.
+describe('StudentHomeworkView (확인한 요일 다시 열기)', () => {
+  it('넣었던 답과 확인 결과가 함께 되살아난다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkChecks = [
+      {
+        id: 800, dayId: 10, studentId: 7, checkedAt: '2026-09-11T01:00:00Z',
+        answers: [{ number: 1, answer: '①' }, { number: 2, answer: '⑤' }],
+      },
+    ]
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+
+    // 답이 그대로 돌아온다
+    expect(screen.getByText('2/2 입력됨')).toBeInTheDocument()
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('cell-2-⑤')).toHaveAttribute('data-selected', 'true')
+
+    // 확인 결과(1번만 정답)와 틀린 문항 표시도 돌아온다
+    expect(screen.getByTestId('check-score')).toHaveTextContent('1')
+    expect(screen.getByTestId('cell-1')).toHaveAttribute('data-wrong', 'false')
+    expect(screen.getByTestId('cell-2')).toHaveAttribute('data-wrong', 'true')
+
+    // 되살려도 정답은 여전히 감춘 채다
+    expect(document.querySelectorAll('[data-result="answer"]').length).toBe(0)
+    // 확인은 이미 썼으므로 버튼은 없고, 고쳐서 제출만 할 수 있다
+    expect(screen.queryByRole('button', { name: '확인하기' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '제출하기' })).toBeEnabled()
+  })
+
+  it('확인 기록이 없는 요일은 지금까지처럼 빈 화면으로 시작한다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+
+    expect(screen.getByText('0/2 입력됨')).toBeInTheDocument()
+    expect(screen.queryByTestId('check-score')).not.toBeInTheDocument()
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-selected', 'false')
+    expect(screen.getByRole('button', { name: '확인하기' })).toBeDisabled()
+  })
+
+  it('확인하는 동안에는 제출 버튼도 잠긴다', async () => {
+    const user = userEvent.setup()
+    // 확인 기록이 오가는 사이에 제출되면, 기록은 남는데 제출된 답은 고치기 전 것이다
+    let finish
+    state.data.addHomeworkCheck = vi.fn(() => new Promise((resolve) => { finish = resolve }))
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+
+    expect(screen.getByRole('button', { name: '제출하기' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: '제출하기' }))
+    expect(state.data.upsertHomeworkSubmission).not.toHaveBeenCalled()
+
+    finish({ id: 800, dayId: 10, studentId: 7, answers: [], checkedAt: '2026-09-11T01:00:00Z' })
+  })
+})

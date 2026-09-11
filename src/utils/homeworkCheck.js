@@ -6,13 +6,6 @@
 // 정답을 화면까지 내려보내면 개발자 도구로 들여다볼 수 있다.
 import { gradeHomework } from './homework.js'
 
-// 틀린 문항 번호 (오름차순)
-export function wrongNumbers(questions, answers) {
-  return gradeHomework(questions, answers)
-    .results.filter((r) => !r.correct)
-    .map((r) => r.number)
-}
-
 // 확인 화면이 필요로 하는 것 전부
 export function checkSummary(questions, answers) {
   const { results, correctCount, total } = gradeHomework(questions, answers)

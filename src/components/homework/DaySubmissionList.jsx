@@ -50,7 +50,10 @@ export default function DaySubmissionList({ students, questions, submissions, on
           {open.student.name}
           <span className="ml-2 font-normal text-ink-mute">{open.score.correctCount}/{open.score.total}</span>
         </p>
-        <ChoiceGrid count={questions.length} mode="result" values={values} answerKey={answerKey} onChange={() => {}} />
+        {/* 칸은 실제 문항 번호로 그린다. 문항 수만 넘기면 항상 1번부터 세는데
+            values·answerKey는 실제 번호로 찾으므로, 번호가 1..N이 아닌 순간
+            교사가 보는 정오답이 엉뚱한 번호에 붙는다. */}
+        <ChoiceGrid numbers={questions.map((q) => q.number)} mode="result" values={values} answerKey={answerKey} onChange={() => {}} />
         {cancelError && <Alert tone="danger" className="mt-3">{cancelError}</Alert>}
         {/* 이 화면의 본론은 정오답 확인이다. 취소는 가끔 쓰는 곁가지라
             해설 파일 삭제와 같은 작은 스타일을 쓴다 — 큰 danger 버튼은
