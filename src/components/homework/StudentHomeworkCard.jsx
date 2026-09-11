@@ -7,6 +7,7 @@ import { useData } from '../../context/DataContext'
 import { weekHomeworkSummary } from '../../utils/homeworkSummary'
 import { mondayOf } from '../../utils/homeworkWeek'
 import { WEEKDAY_LABELS, CATEGORY_LABELS } from '../../constants/homework'
+import { todayKST } from '../../utils/datetime'
 
 export default function StudentHomeworkCard({ studentId }) {
   const navigate = useNavigate()
@@ -17,7 +18,7 @@ export default function StudentHomeworkCard({ studentId }) {
   const me = students.find((s) => s.id === studentId)
   if (!me) return null
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayKST()
   const { total, submitted, pending } = weekHomeworkSummary({
     sets: homeworkSets,
     days: homeworkDays,

@@ -20,6 +20,7 @@ import { visibleClasses } from '../../utils/classAccess'
 import {
   HW_CATEGORY, CATEGORY_LABELS, WEEKDAYS, WEEKDAY_LABELS,
 } from '../../constants/homework'
+import { todayKST } from '../../utils/datetime'
 
 // 요일 하나의 편집 상태 초기값
 const emptyDay = () => ({ enabled: false, count: 0, answers: {}, videoUrl: '', fileUrl: '', file: null })
@@ -63,7 +64,7 @@ export default function TeacherHomeworkCreate({ category, editSet = null, copySe
   const group = groups.find((g) => g.key === groupKey) ?? null
   const [title, setTitle]     = useState(source?.title ?? '')
   const [weekStart, setWeekStart] = useState(
-    source?.weekStart ?? mondayOf(new Date().toISOString().slice(0, 10))
+    source?.weekStart ?? mondayOf(todayKST())
   )
   const [days, setDays] = useState(() => daysFromSet(source, homeworkDays, homeworkQuestions))
   // 수정·복제 화면은 실제로 과제가 있는 첫 요일부터 보여준다

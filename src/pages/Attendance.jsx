@@ -9,6 +9,7 @@ import Badge from '../components/ui/Badge'
 import PageTitle from '../components/ui/PageTitle'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
+import { todayKST } from '../utils/datetime'
 
 // 출석 상태의 의미별 톤. 팔레트에 초록·빨강·노랑이 따로 없어
 // 출석=navy(긍정) · 지각=warn(주의) · 결석=danger(경고) · 미기록=neutral로 대응한다.
@@ -36,7 +37,7 @@ const nextStatus = { none: 'present', present: 'absent', absent: 'late', late: '
 // ── 수업 출결 (관리자/교사) ──────────────────────────────
 function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) {
   const { classes, students } = useData()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayKST()
   const [selectedDate, setSelectedDate] = useState(today)
   const [selectedClass, setSelectedClass] = useState(null)
 
@@ -131,7 +132,7 @@ function ClinicAttendance({ records, upsertAttendance, deleteAttendance }) {
   // 클리닉도 담당 반 학생만 다룬다 — 검색으로 남의 반 학생이 나오면 안 된다
   const myStudents = visibleStudents(students, classes, user)
   const myStudentIds = new Set(myStudents.map((s) => s.id))
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayKST()
   const [selectedDate, setSelectedDate] = useState(today)
   const [search, setSearch] = useState('')
 
@@ -231,7 +232,7 @@ function ClinicAttendance({ records, upsertAttendance, deleteAttendance }) {
 
 // ── 학생 화면 ──────────────────────────────────────────────
 function StudentAttendance({ user, records, upsertAttendance }) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayKST()
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [activeTab, setActiveTab] = useState('수업')
   const [checking, setChecking] = useState(false)

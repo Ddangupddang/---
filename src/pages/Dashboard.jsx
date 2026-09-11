@@ -8,13 +8,15 @@ import PageTitle from '../components/ui/PageTitle'
 import { visibleClasses, visibleStudents } from '../utils/classAccess'
 import { pendingHomeworkCount } from '../utils/homeworkPending'
 import { unansweredCount, qnaStatus } from '../utils/qnaAccess'
-import { formatDate } from '../utils/datetime'
+import { formatDate, todayKST } from '../utils/datetime'
 
-const today = new Date().toISOString().slice(0, 10)
 
 // ────────── 관리자/교사 대시보드 ──────────
 function AdminTeacherDashboard({ user }) {
   const navigate = useNavigate()
+  // 그릴 때마다 다시 센다. 모듈 수준에 두면 탭을 밤새 열어둔 교사에게
+  // 어제 날짜가 "오늘 출결"로 남는다.
+  const today = todayKST()
   const {
     classes, students, attendance, qnaList, qnaMessages, notices: dbNotices, tests, submissions,
     homeworkSets, homeworkDays, homeworkSubmissions,
@@ -245,6 +247,7 @@ function AdminTeacherDashboard({ user }) {
 
 // ────────── 학생 대시보드 ──────────
 function StudentDashboard({ user }) {
+  const today = todayKST()
   const navigate  = useNavigate()
   const thisMonth = today.slice(0, 7)
   const { attendance, grades: dbGrades, qnaList, qnaMessages, notices: dbNotices, tests, submissions } = useData()

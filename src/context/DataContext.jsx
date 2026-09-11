@@ -11,6 +11,7 @@ import {
   toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission, toHomeworkCheck,
 } from '../utils/homeworkMappers'
 import { dateForWeekday } from '../utils/homeworkWeek'
+import { todayKST } from '../utils/datetime'
 
 const DataContext = createContext(null)
 
@@ -266,7 +267,7 @@ export function DataProvider({ children }) {
         class_id:     Number(data.classId) || null,
         grade:        data.grade ? Number(data.grade) : null,
         jeongsi_level: data.jeongsiLevel ? Number(data.jeongsiLevel) : null,
-        join_date:    data.joinDate     || new Date().toISOString().slice(0, 10),
+        join_date:    data.joinDate     || todayKST(),
       }])
       .select()
       .single()
@@ -326,7 +327,7 @@ export function DataProvider({ children }) {
       class_id:     Number(d.classId) || null,
       grade:        d.grade ? Number(d.grade) : null,
       jeongsi_level: d.jeongsiLevel ? Number(d.jeongsiLevel) : null,
-      join_date:    d.joinDate     || new Date().toISOString().slice(0, 10),
+      join_date:    d.joinDate     || todayKST(),
     }))
 
     const { data: inserted, error } = await supabase
@@ -680,7 +681,7 @@ export function DataProvider({ children }) {
         thumbnail:   data.thumbnail   ?? null,
         class_id:    data.classId     ?? null,
         teacher_id:  data.teacherId   ?? null,
-        created_at:  new Date().toISOString().slice(0, 10),
+        created_at:  todayKST(),
       }])
       .select()
       .single()

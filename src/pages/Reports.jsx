@@ -10,6 +10,7 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, visibleStudents, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
+import { todayKST } from '../utils/datetime'
 
 export default function Reports() {
   const { user } = useAuth()
@@ -247,7 +248,7 @@ function CreateView({ user, onSubmit, onCancel, classStudents }) {
   // 남의 반 리포트를 만들 수 없도록 선택지도 담당 반으로 제한한다
   const classes = visibleClasses(allClasses, user)
   const [classId,    setClassId]    = useState(String(classes[0]?.id ?? ''))
-  const [date,       setDate]       = useState(new Date().toISOString().slice(0, 10))
+  const [date,       setDate]       = useState(todayKST())
   const [subject,    setSubject]    = useState('')
   const [content,    setContent]    = useState('')
   const [homework,   setHomework]   = useState('')

@@ -39,6 +39,15 @@ export function formatDateTime(value) {
   return d ? parts(d, true) : ''
 }
 
+// 오늘 날짜(한국 기준) — "2026-09-11"
+//
+// new Date().toISOString().slice(0, 10)을 쓰면 안 된다. 그건 UTC라
+// 한국시간 오전 9시 전에는 어제 날짜를 준다. 출결을 하루 전으로 찍고,
+// 과제 마감 판정을 하루 관대하게 만든다. 실제로 그렇게 돌고 있었다.
+export function todayKST(now = new Date()) {
+  return parts(now, false)
+}
+
 // "2026-09-04"
 export function formatDate(value) {
   // 순수 날짜는 시간대를 적용할 대상이 아니다. 건드리면 하루가 밀린다.

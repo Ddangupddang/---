@@ -12,6 +12,7 @@ import { weeklyClassReport } from '../utils/weeklyReport'
 import { mondayOf, dateForWeekday } from '../utils/homeworkWeek'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
+import { todayKST } from '../utils/datetime'
 
 // 주 시작에서 n주 이동한 월요일
 function shiftWeek(weekStart, weeks) {
@@ -26,7 +27,7 @@ export default function WeeklyReport() {
     weeklyNotes, upsertWeeklyNote,
   } = useData()
 
-  const [weekStart, setWeekStart]       = useState(() => mondayOf(new Date().toISOString().slice(0, 10)))
+  const [weekStart, setWeekStart]       = useState(() => mondayOf(todayKST()))
   const [selectedClass, setSelectedClass] = useState(null)
   const [selected, setSelected]         = useState(null)
 

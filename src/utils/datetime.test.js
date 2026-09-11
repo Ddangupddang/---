@@ -1,6 +1,6 @@
 // src/utils/datetime.test.js
 import { describe, it, expect } from 'vitest'
-import { formatDateTime, formatDate } from './datetime'
+import { formatDateTime, formatDate, todayKST } from './datetime'
 
 describe('formatDateTime', () => {
   it('UTC로 저장된 시각을 한국 시각으로 보여준다', () => {
@@ -45,5 +45,25 @@ describe('formatDate', () => {
   it('값이 없으면 빈 문자열을 준다', () => {
     expect(formatDate(null)).toBe('')
     expect(formatDate('아무거나')).toBe('')
+  })
+})
+
+describe('todayKST', () => {
+  it('한국 기준 날짜를 준다 — UTC로 자르면 어긋나는 시각에도', () => {
+    // 2026-09-11 00:30 KST = 2026-09-10 15:30 UTC
+    // toISOString().slice(0,10)은 "2026-09-10"을 준다 — 하루 전이다
+    const 새벽 = new Date('2026-09-10T15:30:00Z')
+    expect(새벽.toISOString().slice(0, 10)).toBe('2026-09-10')   // 예전 방식
+    expect(todayKST(새벽)).toBe('2026-09-11')                     // 한국 기준
+  })
+
+  it('오전 9시 이후에는 UTC와 같은 날짜가 나온다', () => {
+    // 2026-09-11 18:00 KST = 2026-09-11 09:00 UTC
+    expect(todayKST(new Date('2026-09-11T09:00:00Z'))).toBe('2026-09-11')
+  })
+
+  it('자정 직전도 그날로 본다', () => {
+    // 2026-09-11 23:59 KST = 2026-09-11 14:59 UTC
+    expect(todayKST(new Date('2026-09-11T14:59:00Z'))).toBe('2026-09-11')
   })
 })

@@ -7,6 +7,7 @@ import Button from '../components/ui/Button'
 import PageTitle from '../components/ui/PageTitle'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
+import { todayKST } from '../utils/datetime'
 // ────────── SVG 꺾은선 그래프 ──────────
 // data: [{ label: 'MM-DD', value: 점수, max: 만점 }]
 // color는 SVG 속성이라 클래스가 아닌 CSS 변수(var(--color-*))로 토큰을 참조한다
@@ -116,7 +117,7 @@ function Grades() {
   const [showForm,      setShowForm]      = useState(false)
   const [form, setForm] = useState({
     studentId: '', subject: '', part: '', score: '', total: '100',
-    date: new Date().toISOString().slice(0, 10),
+    date: todayKST(),
   })
 
   const isStudent     = user?.role === 'student'
@@ -143,7 +144,7 @@ function Grades() {
       date:      form.date,
     })
     setShowForm(false)
-    setForm({ studentId: '', subject: '', part: '', score: '', total: '100', date: new Date().toISOString().slice(0, 10) })
+    setForm({ studentId: '', subject: '', part: '', score: '', total: '100', date: todayKST() })
   }
 
   // ────────── 학생 뷰 ──────────

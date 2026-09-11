@@ -11,7 +11,7 @@ import ChoiceGrid from '../components/ChoiceGrid'
 import { distributePoints, evenTotalSuggestions } from '../utils/testPoints'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
-import { formatDateTime } from '../utils/datetime'
+import { formatDateTime, todayKST } from '../utils/datetime'
 
 // 상태 배지 톤 — 팔레트에 초록이 없어 진행중=navy(긍정)로 대응한다
 const statusBadge = {
@@ -478,7 +478,7 @@ const MC_CHOICES = ['①', '②', '③', '④', '⑤']
 function CreateView({ classes, user, onSubmit, onCancel }) {
   const [title,     setTitle]     = useState('')
   const [classId,   setClassId]   = useState(String(classes[0]?.id ?? ''))
-  const [date,      setDate]      = useState(new Date().toISOString().slice(0, 10))
+  const [date,      setDate]      = useState(todayKST())
   const [timeLimit, setTimeLimit] = useState(30)
   // 오프라인 시험지를 나눠주고 답만 입력하는 쓰임이라, 객관식은 문항 수를 넣고
   // 정답 표에서 한 번에 찍는다 (과제 출제 화면과 같은 방식).

@@ -13,6 +13,7 @@ import { checkSummary } from '../../utils/homeworkCheck'
 import { matchesStudent, dayStatus } from '../../utils/homeworkSelect'
 import { mondayOf } from '../../utils/homeworkWeek'
 import { WEEKDAY_LABELS, CATEGORY_LABELS } from '../../constants/homework'
+import { todayKST } from '../../utils/datetime'
 
 const BADGE = {
   none: { label: '미제출', tone: 'neutral' },
@@ -36,7 +37,7 @@ export default function StudentHomeworkView({ category }) {
   const [checking, setChecking] = useState(false)
 
   const me = students.find((s) => s.id === user.studentId)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayKST()
   const thisWeek = mondayOf(today)
 
   // 같은 번호가 두 번 들어오면(불러오는 중 겹침) 문항 수가 부풀어 점수가 낮아진다.
