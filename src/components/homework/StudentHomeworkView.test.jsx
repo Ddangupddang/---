@@ -29,6 +29,8 @@ beforeEach(() => {
     homeworkSubmissions: [],
     // 실제 upsertHomeworkSubmission은 성공 시 제출 레코드를, 실패 시 null을 반환한다
     upsertHomeworkSubmission: vi.fn().mockResolvedValue({ id: 900, dayId: 10, studentId: 7 }),
+    homeworkChecks: [],
+    addHomeworkCheck: vi.fn().mockResolvedValue({ id: 800, dayId: 10, studentId: 7 }),
   }
 })
 
@@ -245,5 +247,109 @@ describe('StudentHomeworkView (문항을 덜 불러왔을 때)', () => {
     expect(screen.getByText(/과제를 다 불러오지 못했습니다/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '제출하기' })).toBeDisabled()
     expect(state.data.upsertHomeworkSubmission).not.toHaveBeenCalled()
+  })
+})
+
+// ── 제출 전 확인 (1단계) ─────────────────────────────────────
+describe('StudentHomeworkView (제출 전 확인)', () => {
+  it('다 채우면 확인하기와 제출하기가 함께 보인다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+
+    expect(screen.getByRole('button', { name: '확인하기' })).toBeDisabled()
+
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+
+    expect(screen.getByRole('button', { name: '확인하기' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '제출하기' })).toBeEnabled()
+  })
+
+  it('확인하면 틀린 문항을 알려주고 정답은 감춘다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+
+    // 1번은 정답(①), 2번은 오답(정답 ②인데 ⑤를 고름)
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+
+    await waitFor(() => expect(state.data.addHomeworkCheck).toHaveBeenCalled())
+    expect(screen.getByTestId('check-score')).toHaveTextContent('1')
+    expect(screen.getByTestId('cell-1')).toHaveAttribute('data-wrong', 'false')
+    expect(screen.getByTestId('cell-2')).toHaveAttribute('data-wrong', 'true')
+
+    // 정답(②)이 화면에 드러나면 안 된다
+    expect(document.querySelectorAll('[data-result="answer"]').length).toBe(0)
+  })
+
+  it('확인한 답안이 그대로 기록된다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+
+    await waitFor(() => expect(state.data.addHomeworkCheck).toHaveBeenCalledWith({
+      dayId: 10,
+      studentId: 7,
+      answers: [
+        { number: 1, answer: '①' },
+        { number: 2, answer: '⑤' },
+      ],
+    }))
+  })
+
+  it('확인 뒤에 틀린 답을 고쳐 제출할 수 있다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+    await waitFor(() => expect(state.data.addHomeworkCheck).toHaveBeenCalled())
+
+    // ⑤를 끄고 ②로 고친다
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByTestId('cell-2-②'))
+    await user.click(screen.getByRole('button', { name: '제출하기' }))
+
+    await waitFor(() => expect(state.data.upsertHomeworkSubmission).toHaveBeenCalledWith({
+      dayId: 10,
+      studentId: 7,
+      answers: [
+        { number: 1, answer: '①' },
+        { number: 2, answer: '②' },
+      ],
+    }))
+  })
+
+  it('이미 확인한 요일이면 확인하기가 아예 안 보인다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkChecks = [
+      { id: 800, dayId: 10, studentId: 7, answers: [], checkedAt: '2026-09-11T01:00:00Z' },
+    ]
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+
+    expect(screen.queryByRole('button', { name: '확인하기' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '제출하기' })).toBeEnabled()
+  })
+
+  it('확인을 건너뛰고 바로 제출할 수 있다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '제출하기' }))
+
+    await waitFor(() => expect(state.data.upsertHomeworkSubmission).toHaveBeenCalled())
+    expect(state.data.addHomeworkCheck).not.toHaveBeenCalled()
   })
 })
