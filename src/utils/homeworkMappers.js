@@ -34,3 +34,10 @@ export function toHomeworkSubmission(r) {
     answers: r.answers ?? [], submittedAt: r.submitted_at,
   }
 }
+
+export function toHomeworkCheck(r) {
+  return {
+    id: r.id, dayId: r.day_id, studentId: r.student_id,
+    answers: r.answers ?? [], checkedAt: r.checked_at,
+  }
+}

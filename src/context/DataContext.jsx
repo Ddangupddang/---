@@ -8,7 +8,7 @@ import { subscriptionRow } from '../utils/pushSubscription'
 import { rowsOrNull } from '../utils/dbRows'
 import { fetchAllRows } from '../utils/fetchAll'
 import {
-  toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission,
+  toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission, toHomeworkCheck,
 } from '../utils/homeworkMappers'
 import { dateForWeekday } from '../utils/homeworkWeek'
 
@@ -160,6 +160,7 @@ export function DataProvider({ children }) {
   const [homeworkDays,        setHomeworkDays]        = useState([])
   const [homeworkQuestions,   setHomeworkQuestions]   = useState([])
   const [homeworkSubmissions, setHomeworkSubmissions] = useState([])
+  const [homeworkChecks,      setHomeworkChecks]      = useState([])
   const [weeklyNotes, setWeeklyNotes] = useState([])
   const [dataLoading,   setDataLoading]   = useState(true)
   const [refreshing,    setRefreshing]    = useState(false)
@@ -189,7 +190,7 @@ export function DataProvider({ children }) {
       // 여럿이면 쪽 경계에서 순서가 흔들려 어떤 행은 두 번 오고 어떤 행은 빠진다.
       // 과제 문항이 빠지면 학생 답안이 엉뚱한 번호에 붙는다. id는 겹치지 않으므로
       // 마지막 기준으로 두면 순서가 항상 같아진다.
-      const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, wnRes, saRes] =
+      const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, hwChkRes, wnRes, saRes] =
         await Promise.all([
           fetchAllRows(() => supabase.from('classes').select('*').order('sort_order').order('id')),
           fetchAllRows(() => supabase.from('students').select('*').order('sort_order').order('id')),
@@ -208,6 +209,7 @@ export function DataProvider({ children }) {
           fetchAllRows(() => supabase.from('homework_days').select('*').order('id')),
           fetchAllRows(() => supabase.from('homework_questions').select('*').order('id')),
           fetchAllRows(() => supabase.from('homework_submissions_v2').select('*').order('id')),
+          fetchAllRows(() => supabase.from('homework_checks').select('*').order('id')),
           fetchAllRows(() => supabase.from('weekly_report_notes').select('*').order('id')),
           fetchAllRows(() => supabase.from('profiles').select('id, student_id, username').eq('role', 'student').order('id')),
         ])
@@ -232,6 +234,7 @@ export function DataProvider({ children }) {
       if (!hwDaysRes.error && hwDaysRes.data) setHomeworkDays(hwDaysRes.data.map(toHomeworkDay))
       if (!hwQRes.error && hwQRes.data)       setHomeworkQuestions(hwQRes.data.map(toHomeworkQuestion))
       if (!hwSubRes.error && hwSubRes.data)   setHomeworkSubmissions(hwSubRes.data.map(toHomeworkSubmission))
+      const hwChkRows = rowsOrNull(hwChkRes); if (hwChkRows) setHomeworkChecks(hwChkRows.map(toHomeworkCheck))
       if (!wnRes.error && wnRes.data) setWeeklyNotes(wnRes.data.map(toWeeklyNote))
       if (!saRes.error && saRes.data) applyStudentAccounts(saRes.data)
 
@@ -932,6 +935,35 @@ export function DataProvider({ children }) {
     setHomeworkSubmissions((prev) => prev.filter((s) => !dayIds.includes(s.dayId)))
   }
 
+  // 제출 전 "확인" 기록. 요일당 한 번뿐이다.
+  //
+  // 제출 표(homework_submissions_v2)와 따로 두는 이유:
+  // 그쪽에 행이 생기면 "제출했나"를 세는 코드가 전부 오판한다.
+  //
+  // upsert가 아니라 insert를 쓴다 — 두 번째 확인은 DB가 거부해야 한다.
+  async function addHomeworkCheck({ dayId, studentId, answers }) {
+    const already = homeworkChecks.find((c) => c.dayId === dayId && c.studentId === studentId)
+    if (already) return already
+
+    const { data, error } = await supabase
+      .from('homework_checks')
+      .insert({ day_id: dayId, student_id: studentId, answers })
+      .select().single()
+
+    // 다른 기기에서 이미 확인한 경우(unique 위반) — 먼저 한 기록이 맞다
+    if (error?.code === '23505') {
+      const { data: existing } = await supabase
+        .from('homework_checks')
+        .select('*').eq('day_id', dayId).eq('student_id', studentId).single()
+      return existing ? toHomeworkCheck(existing) : null
+    }
+    if (error) { console.error('확인 기록 실패:', error); return null }
+
+    const record = toHomeworkCheck(data)
+    setHomeworkChecks((prev) => [...prev, record])
+    return record
+  }
+
   // 요일별 제출 (학생 × 요일) upsert
   // 과제 제출은 1회만 — 한 번 낸 답안은 학생이 고칠 수 없다.
   // 화면에서도 수정 경로를 막지만, 중복 클릭·다른 기기·새로고침으로 다시 들어오는 경우가 있어
@@ -1146,6 +1178,7 @@ export function DataProvider({ children }) {
       addSubmission, updateSubmissionScores,
       homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
       addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission,
+      homeworkChecks, addHomeworkCheck,
       notifyNewHomework,
       deleteHomeworkSubmission,
       uploadSolutionFile, deleteSolutionFile,

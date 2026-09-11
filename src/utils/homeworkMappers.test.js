@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission,
+  toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission, toHomeworkCheck,
 } from './homeworkMappers'
 
 describe('homework 매퍼', () => {
@@ -38,5 +38,23 @@ describe('homework 매퍼', () => {
     expect(toHomeworkSubmission(row)).toEqual({
       id: 4, dayId: 3, studentId: 7, answers: [], submittedAt: '2026-08-10T09:00:00Z',
     })
+  })
+})
+
+describe('toHomeworkCheck', () => {
+  it('DB 행을 앱 모양으로 바꾼다', () => {
+    expect(toHomeworkCheck({
+      id: 5, day_id: 10, student_id: 7,
+      answers: [{ number: 1, answer: '①' }],
+      checked_at: '2026-09-11T01:00:00Z',
+    })).toEqual({
+      id: 5, dayId: 10, studentId: 7,
+      answers: [{ number: 1, answer: '①' }],
+      checkedAt: '2026-09-11T01:00:00Z',
+    })
+  })
+
+  it('answers가 비어 있으면 빈 배열로 본다', () => {
+    expect(toHomeworkCheck({ id: 5, day_id: 10, student_id: 7, answers: null }).answers).toEqual([])
   })
 })
