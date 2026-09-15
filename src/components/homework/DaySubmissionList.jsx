@@ -43,8 +43,19 @@ export default function DaySubmissionList({
     )
     if (!ok) return
     // 실패했는데 목록으로 돌아가면 지워진 것처럼 보인다 — 상세에 머무르며 알린다
-    if (await onCancel(student.id)) setOpenStudentId(null)
-    else setCancelError('제출 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    const result = await onCancel(student.id)
+    if (!result?.ok) {
+      setCancelError('제출 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+      return
+    }
+    setOpenStudentId(null)
+    // 답안은 지워졌는데 기한이 안 열린 경우. 그대로 두면 학생은 '마감'에 갇힌다.
+    if (result.reopened === false) {
+      setCancelError(
+        `${student.name} 학생의 제출은 취소됐지만 기한을 다시 열지 못했습니다. ` +
+        '아래 명단에서 "열어주기"를 눌러 주세요.'
+      )
+    }
   }
 
   // 기한이 지난 뒤 이 학생만 다시 받아 준다.
@@ -106,6 +117,9 @@ export default function DaySubmissionList({
 
   return (
     <div className="border-t border-line mt-3 pt-3 flex flex-col gap-1">
+      {/* 취소 뒤에는 목록으로 돌아오므로 여기에도 그려야 한다.
+          상세에만 두면 "기한을 못 열었다"는 말이 화면과 함께 사라진다. */}
+      {cancelError && <Alert tone="danger" className="mb-2">{cancelError}</Alert>}
       {missing.map(({ student }) => {
         const isOpen = reopenedIds.has(student.id)
         return (

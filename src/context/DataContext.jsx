@@ -1065,8 +1065,12 @@ export function DataProvider({ children }) {
     // 기한도 함께 연다. 취소해 놓고 열어주지 않으면 학생은 "미제출"만 보고
     // 다시 낼 수는 없다 — 취소의 목적 자체가 다시 풀게 하는 것이다.
     // 이미 기한 안이면 행이 하나 더 생길 뿐 달라지는 것이 없다.
-    await openHomeworkDay({ dayId, studentId, openedBy })
-    return true
+    //
+    // 여는 데 실패했는지를 숨기지 않는다. 답안은 이미 지워졌는데 기한이 안 열리면
+    // 학생은 '마감'에 갇히고 교사는 잘 된 줄 안다. 지운 것을 되돌릴 수는 없으므로
+    // (되살릴 답안이 없다) 결과를 알려 교사가 "열어주기"를 직접 누르게 한다.
+    const opened = await openHomeworkDay({ dayId, studentId, openedBy })
+    return { ok: true, reopened: Boolean(opened) }
   }
 
   // 새 과제를 그 과제를 받는 학생들에게 알린다. 저장이 전부 끝난 뒤에 부른다.

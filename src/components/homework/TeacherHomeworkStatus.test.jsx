@@ -274,7 +274,7 @@ describe('TeacherHomeworkStatus — 제출 취소', () => {
 
   it('확인창에서 승인하면 그 학생의 제출만 지운다', async () => {
     const user = userEvent.setup()
-    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(true)
+    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue({ ok: true, reopened: true })
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     await 제출한학생상세로(user, 출제교사)
@@ -288,7 +288,7 @@ describe('TeacherHomeworkStatus — 제출 취소', () => {
 
   it('확인창에서 취소하면 아무 일도 일어나지 않는다', async () => {
     const user = userEvent.setup()
-    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(true)
+    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue({ ok: true, reopened: true })
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
 
     await 제출한학생상세로(user, 출제교사)
@@ -300,13 +300,30 @@ describe('TeacherHomeworkStatus — 제출 취소', () => {
 
   it('취소에 실패하면 성공한 척하지 않고 알린다', async () => {
     const user = userEvent.setup()
-    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue(false)
+    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue({ ok: false })
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     await 제출한학생상세로(user, 출제교사)
     await user.click(screen.getByRole('button', { name: '제출 취소' }))
 
     expect(await screen.findByText(/제출 취소에 실패/)).toBeInTheDocument()
+    confirmSpy.mockRestore()
+  })
+
+  // 답안은 지워졌는데 기한이 안 열린 경우 — 학생이 '마감'에 갇힌다.
+  // 조용히 넘어가면 교사는 잘 된 줄 알고, 학생은 낼 방법이 없다.
+  it('취소는 됐지만 기한이 안 열리면 그 사실을 알린다', async () => {
+    const user = userEvent.setup()
+    state.data.deleteHomeworkSubmission = vi.fn().mockResolvedValue({ ok: true, reopened: false })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    await 제출한학생상세로(user, 출제교사)
+    await user.click(screen.getByRole('button', { name: '제출 취소' }))
+
+    await waitFor(() =>
+      expect(screen.getByText(/기한을 다시 열지 못했습니다/)).toBeInTheDocument()
+    )
+    expect(screen.getByText(/"열어주기"를 눌러 주세요/)).toBeInTheDocument()
     confirmSpy.mockRestore()
   })
 })
