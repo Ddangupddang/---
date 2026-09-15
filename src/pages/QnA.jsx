@@ -522,8 +522,12 @@ function QuestionPhotos({ paths, qnaImageUrl }) {
 
   if (!paths?.length) return null
 
+  // 사진은 옆으로 나열한다. 최대 3장이라 한 줄에 들어가고, 세로로 쌓을 때보다
+  // 글과 사진 사이를 오가기 쉽다. 남은 세로 공간만큼 사진을 크게 보여준다.
+  // 좁은 화면(학생 폰)에서는 옆으로 밀어서 본다 — 3장을 억지로 욱여넣으면
+  // 한 장이 손톱만 해져서 답안지 글씨를 알아볼 수 없다.
   return (
-    <div className="flex flex-col items-start gap-2 mb-3">
+    <div className="flex items-start gap-2 mb-3 overflow-x-auto pb-1">
       {urls.map((url, i) => (
         url ? (
           // 원본은 새 탭에서 크게 본다 — 답안지 글씨를 확대해야 할 때가 있다.
@@ -532,16 +536,18 @@ function QuestionPhotos({ paths, qnaImageUrl }) {
           // 글이 사진에 파묻혀 대화를 따라가기 어렵다. 가로 폭이 아니라 높이를 막는
           // 이유는, 폭으로 막으면 가로로 찍은 사진이 지나치게 작아지기 때문이다.
           <a key={paths[i]} href={url} target="_blank" rel="noreferrer"
-            className="inline-block" title="눌러서 원본 크기로 보기">
+            className="shrink-0" title="눌러서 원본 크기로 보기">
             <img
               data-testid={`detail-photo-${i}`}
               src={url}
               alt={`첨부 사진 ${i + 1}`}
-              className="max-h-72 w-auto max-w-full rounded border border-line"
+              // 높이를 못박아 나란히 놓았을 때 위아래가 맞는다.
+              // 폰에서는 낮게, 넓은 화면에서는 두 배로 — 교사는 답안지를 읽어야 한다.
+              className="h-80 sm:h-[32rem] w-auto rounded border border-line"
             />
           </a>
         ) : (
-          <p key={paths[i]} className="text-xs text-ink-mute">
+          <p key={paths[i]} className="text-xs text-ink-mute shrink-0">
             사진을 불러오지 못했습니다.
           </p>
         )
