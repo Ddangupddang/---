@@ -162,24 +162,33 @@ for select to authenticated using (true);
 create policy hw_sub_delete on public.homework_submissions_v2
 for delete to authenticated using (true);
 
--- 새로 내기 — 여기만 기한을 본다.
---   1) 마감 다음날까지 (월요일 과제는 화요일 자정까지)
---   2) 또는 교사가 그 학생·그 요일을 따로 열어준 경우
--- 날짜는 서버 시각을 한국 시간으로 바꿔서 센다. 학생 기기의 시계는 보지 않는다.
+-- 새로 내기 — 두 가지를 본다.
+--   (가) 본인 이름으로만 낼 수 있다.
+--        이게 없으면 학생이 API를 직접 불러 남의 이름으로 답안을 넣을 수 있다.
+--        ⚠️ profiles.student_id가 빈 학생 계정이 있으면 그 계정은 제출이 막힌다.
+--           넣기 전에 아래 질의로 0행인지 확인할 것:
+--             select username, name from public.profiles
+--              where role = 'student' and student_id is null;
+--   (나) 기한 안이거나, 교사가 그 학생·그 요일을 따로 열어준 경우.
+--        마감 다음날까지다 (월요일 과제는 화요일 자정까지).
+--        날짜는 서버 시각을 한국 시간으로 바꿔서 센다 — 학생 기기의 시계는 보지 않는다.
 create policy hw_sub_insert on public.homework_submissions_v2
 for insert to authenticated
 with check (
-  exists (
-    select 1
-    from public.homework_days d
-    where d.id = homework_submissions_v2.day_id
-      and (now() at time zone 'Asia/Seoul')::date <= d.date + 1
-  )
-  or exists (
-    select 1
-    from public.homework_reopens r
-    where r.day_id     = homework_submissions_v2.day_id
-      and r.student_id = homework_submissions_v2.student_id
+  student_id = public.hw_my_student_id()
+  and (
+    exists (
+      select 1
+      from public.homework_days d
+      where d.id = homework_submissions_v2.day_id
+        and (now() at time zone 'Asia/Seoul')::date <= d.date + 1
+    )
+    or exists (
+      select 1
+      from public.homework_reopens r
+      where r.day_id     = homework_submissions_v2.day_id
+        and r.student_id = homework_submissions_v2.student_id
+    )
   )
 );
 
