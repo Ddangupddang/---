@@ -3,11 +3,12 @@ import { useState } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
-import { checkAcademyWifi } from '../utils/checkWifi'
+import { checkAcademyWifi, wifiFailureHint } from '../utils/checkWifi'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import PageTitle from '../components/ui/PageTitle'
 import NoAssignedClass from '../components/NoAssignedClass'
+import WifiSelfCheck from '../components/WifiSelfCheck'
 import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
 import { todayKST } from '../utils/datetime'
 
@@ -67,6 +68,9 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
 
   return (
     <div className="flex flex-col gap-4">
+      {/* 학생 출석이 안 될 때 "지금 학원 주소가 뭔지"를 여기서 읽는다 */}
+      <WifiSelfCheck />
+
       <input
         type="date"
         value={selectedDate}
@@ -237,6 +241,8 @@ function StudentAttendance({ user, records, upsertAttendance }) {
   const [activeTab, setActiveTab] = useState('수업')
   const [checking, setChecking] = useState(false)
   const [checkResult, setCheckResult] = useState(null) // null | 'success' | 'fail' | 'already'
+  // 실패했을 때 감지된 공인 IP. 원인을 짚는 유일한 단서다.
+  const [failedIp, setFailedIp] = useState(null)
 
   // 오늘 수업 출석 여부
   const todayRecord = records.find(
@@ -251,11 +257,14 @@ function StudentAttendance({ user, records, upsertAttendance }) {
     }
     setChecking(true)
     setCheckResult(null)
-    const { ok } = await checkAcademyWifi()
+    const { ok, clientIp } = await checkAcademyWifi()
     if (ok) {
       await upsertAttendance(user.studentId, today, 'present', '수업')
       setCheckResult('success')
     } else {
+      // 감지된 주소를 함께 남긴다. 이게 없으면 한 학생만 출석이 안 될 때
+      // 원인을 짚을 근거가 하나도 없다 — 실제로 그런 일이 있었다.
+      setFailedIp(clientIp ?? null)
       setCheckResult('fail')
     }
     setChecking(false)
@@ -289,7 +298,19 @@ function StudentAttendance({ user, records, upsertAttendance }) {
           <p className="text-sm text-navy font-medium">출석이 기록됐습니다!</p>
         )}
         {checkResult === 'fail' && (
-          <p className="text-sm text-danger">학원 WiFi에 연결되어 있지 않습니다.</p>
+          <div className="text-sm">
+            <p className="text-danger font-medium">학원 WiFi에 연결되어 있지 않습니다.</p>
+            <p className="text-ink-mute mt-1">{wifiFailureHint(failedIp)}</p>
+            {failedIp && (
+              <div className="mt-2 border border-line rounded p-2">
+                <p className="text-xs text-ink-faint">감지된 주소</p>
+                <p className="font-mono text-xs text-ink break-all">{failedIp}</p>
+                <p className="text-xs text-ink-mute mt-1">
+                  WiFi를 껐다 켠 뒤 다시 눌러 보세요. 그래도 안 되면 이 화면을 선생님께 보여주세요.
+                </p>
+              </div>
+            )}
+          </div>
         )}
         {checkResult === 'already' && (
           <p className="text-sm text-ink-faint">오늘 이미 출석 체크했습니다.</p>
