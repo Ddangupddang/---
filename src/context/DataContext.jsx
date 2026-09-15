@@ -7,9 +7,7 @@ import { resizeQnaImage, qnaImagePath, qnaImageToken } from '../utils/qnaImage'
 import { subscriptionRow } from '../utils/pushSubscription'
 import { rowsOrNull } from '../utils/dbRows'
 import { fetchAllRows } from '../utils/fetchAll'
-import {
-  toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission, toHomeworkCheck,
-} from '../utils/homeworkMappers'
+import { toHomeworkSet, toHomeworkDay, toHomeworkQuestion, toHomeworkSubmission, toHomeworkCheck, toHomeworkReopen } from '../utils/homeworkMappers'
 import { dateForWeekday } from '../utils/homeworkWeek'
 import { todayKST } from '../utils/datetime'
 
@@ -162,6 +160,7 @@ export function DataProvider({ children }) {
   const [homeworkQuestions,   setHomeworkQuestions]   = useState([])
   const [homeworkSubmissions, setHomeworkSubmissions] = useState([])
   const [homeworkChecks,      setHomeworkChecks]      = useState([])
+  const [homeworkReopens,     setHomeworkReopens]     = useState([])
   const [weeklyNotes, setWeeklyNotes] = useState([])
   const [dataLoading,   setDataLoading]   = useState(true)
   const [refreshing,    setRefreshing]    = useState(false)
@@ -191,7 +190,7 @@ export function DataProvider({ children }) {
       // 여럿이면 쪽 경계에서 순서가 흔들려 어떤 행은 두 번 오고 어떤 행은 빠진다.
       // 과제 문항이 빠지면 학생 답안이 엉뚱한 번호에 붙는다. id는 겹치지 않으므로
       // 마지막 기준으로 두면 순서가 항상 같아진다.
-      const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, hwChkRes, wnRes, saRes] =
+      const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, hwChkRes, hwReoRes, wnRes, saRes] =
         await Promise.all([
           fetchAllRows(() => supabase.from('classes').select('*').order('sort_order').order('id')),
           fetchAllRows(() => supabase.from('students').select('*').order('sort_order').order('id')),
@@ -211,6 +210,7 @@ export function DataProvider({ children }) {
           fetchAllRows(() => supabase.from('homework_questions').select('*').order('id')),
           fetchAllRows(() => supabase.from('homework_submissions_v2').select('*').order('id')),
           fetchAllRows(() => supabase.from('homework_checks').select('*').order('id')),
+          fetchAllRows(() => supabase.from('homework_reopens').select('*').order('id')),
           fetchAllRows(() => supabase.from('weekly_report_notes').select('*').order('id')),
           fetchAllRows(() => supabase.from('profiles').select('id, student_id, username').eq('role', 'student').order('id')),
         ])
@@ -236,6 +236,7 @@ export function DataProvider({ children }) {
       if (!hwQRes.error && hwQRes.data)       setHomeworkQuestions(hwQRes.data.map(toHomeworkQuestion))
       if (!hwSubRes.error && hwSubRes.data)   setHomeworkSubmissions(hwSubRes.data.map(toHomeworkSubmission))
       const hwChkRows = rowsOrNull(hwChkRes); if (hwChkRows) setHomeworkChecks(hwChkRows.map(toHomeworkCheck))
+      const hwReoRows = rowsOrNull(hwReoRes); if (hwReoRows) setHomeworkReopens(hwReoRows.map(toHomeworkReopen))
       if (!wnRes.error && wnRes.data) setWeeklyNotes(wnRes.data.map(toWeeklyNote))
       if (!saRes.error && saRes.data) applyStudentAccounts(saRes.data)
 
@@ -1004,10 +1005,55 @@ export function DataProvider({ children }) {
     return record
   }
 
+  // 기한이 지난 요일을 이 학생에게 열어 준다.
+  //
+  // 기한 잠금은 DB 정책이 건다. 그 정책이 이 표를 보고 예외를 허용하므로,
+  // 여기에 행을 넣는 것이 곧 "내가 허락한다"는 뜻이다.
+  // 쓰기는 교사·관리자만 되도록 정책으로 막혀 있다.
+  async function openHomeworkDay({ dayId, studentId, openedBy }) {
+    const already = homeworkReopens.find((r) => r.dayId === dayId && r.studentId === studentId)
+    if (already) return already
+
+    const { data, error } = await supabase
+      .from('homework_reopens')
+      .insert({ day_id: dayId, student_id: studentId, opened_by: openedBy ?? null })
+      .select().single()
+
+    // 다른 교사가 먼저 열어 준 경우(unique 위반) — 이미 열려 있으니 그것을 쓴다
+    if (error?.code === '23505') {
+      const { data: existing } = await supabase
+        .from('homework_reopens')
+        .select('*').eq('day_id', dayId).eq('student_id', studentId).single()
+      if (!existing) return null
+      const record = toHomeworkReopen(existing)
+      setHomeworkReopens((prev) =>
+        prev.some((r) => r.dayId === dayId && r.studentId === studentId) ? prev : [...prev, record]
+      )
+      return record
+    }
+    if (error) { console.error('과제 열어주기 실패:', error); return null }
+
+    const record = toHomeworkReopen(data)
+    setHomeworkReopens((prev) => [...prev, record])
+    return record
+  }
+
+  // 열어준 것을 도로 닫는다. 잘못 열었을 때 쓴다.
+  async function closeHomeworkDay({ dayId, studentId }) {
+    const { error } = await supabase
+      .from('homework_reopens')
+      .delete().eq('day_id', dayId).eq('student_id', studentId)
+    if (error) { console.error('과제 열어주기 취소 실패:', error); return false }
+    setHomeworkReopens((prev) =>
+      prev.filter((r) => !(r.dayId === dayId && r.studentId === studentId))
+    )
+    return true
+  }
+
   // 제출 취소 — 학생이 잘못 낸 답안을 지워 다시 풀 수 있게 한다.
   // 학생은 제출 뒤 스스로 고칠 수 없으므로 이게 유일한 구제책이다.
   // 기록을 통째로 지우므로 되돌릴 수 없다 — 부르는 쪽에서 반드시 확인을 받는다.
-  async function deleteHomeworkSubmission({ dayId, studentId }) {
+  async function deleteHomeworkSubmission({ dayId, studentId, openedBy }) {
     const { error } = await supabase
       .from('homework_submissions_v2')
       .delete().eq('day_id', dayId).eq('student_id', studentId)
@@ -1016,6 +1062,10 @@ export function DataProvider({ children }) {
     setHomeworkSubmissions((prev) =>
       prev.filter((s) => !(s.dayId === dayId && s.studentId === studentId))
     )
+    // 기한도 함께 연다. 취소해 놓고 열어주지 않으면 학생은 "미제출"만 보고
+    // 다시 낼 수는 없다 — 취소의 목적 자체가 다시 풀게 하는 것이다.
+    // 이미 기한 안이면 행이 하나 더 생길 뿐 달라지는 것이 없다.
+    await openHomeworkDay({ dayId, studentId, openedBy })
     return true
   }
 
@@ -1188,6 +1238,7 @@ export function DataProvider({ children }) {
       homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
       addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission,
       homeworkChecks, addHomeworkCheck,
+      homeworkReopens, openHomeworkDay, closeHomeworkDay,
       notifyNewHomework,
       deleteHomeworkSubmission,
       uploadSolutionFile, deleteSolutionFile,

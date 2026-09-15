@@ -30,6 +30,7 @@ export default function StudentHomeworkView({ category }) {
     students, homeworkSets, homeworkDays, homeworkQuestions,
     homeworkSubmissions, upsertHomeworkSubmission,
     homeworkChecks = [], addHomeworkCheck,
+    homeworkReopens = [],
   } = useData()
   const [openDayId, setOpenDayId] = useState(null)
   const [answers, setAnswers] = useState({})
@@ -91,6 +92,8 @@ export default function StudentHomeworkView({ category }) {
     : []
 
   const subOf = (dayId) => homeworkSubmissions.find((s) => s.dayId === dayId && s.studentId === me.id)
+  // 교사가 이 요일을 나에게 열어 줬나 — 열렸으면 기한과 무관하게 낼 수 있다
+  const reopenedOf = (dayId) => homeworkReopens.some((r) => r.dayId === dayId && r.studentId === me.id)
 
   // ── 특정 요일 열기(제출/결과) ──
   if (openDayId != null) {
@@ -100,7 +103,8 @@ export default function StudentHomeworkView({ category }) {
     const sub = subOf(day.id)
     const beforeDue = today <= day.date
     // 마감 다음날까지만 받는다. 지나면 화면에서 막고, 서버에서도 막힌다.
-    const canSubmit = canSubmitOn(day, today)
+    const reopened = reopenedOf(day.id)
+    const canSubmit = canSubmitOn(day, today, reopened)
     // 출제할 때 정해둔 문항 수와 지금 불러온 문항 수가 다르면 자료가 덜 온 것이다.
     // 이대로 제출하면 못 받은 문항이 통째로 오답이 되어 점수가 폭락한다.
     // 조용히 넘어가는 대신 제출을 막고 새로고침을 안내한다.
@@ -178,6 +182,11 @@ export default function StudentHomeworkView({ category }) {
         <button onClick={() => { setOpenDayId(null); setAnswers({}); setCheckResult(null) }} className="text-sm text-ink-mute mb-3">← 요일 목록</button>
         <h2 className="text-lg font-bold text-ink mb-1">{WEEKDAY_LABELS[day.weekday]}요일 과제</h2>
         <p className="text-sm text-ink-mute mb-1">{qs.length}문항 · 마감 {day.date}</p>
+        {reopened && !subOf(day.id) && (
+          <Alert tone="info" className="mb-3">
+            선생님이 이 요일을 다시 열어 주셨습니다. 지금 제출할 수 있습니다.
+          </Alert>
+        )}
         {!canSubmit
           ? <Alert tone="danger" className="mb-3">
               제출 기한이 지났습니다 ({submitDeadlineOf(day)}까지). 선생님께 말씀드리면 다시 열어 주실 수 있습니다.
@@ -245,7 +254,7 @@ export default function StudentHomeworkView({ category }) {
     <div className="flex flex-col gap-3">
       <p className="text-sm text-ink-mute">{mySet.title}</p>
       {days.map((day) => {
-        const st = dayStatus(day, subOf(day.id), today)
+        const st = dayStatus(day, subOf(day.id), today, reopenedOf(day.id))
         const badge = BADGE[st]
         return (
           <div key={day.id}

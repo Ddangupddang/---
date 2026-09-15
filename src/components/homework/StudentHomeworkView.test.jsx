@@ -32,6 +32,7 @@ beforeEach(() => {
     // 실제 upsertHomeworkSubmission은 성공 시 제출 레코드를, 실패 시 null을 반환한다
     upsertHomeworkSubmission: vi.fn().mockResolvedValue({ id: 900, dayId: 10, studentId: 7 }),
     homeworkChecks: [],
+    homeworkReopens: [],
     // 실제 addHomeworkCheck는 방금 저장한 answers를 그대로 되돌려준다.
     // 화면은 이 saved.answers로 채점하므로, 목도 입력값을 그대로 echo해야
     // "확인하면 맞은 개수가 나온다" 같은 테스트가 진짜 동작을 반영한다.
@@ -537,5 +538,50 @@ describe('StudentHomeworkView (제출 기한)', () => {
 
     expect(screen.getByRole('button', { name: '제출하기' })).toBeEnabled()
     expect(screen.getByText(/지금 제출하면 지각으로 표시됩니다/)).toBeInTheDocument()
+  })
+})
+
+// ── 교사가 열어준 요일 (2단계 구제책) ───────────────────────
+// 기한이 지나면 학생은 못 낸다. 교사가 열어주면 그 학생만 다시 낼 수 있다.
+// 이 장치가 없으면 기한 잠금은 학생을 영영 가두는 기능이 된다.
+describe('StudentHomeworkView (열어준 요일)', () => {
+  const OLD_DATE = addDays(TODAY, -10)
+
+  beforeEach(() => {
+    state.data.homeworkDays = [
+      { id: 10, setId: 1, weekday: 1, date: OLD_DATE, questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+    ]
+    state.data.homeworkReopens = [{ id: 1, dayId: 10, studentId: 7, openedBy: 'teacher-1', openedAt: '' }]
+  })
+
+  it('열어주면 기한이 지나도 미제출로 보이고 낼 수 있다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+
+    expect(screen.getByText('미제출')).toBeInTheDocument()
+    expect(screen.queryByText('마감')).not.toBeInTheDocument()
+
+    await user.click(screen.getByText('월요일 과제'))
+    expect(screen.getByText(/선생님이 이 요일을 다시 열어 주셨습니다/)).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    expect(screen.getByRole('button', { name: '제출하기' })).toBeEnabled()
+  })
+
+  it('열어준 요일은 확인도 다시 할 수 있다', async () => {
+    const user = userEvent.setup()
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+
+    expect(screen.getByRole('button', { name: '확인하기' })).toBeEnabled()
+  })
+
+  it('다른 학생에게 열어준 것은 나에게 적용되지 않는다', async () => {
+    state.data.homeworkReopens = [{ id: 1, dayId: 10, studentId: 999, openedBy: 'teacher-1', openedAt: '' }]
+    render(<StudentHomeworkView category="naesin" />)
+    expect(screen.getByText('마감')).toBeInTheDocument()
   })
 })

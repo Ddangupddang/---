@@ -9,10 +9,19 @@ import { gradeHomework } from '../../utils/homework'
 
 const byName = (a, b) => a.student.name.localeCompare(b.student.name, 'ko')
 
-// onCancel을 받으면 제출 취소 버튼이 생긴다. 권한 판단은 부르는 쪽이 한다.
-export default function DaySubmissionList({ students, questions, submissions, onCancel = null }) {
+// onCancel을 받으면 제출 취소 버튼이, onOpenDay를 받으면 미제출 학생 옆에
+// "열어주기"가 생긴다. 권한 판단은 부르는 쪽이 한다.
+//
+// reopenedIds: 이 요일이 이미 열려 있는 학생 id 집합.
+// closed: 기한이 지나 더는 못 내는 요일인가 — 열어주기가 필요한 상황인지 판단한다.
+export default function DaySubmissionList({
+  students, questions, submissions,
+  onCancel = null, onOpenDay = null, onCloseDay = null,
+  reopenedIds = new Set(), closed = false,
+}) {
   const [openStudentId, setOpenStudentId] = useState(null)
   const [cancelError, setCancelError] = useState('')
+  const [busyId, setBusyId] = useState(null)
 
   const rows = students.map((student) => {
     const submission = submissions.find((s) => s.studentId === student.id) ?? null
@@ -36,6 +45,24 @@ export default function DaySubmissionList({ students, questions, submissions, on
     // 실패했는데 목록으로 돌아가면 지워진 것처럼 보인다 — 상세에 머무르며 알린다
     if (await onCancel(student.id)) setOpenStudentId(null)
     else setCancelError('제출 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+  }
+
+  // 기한이 지난 뒤 이 학생만 다시 받아 준다.
+  // 되돌릴 수 있는 동작이라 확인을 받지 않는다 — 잘못 눌러도 "닫기"로 되돌린다.
+  async function handleOpen(student) {
+    setBusyId(student.id)
+    const ok = await onOpenDay(student.id)
+    setBusyId(null)
+    if (!ok) setCancelError(`${student.name} 학생에게 열어주지 못했습니다. 잠시 후 다시 시도해 주세요.`)
+    else setCancelError('')
+  }
+
+  async function handleClose(student) {
+    setBusyId(student.id)
+    const ok = await onCloseDay(student.id)
+    setBusyId(null)
+    if (!ok) setCancelError(`${student.name} 학생의 열어주기를 되돌리지 못했습니다.`)
+    else setCancelError('')
   }
 
   // 한 학생의 문항별 결과
@@ -79,12 +106,34 @@ export default function DaySubmissionList({ students, questions, submissions, on
 
   return (
     <div className="border-t border-line mt-3 pt-3 flex flex-col gap-1">
-      {missing.map(({ student }) => (
-        <div key={student.id} className="flex justify-between items-center px-1 py-1.5 text-sm">
-          <span className="text-ink-mute">{student.name}</span>
-          <span className="text-xs text-danger">미제출</span>
-        </div>
-      ))}
+      {missing.map(({ student }) => {
+        const isOpen = reopenedIds.has(student.id)
+        return (
+          <div key={student.id} className="flex justify-between items-center gap-2 px-1 py-1.5 text-sm">
+            <span className="text-ink-mute">{student.name}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              {isOpen
+                ? <span className="text-xs text-navy">열림</span>
+                : <span className="text-xs text-danger">{closed ? '마감' : '미제출'}</span>}
+              {/* 기한이 지났을 때만 쓸모가 있다. 기한 안이면 학생이 그냥 내면 된다. */}
+              {onOpenDay && closed && !isOpen && (
+                <button type="button" disabled={busyId === student.id}
+                  onClick={() => handleOpen(student)}
+                  className="text-xs px-2 py-1 rounded bg-navy-soft text-navy font-medium disabled:opacity-50">
+                  열어주기
+                </button>
+              )}
+              {onCloseDay && isOpen && (
+                <button type="button" disabled={busyId === student.id}
+                  onClick={() => handleClose(student)}
+                  className="text-xs text-ink-faint hover:text-danger disabled:opacity-50">
+                  닫기
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      })}
       {missing.length > 0 && done.length > 0 && <div className="border-t border-line my-1" />}
       {done.map(({ student, score }) => (
         <button key={student.id} onClick={() => setOpenStudentId(student.id)}

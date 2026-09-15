@@ -41,3 +41,10 @@ export function toHomeworkCheck(r) {
     answers: r.answers ?? [], checkedAt: r.checked_at,
   }
 }
+
+export function toHomeworkReopen(r) {
+  return {
+    id: r.id, dayId: r.day_id, studentId: r.student_id,
+    openedBy: r.opened_by ?? null, openedAt: r.opened_at,
+  }
+}

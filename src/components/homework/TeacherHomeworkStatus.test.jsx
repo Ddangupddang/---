@@ -1,7 +1,7 @@
 // src/components/homework/TeacherHomeworkStatus.test.jsx
 // 교사 과제 현황 화면 테스트 — 그룹(내신=반 / 정시=레벨) 탭 전환과 요일별 제출 집계.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TeacherHomeworkStatus from './TeacherHomeworkStatus'
 
@@ -47,6 +47,9 @@ beforeEach(() => {
         answers: [{ number: 1, answer: '①' }, { number: 2, answer: '⑤' }],
       },
     ],
+    homeworkReopens: [],
+    openHomeworkDay: vi.fn().mockResolvedValue({ id: 1 }),
+    closeHomeworkDay: vi.fn().mockResolvedValue(true),
   }
 })
 
@@ -107,7 +110,8 @@ describe('TeacherHomeworkStatus — 요일별 학생 명단', () => {
     render(<TeacherHomeworkStatus category="naesin" />)
     await openMonday(user)
 
-    expect(screen.getByText('미제출')).toBeInTheDocument()
+    // 고정 날짜(2026-08) 기준이라 기한이 한참 지났다 → '미제출'이 아니라 '마감'이다
+    expect(screen.getByText('마감')).toBeInTheDocument()
     expect(screen.getByText('고2-B')).toBeInTheDocument()   // 미제출
     expect(screen.getByText('고2-A')).toBeInTheDocument()   // 제출
     expect(screen.getByText('1/2 ›')).toBeInTheDocument()   // 2번 오답
@@ -278,7 +282,7 @@ describe('TeacherHomeworkStatus — 제출 취소', () => {
 
     // 되돌릴 수 없다는 사실을 확인창에서 알려야 한다
     expect(confirmSpy.mock.calls[0][0]).toMatch(/되돌릴 수 없/)
-    expect(state.data.deleteHomeworkSubmission).toHaveBeenCalledWith({ dayId: 110, studentId: 1 })
+    expect(state.data.deleteHomeworkSubmission).toHaveBeenCalledWith({ dayId: 110, studentId: 1, openedBy: 'teacher-1' })
     confirmSpy.mockRestore()
   })
 
@@ -304,5 +308,48 @@ describe('TeacherHomeworkStatus — 제출 취소', () => {
 
     expect(await screen.findByText(/제출 취소에 실패/)).toBeInTheDocument()
     confirmSpy.mockRestore()
+  })
+})
+
+// ── 열어주기 (2단계 구제책) ──────────────────────────────────
+// 기한이 지난 요일은 학생이 못 낸다. 교사가 그 학생만 다시 받아줄 수 있어야
+// 기한 잠금이 "영영 못 내게 하는 기능"이 되지 않는다.
+describe('TeacherHomeworkStatus — 열어주기', () => {
+  // 고2 탭의 월요일 카드를 펼친 상태로 만든다 (2026-08-10 — 기한이 한참 지났다)
+  async function openMonday(user) {
+    await user.click(screen.getByRole('button', { name: '고2' }))
+    await user.click(screen.getByRole('button', { name: /월요일 · 2026-08-10/ }))
+  }
+
+  it('기한이 지난 요일의 미제출 학생에게 열어주기가 보인다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await openMonday(user)
+
+    expect(screen.getByRole('button', { name: '열어주기' })).toBeInTheDocument()
+  })
+
+  it('누르면 그 학생·그 요일만 열린다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await openMonday(user)
+    await user.click(screen.getByRole('button', { name: '열어주기' }))
+
+    await waitFor(() => expect(state.data.openHomeworkDay).toHaveBeenCalledWith({
+      dayId: 110, studentId: 2, openedBy: 'admin-1',
+    }))
+  })
+
+  it('이미 열린 학생은 열림으로 보이고 닫을 수 있다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkReopens = [{ id: 1, dayId: 110, studentId: 2, openedBy: 'teacher-1', openedAt: '' }]
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await openMonday(user)
+
+    expect(screen.getByText('열림')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '열어주기' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(state.data.closeHomeworkDay).toHaveBeenCalledWith({ dayId: 110, studentId: 2 }))
   })
 })

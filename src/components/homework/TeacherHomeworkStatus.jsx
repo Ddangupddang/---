@@ -7,6 +7,8 @@ import { visibleStudents, visibleClasses } from '../../utils/classAccess'
 import { homeworkGroups, setInGroup, studentInGroup } from '../../utils/homeworkGroup'
 import DaySubmissionList from './DaySubmissionList'
 import DayQuestionStats from './DayQuestionStats'
+import { canSubmitOn } from '../../utils/homeworkSelect'
+import { todayKST } from '../../utils/datetime'
 import {
   WEEKDAY_LABELS,
 } from '../../constants/homework'
@@ -18,12 +20,15 @@ export default function TeacherHomeworkStatus({ category }) {
   const {
     students: allStudents, classes = [],
     homeworkSets, homeworkDays, homeworkQuestions = [], homeworkSubmissions,
-    deleteHomeworkSubmission,
+    homeworkReopens = [],
+    deleteHomeworkSubmission, openHomeworkDay, closeHomeworkDay,
   } = useData()
   // 과제 세트는 학년·레벨 단위라 학원 공용이지만, 제출 현황은 담당 반 학생만 본다
   const students = visibleStudents(allStudents, classes, user)
   // 내신은 반, 정시는 레벨로 묶는다
   const groups = homeworkGroups(category, visibleClasses(classes, user))
+
+  const today = todayKST()
 
   const [groupKey, setGroupKey] = useState('')
   // 반 목록은 Supabase 로드 뒤에 채워진다 — 첫 렌더의 빈 값을 붙잡고 있으면 표가 빈 채로 열린다
@@ -99,7 +104,18 @@ export default function TeacherHomeworkStatus({ category }) {
                               questions={dayQuestions}
                               submissions={subs}
                               onCancel={canManage
-                                ? (studentId) => deleteHomeworkSubmission({ dayId: day.id, studentId })
+                                ? (studentId) => deleteHomeworkSubmission({ dayId: day.id, studentId, openedBy: user.id })
+                                : null}
+                              // 기한이 지난 요일만 열어줄 일이 생긴다
+                              closed={!canSubmitOn(day, today)}
+                              reopenedIds={new Set(
+                                homeworkReopens.filter((r) => r.dayId === day.id).map((r) => r.studentId)
+                              )}
+                              onOpenDay={canManage
+                                ? (studentId) => openHomeworkDay({ dayId: day.id, studentId, openedBy: user.id })
+                                : null}
+                              onCloseDay={canManage
+                                ? (studentId) => closeHomeworkDay({ dayId: day.id, studentId })
                                 : null}
                             />
                           ) : (
