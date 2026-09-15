@@ -585,3 +585,72 @@ describe('StudentHomeworkView (열어준 요일)', () => {
     expect(screen.getByText('마감')).toBeInTheDocument()
   })
 })
+
+// ── 지난 주 과제를 열어줬을 때 (9번 신입생 포함) ──────────────
+// 학생 화면은 이번 주만 보여준다. 지난 주 요일을 열어줘도 그 요일이
+// 목록에 없으면 교사 화면에만 '열림'이고 학생은 낼 방법이 없다.
+describe('StudentHomeworkView (열어준 지난 과제)', () => {
+  const LAST_WEEK = mondayOf(addDays(TODAY, -7))
+
+  beforeEach(() => {
+    state.data.homeworkSets = [
+      { id: 1, category: 'naesin', classId: 3, target: null, weekStart: WEEK, title: '이번 주 세트' },
+      { id: 9, category: 'naesin', classId: 3, target: null, weekStart: LAST_WEEK, title: '지난 주 세트' },
+    ]
+    state.data.homeworkDays = [
+      { id: 10, setId: 1, weekday: 1, date: TODAY, questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+      { id: 90, setId: 9, weekday: 3, date: addDays(TODAY, -7), questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+    ]
+    state.data.homeworkQuestions = [
+      { id: 100, dayId: 10, number: 1, answer: '①', solutionVideoUrl: '', solutionFileUrl: '' },
+      { id: 101, dayId: 10, number: 2, answer: '②', solutionVideoUrl: '', solutionFileUrl: '' },
+      { id: 900, dayId: 90, number: 1, answer: '③', solutionVideoUrl: '', solutionFileUrl: '' },
+      { id: 901, dayId: 90, number: 2, answer: '④', solutionVideoUrl: '', solutionFileUrl: '' },
+    ]
+  })
+
+  it('안 열어줬으면 지난 주 요일은 보이지 않는다', () => {
+    state.data.homeworkReopens = []
+    render(<StudentHomeworkView category="naesin" />)
+    expect(screen.queryByText(/선생님이 열어준 지난 과제/)).not.toBeInTheDocument()
+    expect(screen.queryByText('수요일 과제')).not.toBeInTheDocument()
+  })
+
+  it('열어주면 지난 주 요일이 따로 보이고 어느 주 것인지 알려준다', () => {
+    state.data.homeworkReopens = [{ id: 1, dayId: 90, studentId: 7, openedBy: 't', openedAt: '' }]
+    render(<StudentHomeworkView category="naesin" />)
+
+    expect(screen.getByText(/선생님이 열어준 지난 과제/)).toBeInTheDocument()
+    expect(screen.getByText('수요일 과제')).toBeInTheDocument()
+    expect(screen.getByText(/지난 주 세트/)).toBeInTheDocument()
+    // 이번 주 것도 그대로 있다
+    expect(screen.getByText('월요일 과제')).toBeInTheDocument()
+  })
+
+  it('열어준 지난 요일을 실제로 제출할 수 있다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkReopens = [{ id: 1, dayId: 90, studentId: 7, openedBy: 't', openedAt: '' }]
+    render(<StudentHomeworkView category="naesin" />)
+
+    await user.click(screen.getByText('수요일 과제'))
+    await user.click(screen.getByTestId('cell-1-③'))
+    await user.click(screen.getByTestId('cell-2-④'))
+    await user.click(screen.getByRole('button', { name: '제출하기' }))
+
+    await waitFor(() => expect(state.data.upsertHomeworkSubmission).toHaveBeenCalledWith({
+      dayId: 90, studentId: 7,
+      answers: [{ number: 1, answer: '③' }, { number: 2, answer: '④' }],
+    }))
+  })
+
+  it('이번 주 과제가 없어도 열어준 지난 과제는 보인다 — 신입생 경우', () => {
+    state.data.homeworkSets = [
+      { id: 9, category: 'naesin', classId: 3, target: null, weekStart: LAST_WEEK, title: '지난 주 세트' },
+    ]
+    state.data.homeworkReopens = [{ id: 1, dayId: 90, studentId: 7, openedBy: 't', openedAt: '' }]
+    render(<StudentHomeworkView category="naesin" />)
+
+    expect(screen.getByText('수요일 과제')).toBeInTheDocument()
+    expect(screen.queryByText(/이번 주 내신과제가 없습니다/)).not.toBeInTheDocument()
+  })
+})

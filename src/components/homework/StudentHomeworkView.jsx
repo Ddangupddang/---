@@ -12,6 +12,7 @@ import { gradeHomework } from '../../utils/homework'
 import { checkSummary } from '../../utils/homeworkCheck'
 import { matchesStudent, dayStatus, canSubmitOn, submitDeadlineOf } from '../../utils/homeworkSelect'
 import { mondayOf } from '../../utils/homeworkWeek'
+import { reopenedPastDays } from '../../utils/homeworkOpenPast'
 import { WEEKDAY_LABELS, CATEGORY_LABELS } from '../../constants/homework'
 import { todayKST } from '../../utils/datetime'
 
@@ -91,13 +92,22 @@ export default function StudentHomeworkView({ category }) {
     ? homeworkDays.filter((d) => d.setId === mySet.id).sort((a, b) => a.weekday - b.weekday)
     : []
 
+  // 교사가 열어준 지난 주 요일. 이번 주 목록에는 안 나오므로 따로 모은다 —
+  // 이게 없으면 교사 화면에는 '열림'인데 학생에게는 그 요일이 보이지도 않는다.
+  const openedPast = reopenedPastDays({
+    sets: homeworkSets, days: homeworkDays, reopens: homeworkReopens,
+    student: me, category, weekStart: thisWeek,
+  })
+  // 요일을 열 때는 이번 주든 지난 주든 같은 화면을 쓴다
+  const allDays = [...days, ...openedPast.map((o) => o.day)]
+
   const subOf = (dayId) => homeworkSubmissions.find((s) => s.dayId === dayId && s.studentId === me.id)
   // 교사가 이 요일을 나에게 열어 줬나 — 열렸으면 기한과 무관하게 낼 수 있다
   const reopenedOf = (dayId) => homeworkReopens.some((r) => r.dayId === dayId && r.studentId === me.id)
 
   // ── 특정 요일 열기(제출/결과) ──
   if (openDayId != null) {
-    const day = days.find((d) => d.id === openDayId)
+    const day = allDays.find((d) => d.id === openDayId)
     if (!day) { setOpenDayId(null); return null }
     const qs = questionsOf(day.id)
     const sub = subOf(day.id)
@@ -247,26 +257,40 @@ export default function StudentHomeworkView({ category }) {
   }
 
   // ── 요일 목록 ──
-  if (!mySet || days.length === 0) {
+  if (allDays.length === 0) {
     return <p className="text-center text-ink-faint py-12">이번 주 {CATEGORY_LABELS[category]}가 없습니다.</p>
   }
+  // 요일 카드 하나 — 이번 주와 열린 지난 과제가 같은 모양을 쓴다
+  const dayCard = (day, note) => {
+    const st = dayStatus(day, subOf(day.id), today, reopenedOf(day.id))
+    const badge = BADGE[st]
+    return (
+      <div key={day.id}
+        onClick={() => { setAnswers({}); setSubmitError(''); setCheckResult(null); setOpenDayId(day.id) }}
+        className="bg-surface border border-line rounded p-4 cursor-pointer flex justify-between items-center">
+        <div>
+          <p className="font-semibold text-ink">{WEEKDAY_LABELS[day.weekday]}요일 과제</p>
+          <p className="text-xs text-ink-faint mt-1">
+            {day.questionCount}문항 · 마감 {day.date}{note ? ` · ${note}` : ''}
+          </p>
+        </div>
+        <Badge tone={badge.tone}>{badge.label}</Badge>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-ink-mute">{mySet.title}</p>
+      {openedPast.length > 0 && (
+        <>
+          <p className="text-sm font-medium text-navy">선생님이 열어준 지난 과제</p>
+          {openedPast.map(({ day, set }) => dayCard(day, set.title))}
+          {days.length > 0 && <div className="border-t border-line mt-1 pt-1" />}
+        </>
+      )}
+      {mySet && <p className="text-sm text-ink-mute">{mySet.title}</p>}
       {days.map((day) => {
-        const st = dayStatus(day, subOf(day.id), today, reopenedOf(day.id))
-        const badge = BADGE[st]
-        return (
-          <div key={day.id}
-            onClick={() => { setAnswers({}); setSubmitError(''); setCheckResult(null); setOpenDayId(day.id) }}
-            className="bg-surface border border-line rounded p-4 cursor-pointer flex justify-between items-center">
-            <div>
-              <p className="font-semibold text-ink">{WEEKDAY_LABELS[day.weekday]}요일 과제</p>
-              <p className="text-xs text-ink-faint mt-1">{day.questionCount}문항 · 마감 {day.date}</p>
-            </div>
-            <Badge tone={badge.tone}>{badge.label}</Badge>
-          </div>
-        )
+        return dayCard(day)
       })}
     </div>
   )
