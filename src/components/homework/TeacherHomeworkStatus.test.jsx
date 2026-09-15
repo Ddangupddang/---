@@ -357,6 +357,33 @@ describe('TeacherHomeworkStatus — 열어주기', () => {
     }))
   })
 
+  // 열어주기는 제출 취소와 권한 규칙이 다르다. 되돌릴 수 있고 학생을 돕기만
+  // 하는 동작이라, 담당 반 학생인데 "그 과제를 낸 사람이 아니라서" 못 열어주면
+  // 원장이 매번 관리자로 갈아타야 한다.
+  it('그 과제를 내지 않은 담당 교사도 열어줄 수 있다', async () => {
+    const user = userEvent.setup()
+    // 로그인은 teacher-2, 과제를 낸 사람은 teacher-1
+    state.auth = { user: { id: 'teacher-2', role: 'teacher' } }
+    state.data.classes = [{ id: 100, name: '고2', teacherId: 'teacher-2' }]
+    state.data.students = state.data.students.map((st) => ({ ...st, classId: 100 }))
+    state.data.homeworkSets = state.data.homeworkSets.map((set) =>
+      set.category === 'naesin' ? { ...set, classId: 100, teacherId: 'teacher-1' } : set
+    )
+    render(<TeacherHomeworkStatus category="naesin" />)
+    await user.click(screen.getByRole('button', { name: '고2' }))
+    await user.click(screen.getByRole('button', { name: /월요일 · 2026-08-10/ }))
+
+    // 담당 반 학생이 여럿이면 버튼도 여럿이다 — 첫 번째로 확인한다
+    const buttons = screen.getAllByRole('button', { name: '열어주기' })
+    expect(buttons.length).toBeGreaterThan(0)
+    await user.click(buttons[0])
+
+    await waitFor(() => expect(state.data.openHomeworkDay).toHaveBeenCalled())
+    expect(state.data.openHomeworkDay.mock.calls[0][0]).toMatchObject({
+      dayId: 110, openedBy: 'teacher-2',
+    })
+  })
+
   it('이미 열린 학생은 열림으로 보이고 닫을 수 있다', async () => {
     const user = userEvent.setup()
     state.data.homeworkReopens = [{ id: 1, dayId: 110, studentId: 2, openedBy: 'teacher-1', openedAt: '' }]

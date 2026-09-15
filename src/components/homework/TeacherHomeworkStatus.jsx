@@ -62,7 +62,10 @@ export default function TeacherHomeworkStatus({ category }) {
         <p className="text-center text-ink-faint py-10">등록된 과제가 없습니다.</p>
       ) : sets.map((set) => {
         const days = homeworkDays.filter((d) => d.setId === set.id).sort((a, b) => a.weekday - b.weekday)
-        // 제출 취소 권한 — 세트 수정·삭제와 같은 규칙(관리자 또는 그 과제를 낸 교사)
+        // 제출 취소 권한 — 세트 수정·삭제와 같은 규칙(관리자 또는 그 과제를 낸 교사).
+        // 답안을 지우는 되돌릴 수 없는 동작이라 좁게 둔다.
+        //
+        // 열어주기는 이 규칙을 따르지 않는다 — 아래 참조.
         const canManage = user.role === 'admin' || set.teacherId === user.id
         return (
           <div key={set.id} className="mb-6">
@@ -111,12 +114,12 @@ export default function TeacherHomeworkStatus({ category }) {
                               reopenedIds={new Set(
                                 homeworkReopens.filter((r) => r.dayId === day.id).map((r) => r.studentId)
                               )}
-                              onOpenDay={canManage
-                                ? (studentId) => openHomeworkDay({ dayId: day.id, studentId, openedBy: user.id })
-                                : null}
-                              onCloseDay={canManage
-                                ? (studentId) => closeHomeworkDay({ dayId: day.id, studentId })
-                                : null}
+                              // 열어주기는 출제자가 아니어도 된다. 되돌릴 수 있고 학생을 돕기만
+                              // 하는 동작이라, 담당 반 학생이 기한을 놓쳤는데 "그 과제를 낸 사람이
+                              // 아니라서" 못 열어주는 것이 더 나쁘다. 여기 보이는 학생은 이미
+                              // visibleStudents로 담당 반만 걸러진 사람들이다.
+                              onOpenDay={(studentId) => openHomeworkDay({ dayId: day.id, studentId, openedBy: user.id })}
+                              onCloseDay={(studentId) => closeHomeworkDay({ dayId: day.id, studentId })}
                             />
                           ) : (
                             <DayQuestionStats questions={dayQuestions} submissions={subs} />
