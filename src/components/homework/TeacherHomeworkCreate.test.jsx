@@ -408,7 +408,7 @@ describe('TeacherHomeworkCreate (복제)', () => {
 
     expect(screen.getByRole('button', { name: '복제해서 저장' })).toBeDisabled()
     expect(screen.getByTestId('save-blocked')).toHaveTextContent(/먼저 낸 과제/)
-    expect(screen.getByTestId('save-blocked')).toHaveTextContent(/대상이나 주를 바꿔/)
+    expect(screen.getByTestId('save-blocked')).toHaveTextContent(/이어서 넣으세요/)
   })
 })
 
@@ -463,5 +463,67 @@ describe('TeacherHomeworkCreate (학생 알림)', () => {
     expect(alertSpy.mock.calls[0][0]).toMatch(/저장되었습니다/)
     expect(onDone).toHaveBeenCalled()   // 저장은 끝났으므로 목록으로 돌아간다
     alertSpy.mockRestore()
+  })
+})
+
+// ── 같은 주에 이미 과제가 있을 때 (이어서 넣기) ──────────────
+// 한 반의 한 주에는 세트가 하나뿐이다. 교사는 요일마다 새로 만들려 하므로
+// 두 번째부터 막히는데, 그때 입력한 것을 버리게 하면 안 된다.
+describe('TeacherHomeworkCreate (이미 있는 주에 이어서 넣기)', () => {
+  beforeEach(() => {
+    // 고2A반(7)에 이번 주 과제가 이미 있다
+    state.data.homeworkSets = [
+      { id: 12, category: 'naesin', classId: 7, target: null, weekStart: WEEK, title: '9월 3주차' },
+    ]
+  })
+
+  it('막으면서 "이어서 넣기"를 권한다 — 대상을 바꾸라고 하지 않는다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkCreate category="naesin" onContinueInto={vi.fn()} onDone={vi.fn()} />)
+
+    await user.type(screen.getByPlaceholderText(/세트 제목/), '토요일치')
+    expect(screen.getByTestId('save-blocked')).toHaveTextContent(/이어서 넣으세요/)
+    expect(screen.getByRole('button', { name: /"9월 3주차"에 이어서 넣기/ })).toBeInTheDocument()
+  })
+
+  it('누르면 입력하던 요일을 그대로 들고 넘어간다', async () => {
+    const user = userEvent.setup()
+    const onContinueInto = vi.fn()
+    render(<TeacherHomeworkCreate category="naesin" onContinueInto={onContinueInto} onDone={vi.fn()} />)
+
+    // 토요일에 2문항을 채운다 (요일 탭을 먼저 옮긴다 — 활성 요일만 그려진다)
+    await user.click(screen.getByRole('button', { name: '토' }))
+    await user.click(screen.getByLabelText(/토요일 과제 사용/))
+    await user.type(screen.getByRole('spinbutton'), '2')
+    await user.click(screen.getByTestId('cell-1-③'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+
+    await user.click(screen.getByRole('button', { name: /이어서 넣기/ }))
+
+    expect(onContinueInto).toHaveBeenCalled()
+    const [set, days] = onContinueInto.mock.calls[0]
+    expect(set.id).toBe(12)
+    expect(days[6].enabled).toBe(true)
+    expect(days[6].count).toBe(2)
+    expect(days[6].answers).toEqual({ 1: '③', 2: '⑤' })
+  })
+
+  it('옮겨 간 뒤에는 기존 요일과 넣던 요일이 함께 있고, 넣던 요일부터 보인다', () => {
+    withExistingSet()   // 세트 11: 고2B반 월요일 2문항
+    const pending = {
+      1: { enabled: false, count: 0, answers: {}, videoUrl: '', fileUrl: '', file: null },
+      6: { enabled: true, count: 2, answers: { 1: '③', 2: '⑤' }, videoUrl: '', fileUrl: '', file: null },
+    }
+    render(
+      <TeacherHomeworkCreate category="naesin" editSet={EDIT_SET} pendingDays={pending}
+        onContinueInto={vi.fn()} onDone={vi.fn()} />
+    )
+
+    // 넣던 토요일이 열려 있다
+    expect(screen.getByLabelText(/토요일 과제 사용/)).toBeChecked()
+    expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-selected', 'true')
+
+    // 기존 월요일도 살아 있다 — 덮어써서 지워지면 안 된다
+    expect(screen.getByRole('button', { name: '수정 저장' })).toBeEnabled()
   })
 })

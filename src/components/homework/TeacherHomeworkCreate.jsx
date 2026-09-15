@@ -16,6 +16,7 @@ import { homeworkEditImpact } from '../../utils/homeworkEdit'
 import { solutionFileName } from '../../utils/homework'
 import { homeworkGroups, setInGroup } from '../../utils/homeworkGroup'
 import { defaultCopyGroupKey, findConflictingSet, urlsSafeToDelete } from '../../utils/homeworkCopy'
+import { mergePendingDays, firstPendingWeekday } from '../../utils/homeworkMerge'
 import { visibleClasses } from '../../utils/classAccess'
 import {
   HW_CATEGORY, CATEGORY_LABELS, WEEKDAYS, WEEKDAY_LABELS,
@@ -43,7 +44,9 @@ function daysFromSet(editSet, allDays, allQuestions) {
   return state
 }
 
-export default function TeacherHomeworkCreate({ category, editSet = null, copySet = null, onDone }) {
+export default function TeacherHomeworkCreate({
+  category, editSet = null, copySet = null, pendingDays = null, onContinueInto, onDone,
+}) {
   const { user } = useAuth()
   const {
     addHomeworkSet, updateHomeworkSet, uploadSolutionFile, deleteSolutionFile, notifyNewHomework,
@@ -66,11 +69,19 @@ export default function TeacherHomeworkCreate({ category, editSet = null, copySe
   const [weekStart, setWeekStart] = useState(
     source?.weekStart ?? mondayOf(todayKST())
   )
-  const [days, setDays] = useState(() => daysFromSet(source, homeworkDays, homeworkQuestions))
-  // 수정·복제 화면은 실제로 과제가 있는 첫 요일부터 보여준다
-  const [activeWd, setActiveWd] = useState(
-    () => WEEKDAYS.find((wd) => daysFromSet(source, homeworkDays, homeworkQuestions)[wd].enabled) ?? 1
+  // 다른 세트를 만들다 "이 과제에 이어서 넣기"로 넘어온 경우, 그때까지 입력한
+  // 요일을 기존 세트 위에 얹는다. 안 그러면 15문항 정답을 다시 찍어야 한다.
+  const [days, setDays] = useState(
+    () => mergePendingDays(daysFromSet(source, homeworkDays, homeworkQuestions), pendingDays ?? {})
   )
+  // 수정·복제 화면은 실제로 과제가 있는 첫 요일부터 보여준다
+  const [activeWd, setActiveWd] = useState(() => {
+    // 옮겨온 요일부터 보여준다. 기존 세트의 첫 요일을 보여주면
+    // 넣던 것이 사라진 줄 안다.
+    const moved = firstPendingWeekday(pendingDays ?? {})
+    if (moved) return moved
+    return WEEKDAYS.find((wd) => daysFromSet(source, homeworkDays, homeworkQuestions)[wd].enabled) ?? 1
+  })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   // 삭제·교체로 더 이상 쓰지 않게 된 해설 파일 URL. 저장이 성공한 뒤에 스토리지에서 지운다.
@@ -132,7 +143,9 @@ export default function TeacherHomeworkCreate({ category, editSet = null, copySe
     blockedReasons.push(`${names}요일의 문항 수와 정답을 마저 채워 주세요.`)
   }
   if (conflict) {
-    blockedReasons.push(`${group?.label}에는 ${weekStart} 주 과제("${conflict.title}")가 이미 있습니다. 대상이나 주를 바꿔 주세요.`)
+    // 한 반의 한 주에는 세트가 하나다. 요일을 더하려면 그 세트를 고쳐야 하는데,
+    // 예전에는 "대상이나 주를 바꿔 주세요"라고만 해서 엉뚱한 곳을 가리켰다.
+    blockedReasons.push(`${group?.label}의 ${weekStart} 주에는 이미 "${conflict.title}"가 있습니다. 아래 버튼으로 그 과제에 이어서 넣으세요.`)
   }
 
   // 저장에 보낼 요일 목록 — 경고 계산과 저장이 같은 값을 보게 한다
@@ -319,6 +332,21 @@ export default function TeacherHomeworkCreate({ category, editSet = null, copySe
               </ul>
             </Alert>
           </div>
+        )}
+
+        {/* 한 반의 한 주에는 세트가 하나뿐이라, 새로 만드는 대신 그 세트에 요일을
+            더해야 한다. 입력한 것을 버리지 않고 그대로 옮겨 준다. */}
+        {conflict && onContinueInto && (
+          <Alert tone="info">
+            <p className="font-medium mb-1">이 주에는 이미 &quot;{conflict.title}&quot;가 있습니다</p>
+            <p className="font-normal mb-2">
+              한 반의 한 주에는 과제 하나만 둘 수 있습니다. 새로 만드는 대신 그 과제에
+              지금 입력한 요일을 더하세요. <strong>입력한 문항과 정답은 그대로 옮겨집니다.</strong>
+            </p>
+            <Button variant="primary" onClick={() => onContinueInto(conflict, days)}>
+              &quot;{conflict.title}&quot;에 이어서 넣기
+            </Button>
+          </Alert>
         )}
 
         {error && <Alert tone="danger">{error}</Alert>}

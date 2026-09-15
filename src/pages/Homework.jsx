@@ -33,8 +33,11 @@ export default function Homework() {
   const [editSet, setEditSet] = useState(null) // null이면 새로 출제, 세트가 있으면 수정
   // 복제할 원본. 문항·정답·해설을 그대로 가져와 다른 반에 새로 내는 데 쓴다.
   const [copySet, setCopySet] = useState(null)
+  // 같은 주에 이미 과제가 있어 기존 세트로 옮겨 갈 때, 그때까지 입력하던 요일.
+  // 이게 없으면 교사가 15문항 정답을 다시 찍어야 한다.
+  const [pendingDays, setPendingDays] = useState(null)
 
-  function openList() { setEditSet(null); setCopySet(null); setMode('list') }
+  function openList() { setEditSet(null); setCopySet(null); setPendingDays(null); setMode('list') }
 
   return (
     <Layout>
@@ -44,7 +47,7 @@ export default function Homework() {
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => setMode('report')}>리포트</Button>
             <Button variant="ghost" onClick={() => setMode('status')}>제출 현황</Button>
-            <Button variant="primary" onClick={() => { setEditSet(null); setCopySet(null); setMode('form') }}>+ 주간 과제</Button>
+            <Button variant="primary" onClick={() => { setEditSet(null); setCopySet(null); setPendingDays(null); setMode('form') }}>+ 주간 과제</Button>
           </div>
         )}
       </div>
@@ -70,7 +73,11 @@ export default function Homework() {
       {isStaff && mode === 'form' && (
         <TeacherHomeworkCreate
           key={editSet?.id ?? (copySet ? `copy-${copySet.id}` : 'new')}
-          category={category} editSet={editSet} copySet={copySet} onDone={openList}
+          category={category} editSet={editSet} copySet={copySet}
+          pendingDays={pendingDays}
+          // 같은 주에 이미 과제가 있을 때, 입력하던 요일을 그 과제로 옮겨 붙인다
+          onContinueInto={(set, days) => { setCopySet(null); setPendingDays(days); setEditSet(set) }}
+          onDone={openList}
         />
       )}
       {isStaff && mode === 'status' && (
@@ -91,8 +98,8 @@ export default function Homework() {
           // 3쪽에 있다가 넘어가면 있지도 않은 쪽을 보게 된다.
           key={category}
           category={category} sets={homeworkSets} classes={myClasses}
-          onEdit={(s) => { setCopySet(null); setEditSet(s); setMode('form') }}
-          onCopy={(s) => { setEditSet(null); setCopySet(s); setMode('form') }}
+          onEdit={(s) => { setCopySet(null); setPendingDays(null); setEditSet(s); setMode('form') }}
+          onCopy={(s) => { setEditSet(null); setPendingDays(null); setCopySet(s); setMode('form') }}
           onDelete={deleteHomeworkSet}
           userRole={user.role} userId={user.id}
         />

@@ -523,16 +523,21 @@ function QuestionPhotos({ paths, qnaImageUrl }) {
   if (!paths?.length) return null
 
   return (
-    <div className="flex flex-col gap-2 mb-3">
+    <div className="flex flex-col items-start gap-2 mb-3">
       {urls.map((url, i) => (
         url ? (
-          // 원본은 새 탭에서 크게 본다 — 답안지 글씨를 확대해야 할 때가 있다
-          <a key={paths[i]} href={url} target="_blank" rel="noreferrer">
+          // 원본은 새 탭에서 크게 본다 — 답안지 글씨를 확대해야 할 때가 있다.
+          //
+          // 목록에서는 높이를 제한한다. 세로로 긴 답안지 사진이 화면을 가득 채우면
+          // 글이 사진에 파묻혀 대화를 따라가기 어렵다. 가로 폭이 아니라 높이를 막는
+          // 이유는, 폭으로 막으면 가로로 찍은 사진이 지나치게 작아지기 때문이다.
+          <a key={paths[i]} href={url} target="_blank" rel="noreferrer"
+            className="inline-block" title="눌러서 원본 크기로 보기">
             <img
               data-testid={`detail-photo-${i}`}
               src={url}
               alt={`첨부 사진 ${i + 1}`}
-              className="w-full rounded border border-line"
+              className="max-h-72 w-auto max-w-full rounded border border-line"
             />
           </a>
         ) : (
