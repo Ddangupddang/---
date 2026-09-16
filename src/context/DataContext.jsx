@@ -203,7 +203,12 @@ export function DataProvider({ children }) {
           fetchAllRows(() => supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher']).order('id')),
           fetchAllRows(() => supabase.from('videos').select('*').order('created_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('video_comments').select('*').order('created_at').order('id')),
-          fetchAllRows(() => supabase.from('tests').select('*').order('created_at', { ascending: false }).order('id')),
+          // 테스트는 원본 표가 아니라 창구(뷰)에서 읽는다.
+          // tests.questions 안에 정답이 들어 있어서, 원본을 그대로 받으면
+          // 학생 브라우저로 정답표가 내려간다. tests_visible 은 보는 사람에 따라
+          // 정답을 덜어내고 본인 반 행만 준다(docs/stage2-answer-hiding.sql).
+          // 출제·상태 변경·삭제는 지금처럼 원본 tests 에 한다.
+          fetchAllRows(() => supabase.from('tests_visible').select('*').order('created_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('submissions').select('*').order('submitted_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('homework_sets').select('*').order('week_start', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('homework_days').select('*').order('id')),
