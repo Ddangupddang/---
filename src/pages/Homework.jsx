@@ -1,12 +1,14 @@
 // src/pages/Homework.jsx
 // 과제 — 상단 내신/정시 탭. 학생: 제출/결과, 교사: 목록/출제/현황.
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
 import StudentHomeworkView from '../components/homework/StudentHomeworkView'
 import TeacherHomeworkCreate from '../components/homework/TeacherHomeworkCreate'
 import TeacherHomeworkStatus from '../components/homework/TeacherHomeworkStatus'
+import PendingHomeworkList from '../components/homework/PendingHomeworkList'
 import HomeworkReport from '../components/homework/HomeworkReport'
 import PageTitle from '../components/ui/PageTitle'
 import PushToggle from '../components/PushToggle'
@@ -29,7 +31,12 @@ export default function Homework() {
   const isStaff = user.role === 'teacher' || user.role === 'admin'
 
   const [category, setCategory] = useState(HW_CATEGORY.NAESIN)
-  const [mode, setMode] = useState('list') // list | form | status
+  // 대시보드의 "과제 미제출"이 ?view=pending 으로 보낸다. 주소에 남겨 두는 이유는
+  // 새로고침해도 보던 화면이 유지되게 하려는 것이다(홈 화면 앱에는 주소창이 없다).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [mode, setMode] = useState(
+    searchParams.get('view') === 'pending' ? 'pending' : 'list'
+  ) // list | form | status | report | pending
   const [editSet, setEditSet] = useState(null) // null이면 새로 출제, 세트가 있으면 수정
   // 복제할 원본. 문항·정답·해설을 그대로 가져와 다른 반에 새로 내는 데 쓴다.
   const [copySet, setCopySet] = useState(null)
@@ -37,14 +44,25 @@ export default function Homework() {
   // 이게 없으면 교사가 15문항 정답을 다시 찍어야 한다.
   const [pendingDays, setPendingDays] = useState(null)
 
-  function openList() { setEditSet(null); setCopySet(null); setPendingDays(null); setMode('list') }
+  function openList() {
+    setEditSet(null); setCopySet(null); setPendingDays(null); setMode('list')
+    // 목록으로 돌아왔는데 주소에 ?view=pending 이 남아 있으면, 새로고침 때
+    // 미제출 화면으로 되돌아가 버린다.
+    if (searchParams.get('view')) setSearchParams({}, { replace: true })
+  }
+
+  function openPending() {
+    setEditSet(null); setCopySet(null); setPendingDays(null); setMode('pending')
+    setSearchParams({ view: 'pending' }, { replace: true })
+  }
 
   return (
     <Layout>
       <div className="flex justify-between items-center mb-4">
         <PageTitle title="과제" />
         {isStaff && mode === 'list' && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="ghost" onClick={openPending}>미제출</Button>
             <Button variant="ghost" onClick={() => setMode('report')}>리포트</Button>
             <Button variant="ghost" onClick={() => setMode('status')}>제출 현황</Button>
             <Button variant="primary" onClick={() => { setEditSet(null); setCopySet(null); setPendingDays(null); setMode('form') }}>+ 주간 과제</Button>
@@ -52,8 +70,9 @@ export default function Homework() {
         )}
       </div>
 
-      {/* 내신/정시 탭 */}
-      <div className="flex gap-2 mb-6">
+      {/* 내신/정시 탭 — 미제출 보기는 두 종류를 한 목록으로 보여주므로 탭을 감춘다.
+          탭이 보이는 채로 두면 눌러도 목록이 안 바뀌어 고장처럼 보인다. */}
+      <div className={`flex gap-2 mb-6 ${mode === 'pending' ? 'hidden' : ''}`}>
         {Object.values(HW_CATEGORY).map((c) => (
           <button key={c} onClick={() => { setCategory(c); openList() }}
             className={`px-4 py-2 rounded-full text-sm font-medium ${
@@ -84,6 +103,12 @@ export default function Homework() {
         <>
           <button onClick={openList} className="text-sm text-ink-mute mb-4">← 목록</button>
           <TeacherHomeworkStatus category={category} />
+        </>
+      )}
+      {isStaff && mode === 'pending' && (
+        <>
+          <button onClick={openList} className="text-sm text-ink-mute mb-4">← 목록</button>
+          <PendingHomeworkList />
         </>
       )}
       {isStaff && mode === 'report' && (

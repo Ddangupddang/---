@@ -72,8 +72,10 @@ function AdminTeacherDashboard({ user }) {
           <p className="text-2xl font-bold text-ink">{totalStudents}</p>
           <p className="text-xs text-ink-faint mt-0.5">전체 학생</p>
         </div>
+        {/* 과제 화면으로만 보내면 "그래서 누구?"가 답이 안 된다.
+            여기서 센 그 학생들을 그대로 보여주는 화면으로 보낸다. */}
         <button
-          onClick={() => navigate('/homework')}
+          onClick={() => navigate('/homework?view=pending')}
           data-testid="pending-homework"
           className={`rounded p-4 text-center border transition-colors ${
             pendingHomework > 0

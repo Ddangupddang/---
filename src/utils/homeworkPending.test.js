@@ -1,6 +1,6 @@
 // src/utils/homeworkPending.test.js
 import { describe, it, expect } from 'vitest'
-import { pendingHomeworkCount } from './homeworkPending'
+import { pendingHomeworkCount, pendingHomeworkStudents } from './homeworkPending'
 
 // 2026-08-17(월) 주. 오늘은 수요일 2026-08-19로 두고 본다.
 const WEEK = '2026-08-17'
@@ -76,5 +76,62 @@ describe('pendingHomeworkCount', () => {
 
   it('볼 수 있는 학생이 없으면 0', () => {
     expect(count({ students: [] })).toBe(0)
+  })
+})
+
+// ── 목록 ──────────────────────────────────────────────────
+// 대시보드 숫자를 누르면 "누가 무엇을 안 냈는지"를 봐야 한다.
+// 세는 함수와 목록 함수가 따로 놀면 숫자와 화면이 어긋난다.
+const list = (over) =>
+  pendingHomeworkStudents({ students: STUDENTS, sets: SETS, days: DAYS, submissions: [], today: WED, ...over })
+
+describe('pendingHomeworkStudents', () => {
+  it('안 낸 학생만 담는다', () => {
+    // 2번만 월·수 다 냈다
+    const submissions = [{ dayId: 110, studentId: 2 }, { dayId: 112, studentId: 2 }]
+    const rows = list({ submissions })
+    expect(rows).toHaveLength(1)
+    expect(rows[0].student.id).toBe(1)
+  })
+
+  it('빠뜨린 요일을 전부 담는다', () => {
+    const rows = list({ submissions: [{ dayId: 110, studentId: 1 }] })
+    const 가 = rows.find((r) => r.student.id === 1)
+    // 1번은 월을 냈으니 수요일만 남는다
+    expect(가.days.map((d) => d.day.id)).toEqual([112])
+    // 2번은 월·수 둘 다 안 냈다
+    const 나 = rows.find((r) => r.student.id === 2)
+    expect(나.days.map((d) => d.day.id)).toEqual([110, 112])
+  })
+
+  it('빠뜨린 요일에 그 과제 세트를 같이 담는다 (화면이 무슨 과제인지 보여줘야 한다)', () => {
+    const rows = list()
+    expect(rows[0].days[0].set.id).toBe(11)
+  })
+
+  it('마감 전 요일은 담지 않는다', () => {
+    const rows = list()
+    // 금(115)은 아직 마감 전이라 어디에도 없어야 한다
+    const allDayIds = rows.flatMap((r) => r.days.map((d) => d.day.id))
+    expect(allDayIds).not.toContain(115)
+  })
+
+  it('요일은 날짜순으로 담는다', () => {
+    const days = [
+      { id: 112, setId: 11, weekday: 3, date: WED },
+      { id: 110, setId: 11, weekday: 1, date: '2026-08-17' },
+    ]
+    expect(list({ days })[0].days.map((d) => d.day.id)).toEqual([110, 112])
+  })
+
+  it('세는 함수와 길이가 항상 같다', () => {
+    const cases = [
+      {},
+      { submissions: [{ dayId: 110, studentId: 2 }, { dayId: 112, studentId: 2 }] },
+      { students: [] },
+      { days: [{ id: 115, setId: 11, weekday: 5, date: '2026-08-21' }] },
+      { sets: [{ id: 11, category: 'jeongsi', target: 2, weekStart: WEEK }] },
+    ]
+    for (const c of cases) expect(list(c)).toHaveLength(count(c))
   })
 })
