@@ -15,13 +15,16 @@ export default function Button({
   variant = 'primary', type = 'button', disabled = false,
   onClick, className = '', children, ...rest
 }) {
+  // whitespace-nowrap: 좁은 화면에서 버튼이 찌그러지며 글자가 두 줄로
+  // 쪼개지던 것을 막는다("+ 리포트 작성" → "+ 리포트 / 작성").
+  // 줄바꿈을 막으면 버튼은 제 너비를 지키고, 옆에 있는 제목이 대신 접힌다.
   return (
     <button
       type={type}
       data-variant={variant}
       disabled={disabled}
       onClick={onClick}
-      className={`px-6 py-3 rounded text-[15px] font-bold transition-opacity
+      className={`px-6 py-3 rounded text-[15px] font-bold transition-opacity whitespace-nowrap
         disabled:opacity-40 disabled:cursor-not-allowed ${VARIANTS[variant]} ${className}`}
       {...rest}
     >

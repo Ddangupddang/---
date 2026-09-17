@@ -431,7 +431,7 @@ function Students() {
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setSelectedClass(null)}
-              className={`px-3 py-1 rounded-full text-xs font-medium ${!selectedClass ? 'bg-ink text-white' : 'bg-surface text-ink-mute border border-line'}`}
+              className={`px-3 py-1 rounded-full text-xs whitespace-nowrap font-medium ${!selectedClass ? 'bg-ink text-white' : 'bg-surface text-ink-mute border border-line'}`}
             >
               전체 ({studentList.length})
             </button>
@@ -439,7 +439,7 @@ function Students() {
               <button
                 key={cls.id}
                 onClick={() => setSelectedClass(cls.id)}
-                className={`px-3 py-1 rounded-full text-xs font-medium ${selectedClass === cls.id ? 'bg-navy text-white' : 'bg-surface text-ink-mute border border-line'}`}
+                className={`px-3 py-1 rounded-full text-xs whitespace-nowrap font-medium ${selectedClass === cls.id ? 'bg-navy text-white' : 'bg-surface text-ink-mute border border-line'}`}
               >
                 {cls.name} ({studentList.filter((s) => s.classId === cls.id).length})
               </button>
@@ -447,7 +447,8 @@ function Students() {
           </div>
 
           {/* 테이블 */}
-          <Card className="overflow-hidden">
+          {/* 넘칠 때 잘리지 않고 옆으로 밀리게 한다 */}
+          <Card className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-ink-mute text-xs">

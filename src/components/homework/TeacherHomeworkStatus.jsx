@@ -96,7 +96,7 @@ export default function TeacherHomeworkStatus({ category }) {
                           <div className="flex gap-2 mt-3">
                             {[['students', '학생별'], ['questions', '문항별']].map(([key, label]) => (
                               <button key={key} onClick={() => setDayView(key)}
-                                className={`px-3 py-1 rounded-full text-xs ${
+                                className={`px-3 py-1 rounded-full text-xs whitespace-nowrap ${
                                   dayView === key ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft'
                                 }`}>{label}</button>
                             ))}

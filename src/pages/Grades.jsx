@@ -325,7 +325,7 @@ function Grades() {
               <button
                 key={cls.id}
                 onClick={() => setSelectedClass(cls.id)}
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                className={`px-3 py-1 rounded-full text-xs whitespace-nowrap font-medium ${
                   activeClass === cls.id
                     ? 'bg-ink text-white'
                     : 'bg-surface text-ink-mute border border-line'
@@ -355,7 +355,9 @@ function Grades() {
         </div>
 
         {/* 학생별 성적 테이블 */}
-        <div className="bg-surface border border-line rounded overflow-hidden">
+        {/* overflow-x-auto: 폰에서 표가 넘칠 때 잘라 버리면 뒤쪽 열을 볼 방법이
+            없다. 옆으로 밀어서 보게 한다(DataTable과 같은 규칙). */}
+        <div className="bg-surface border border-line rounded overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-ink-mute text-xs">

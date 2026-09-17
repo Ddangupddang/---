@@ -115,7 +115,7 @@ export default function Staff() {
   return (
     <Layout>
       {/* 헤더 */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center gap-3 mb-4">
         <PageTitle title="계정 관리" />
         <Button onClick={() => { setShowForm(true); setFormMsg({ type: '', text: '' }) }}>
           + 계정 추가

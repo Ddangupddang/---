@@ -85,7 +85,7 @@ export default function Videos() {
     <Layout>
     <div>
       {/* 헤더 */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center gap-3 mb-4">
         <PageTitle title="영상 관리" />
         {(user.role === 'teacher' || user.role === 'admin') && (
           <Button onClick={() => setShowForm(true)}>+ 영상 등록</Button>

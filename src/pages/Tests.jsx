@@ -71,7 +71,7 @@ export default function Tests() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center gap-3 mb-4">
           <PageTitle title="테스트" />
           {(user.role === 'teacher' || user.role === 'admin') && (
             <Button onClick={() => setView('create')}>+ 테스트 만들기</Button>
@@ -159,7 +159,7 @@ export default function Tests() {
                               e.stopPropagation()
                               updateTestStatus(test.id, 'active', new Date().toISOString())
                             }}
-                            className="text-xs px-3 py-1 bg-navy text-white rounded"
+                            className="text-xs px-3 py-1 whitespace-nowrap bg-navy text-white rounded"
                           >
                             시작
                           </button>
@@ -170,7 +170,7 @@ export default function Tests() {
                               e.stopPropagation()
                               updateTestStatus(test.id, 'closed')
                             }}
-                            className="text-xs px-3 py-1 bg-danger text-white rounded"
+                            className="text-xs px-3 py-1 whitespace-nowrap bg-danger text-white rounded"
                           >
                             종료
                           </button>
@@ -183,7 +183,7 @@ export default function Tests() {
                                 deleteTest(test.id)
                               }
                             }}
-                            className="text-xs px-3 py-1 text-ink-faint hover:text-danger hover:bg-danger-soft rounded transition-colors"
+                            className="text-xs px-3 py-1 whitespace-nowrap text-ink-faint hover:text-danger hover:bg-danger-soft rounded transition-colors"
                           >
                             삭제
                           </button>
@@ -670,7 +670,7 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
             <button
               type="button"
               onClick={() => setSaList((prev) => [...prev, { content: '' }])}
-              className="text-xs px-3 py-1 bg-ink text-white rounded"
+              className="text-xs px-3 py-1 whitespace-nowrap bg-ink text-white rounded"
             >
               + 주관식
             </button>

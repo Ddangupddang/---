@@ -37,7 +37,7 @@ export default function Notices() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center gap-3 mb-4">
           <PageTitle title="공지사항" />
           {isTeacherOrAdmin && (
             <Button onClick={() => setView('create')}>+ 공지 작성</Button>
@@ -261,7 +261,7 @@ function CreateView({ user, onSubmit, onCancel }) {
                   ? setSelectedClasses([])
                   : setSelectedClasses(classes.map((c) => c.id))
               }
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap font-medium transition-colors ${
                 selectedClasses.length === classes.length
                   ? 'bg-ink text-white'
                   : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
@@ -274,7 +274,7 @@ function CreateView({ user, onSubmit, onCancel }) {
                 key={c.id}
                 type="button"
                 onClick={() => toggleClass(c.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap font-medium transition-colors ${
                   selectedClasses.includes(c.id)
                     ? 'bg-navy text-white'
                     : 'bg-surface-alt text-ink-soft hover:bg-line-soft'

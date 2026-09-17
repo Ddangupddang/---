@@ -9,10 +9,11 @@ const TONES = {
 }
 
 export default function Badge({ tone = 'neutral', className = '', children }) {
+  // 좁은 화면에서 '답변 완료'가 '답변 / 완료'로 쪼개지던 것을 막는다
   return (
     <span
       data-tone={tone}
-      className={`inline-block px-2 py-[3px] rounded-sm text-xs font-bold ${TONES[tone]} ${className}`}
+      className={`inline-block whitespace-nowrap px-2 py-[3px] rounded-sm text-xs font-bold ${TONES[tone]} ${className}`}
     >
       {children}
     </span>

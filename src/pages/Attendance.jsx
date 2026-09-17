@@ -83,7 +83,7 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
           <button
             key={cls.id}
             onClick={() => setSelectedClass(cls.id)}
-            className={`px-3 py-1 rounded-full text-xs font-medium ${activeClass === cls.id ? 'bg-ink text-white' : 'bg-surface text-ink-mute border border-line'}`}
+            className={`px-3 py-1 rounded-full text-xs whitespace-nowrap font-medium ${activeClass === cls.id ? 'bg-ink text-white' : 'bg-surface text-ink-mute border border-line'}`}
           >
             {cls.name}
           </button>
@@ -115,7 +115,7 @@ function ClassAttendance({ user, records, upsertAttendance, deleteAttendance }) 
                 <span className="text-sm font-medium">{student.name}</span>
                 <button
                   onClick={() => toggleStatus(student.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${PILL_TONE[cfg.tone]}`}
+                  className={`px-3 py-1 rounded-full text-xs whitespace-nowrap font-semibold ${PILL_TONE[cfg.tone]}`}
                 >
                   {cfg.label}
                 </button>
@@ -190,7 +190,7 @@ function ClinicAttendance({ records, upsertAttendance, deleteAttendance }) {
                 </div>
                 <button
                   onClick={() => toggle(student.id)}
-                  className="px-3 py-1 rounded-full text-xs font-semibold bg-navy text-white"
+                  className="px-3 py-1 rounded-full text-xs whitespace-nowrap font-semibold bg-navy text-white"
                 >
                   참석 ✓
                 </button>
@@ -223,7 +223,7 @@ function ClinicAttendance({ records, upsertAttendance, deleteAttendance }) {
               </div>
               <button
                 onClick={() => toggle(student.id)}
-                className="px-3 py-1 rounded-full text-xs font-semibold bg-surface-alt text-ink-mute"
+                className="px-3 py-1 rounded-full text-xs whitespace-nowrap font-semibold bg-surface-alt text-ink-mute"
               >
                 + 추가
               </button>

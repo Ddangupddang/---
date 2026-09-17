@@ -46,10 +46,12 @@ function Header({ onMenuClick }) {
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* min-w-0: 이름이 길 때 이 묶음이 줄어들 수 있어야 한다.
+          없으면 묶음이 제 너비를 고집해 왼쪽 로고·햄버거를 밀어낸다. */}
+      <div className="flex items-center gap-3 min-w-0">
         {/* 학생: 현재 페이지 타이틀을 오른쪽에 작게 표시 */}
         {isStudent && (
-          <span className="text-sm text-ink-mute">{title}</span>
+          <span className="text-sm text-ink-mute whitespace-nowrap">{title}</span>
         )}
         {/* 홈 화면 앱(PWA)에는 주소창이 없어 브라우저 새로고침을 할 수 없다.
             다른 사람이 올린 자료를 보려면 앱 안에 이 버튼이 있어야 한다. */}
@@ -58,22 +60,22 @@ function Header({ onMenuClick }) {
           disabled={refreshing}
           aria-label="새로고침"
           title="새로고침"
-          className="text-ink-mute hover:text-ink-soft disabled:opacity-50 transition-colors"
+          className="text-ink-mute hover:text-ink-soft disabled:opacity-50 transition-colors shrink-0"
         >
           <RotateCw size={16} strokeWidth={1.8} className={refreshing ? 'animate-spin' : ''} />
         </button>
 
-        <span className="text-sm text-ink-soft">{user?.name}</span>
+        <span className="text-sm text-ink-soft truncate">{user?.name}</span>
         {/* 학생: 비밀번호 변경 아이콘 버튼 */}
         {isStudent && (
-          <Link to="/change-password" className="text-ink-mute hover:text-ink-soft">
+          <Link to="/change-password" className="text-ink-mute hover:text-ink-soft shrink-0">
             <KeyRound size={16} strokeWidth={1.8} />
           </Link>
         )}
         {/* 학생은 항상 표시, 관리자/교사는 모바일에서만 표시 (PC는 사이드바에 로그아웃 있음) */}
         <button
           onClick={logout}
-          className={`text-xs text-ink-mute hover:text-ink-soft ${!isStudent ? 'md:hidden' : ''}`}
+          className={`text-xs text-ink-mute hover:text-ink-soft whitespace-nowrap shrink-0 ${!isStudent ? 'md:hidden' : ''}`}
         >
           로그아웃
         </button>
