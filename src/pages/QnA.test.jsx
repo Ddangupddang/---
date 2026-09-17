@@ -41,6 +41,8 @@ beforeEach(() => {
     addQnaMessage:    vi.fn().mockResolvedValue({ message: { id: 1 } }),
     updateQnaMessage: vi.fn().mockResolvedValue({}),
     deleteQnaMessage: vi.fn().mockResolvedValue({}),
+    qnaReads:         [],
+    markQnaRead:      vi.fn().mockResolvedValue(true),
   }
 })
 
@@ -531,5 +533,86 @@ describe('Q&A 목록 쪽 나누기', () => {
     state.data.qnaList = many.slice(0, 3)
     render(<QnA />)
     expect(screen.queryByRole('navigation', { name: '쪽 이동' })).not.toBeInTheDocument()
+  })
+})
+
+// ── 읽음 표시 ─────────────────────────────────────────────
+// 교사가 답을 달았을 때 학생이 그걸 봤는지 알고 싶다는 요구에서 나왔다.
+const answer = (qnaId, at) => ({
+  id: qnaId * 10, qnaId, authorId: 't1', authorRole: 'teacher',
+  content: '이렇게 푸세요', imagePaths: [], createdAt: at,
+})
+
+describe('Q&A 읽음 표시', () => {
+  it('교사 목록 — 답했는데 학생이 안 봤으면 안 읽음 배지가 붙는다', () => {
+    state.data.qnaMessages = [answer(100, '2026-08-20T11:00:00Z')]
+    render(<QnA />)
+    expect(screen.getByTestId('question-100')).toHaveTextContent('안 읽음')
+  })
+
+  it('교사 목록 — 학생이 봤으면 배지가 없다', () => {
+    state.data.qnaMessages = [answer(100, '2026-08-20T11:00:00Z')]
+    state.data.qnaReads    = [{ qnaId: 100, studentId: 1, readAt: '2026-08-20T12:00:00Z' }]
+    render(<QnA />)
+    expect(screen.getByTestId('question-100')).not.toHaveTextContent('안 읽음')
+  })
+
+  it('교사 목록 — 답이 없으면 배지가 없다 (안 읽은 게 아니라 볼 것이 없다)', () => {
+    render(<QnA />)
+    expect(screen.getByTestId('question-100')).not.toHaveTextContent('안 읽음')
+  })
+
+  it('교사 스레드 — 답변 옆에 읽음/안 읽음이 보인다', async () => {
+    const user = userEvent.setup()
+    state.data.qnaMessages = [answer(100, '2026-08-20T11:00:00Z')]
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    expect(screen.getByTestId('read-mark-1000')).toHaveTextContent('안 읽음')
+  })
+
+  it('교사 스레드 — 학생이 본 뒤에는 읽음으로 바뀐다', async () => {
+    const user = userEvent.setup()
+    state.data.qnaMessages = [answer(100, '2026-08-20T11:00:00Z')]
+    state.data.qnaReads    = [{ qnaId: 100, studentId: 1, readAt: '2026-08-20T12:00:00Z' }]
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    expect(screen.getByTestId('read-mark-1000')).toHaveTextContent('읽음')
+  })
+
+  it('학생 글에는 읽음 표시가 붙지 않는다', async () => {
+    const user = userEvent.setup()
+    state.data.qnaMessages = [
+      answer(100, '2026-08-20T11:00:00Z'),
+      { id: 1001, qnaId: 100, authorId: 's1', authorRole: 'student',
+        content: '감사합니다', imagePaths: [], createdAt: '2026-08-20T13:00:00Z' },
+    ]
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    expect(screen.queryByTestId('read-mark-1001')).not.toBeInTheDocument()
+  })
+
+  it('학생 화면에는 읽음 표시가 없다 — 본인이 읽은 표시는 쓸모가 없다', async () => {
+    const user = userEvent.setup()
+    state.user = { id: 's1', role: 'student', studentId: 1 }
+    state.data.qnaMessages = [answer(100, '2026-08-20T11:00:00Z')]
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    expect(screen.queryByTestId('read-mark-1000')).not.toBeInTheDocument()
+  })
+
+  it('학생이 질문을 열면 읽은 것으로 적는다', async () => {
+    const user = userEvent.setup()
+    state.user = { id: 's1', role: 'student', studentId: 1 }
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await waitFor(() => expect(state.data.markQnaRead).toHaveBeenCalledWith({ qnaId: 100, studentId: 1 }))
+  })
+
+  it('교사가 열 때는 적지 않는다', async () => {
+    const user = userEvent.setup()
+    render(<QnA />)
+    await user.click(screen.getByTestId('question-100'))
+    await waitFor(() => expect(screen.getByText(/내신 3번이 이해가 안 돼요/)).toBeInTheDocument())
+    expect(state.data.markQnaRead).not.toHaveBeenCalled()
   })
 })

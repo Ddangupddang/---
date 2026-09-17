@@ -130,6 +130,13 @@ function toSubmission(s) {
     scores:      s.scores  ?? [],
   }
 }
+function toQnaRead(r) {
+  return {
+    qnaId:     r.qna_id,
+    studentId: r.student_id,
+    readAt:    r.read_at,
+  }
+}
 function toQnaMessage(m) {
   return {
     id:         m.id,
@@ -154,6 +161,8 @@ export function DataProvider({ children }) {
   const [videos,        setVideos]        = useState([])
   const [videoComments, setVideoComments] = useState([])
   const [tests,         setTests]         = useState([])
+  // Q&A 읽음 표시 — 질문 하나당 학생 하나(docs/qna-reads.sql)
+  const [qnaReads,      setQnaReads]      = useState([])
   const [submissions,   setSubmissions]   = useState([])
   const [homeworkSets,        setHomeworkSets]        = useState([])
   const [homeworkDays,        setHomeworkDays]        = useState([])
@@ -190,7 +199,7 @@ export function DataProvider({ children }) {
       // 여럿이면 쪽 경계에서 순서가 흔들려 어떤 행은 두 번 오고 어떤 행은 빠진다.
       // 과제 문항이 빠지면 학생 답안이 엉뚱한 번호에 붙는다. id는 겹치지 않으므로
       // 마지막 기준으로 두면 순서가 항상 같아진다.
-      const [cRes, sRes, aRes, gRes, qRes, qmRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, hwChkRes, hwReoRes, wnRes, saRes] =
+      const [cRes, sRes, aRes, gRes, qRes, qmRes, qrRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, hwChkRes, hwReoRes, wnRes, saRes] =
         await Promise.all([
           fetchAllRows(() => supabase.from('classes').select('*').order('sort_order').order('id')),
           fetchAllRows(() => supabase.from('students').select('*').order('sort_order').order('id')),
@@ -198,6 +207,7 @@ export function DataProvider({ children }) {
           fetchAllRows(() => supabase.from('grades').select('*').order('date', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('qna').select('*').order('created_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('qna_messages').select('*').order('created_at').order('id')),
+          fetchAllRows(() => supabase.from('qna_reads').select('*').order('qna_id')),
           fetchAllRows(() => supabase.from('notices').select('*').order('created_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('reports').select('*').order('date', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher']).order('id')),
@@ -229,6 +239,7 @@ export function DataProvider({ children }) {
       const gRows = rowsOrNull(gRes); if (gRows) setGrades(gRows.map(toGrade))
       const qRows = rowsOrNull(qRes); if (qRows) setQnaList(qRows.map(toQna))
       const qmRows = rowsOrNull(qmRes); if (qmRows) setQnaMessages(qmRows.map(toQnaMessage))
+      const qrRows = rowsOrNull(qrRes); if (qrRows) setQnaReads(qrRows.map(toQnaRead))
       const nRows = rowsOrNull(nRes); if (nRows) setNotices(nRows.map(toNotice))
       const rRows = rowsOrNull(rRes); if (rRows) setReports(rRows.map(toReport))
       if (!pRes.error && pRes.data)              setStaffProfiles(pRes.data)
@@ -471,6 +482,33 @@ export function DataProvider({ children }) {
 
     if (error) { console.error('Q&A 사진 주소 생성 실패:', error); return null }
     return data.signedUrl
+  }
+
+  // ── Q&A 읽음 ───────────────────────────────────────────
+
+  // 학생이 그 질문을 열었다고 적는다. 교사 화면의 '읽음' 표시가 이걸 본다.
+  //
+  // 열 때마다 시각을 덮어쓴다(upsert). 그래야 교사가 나중에 또 답했을 때
+  // "그 답은 아직 안 봤다"가 제대로 판정된다.
+  //
+  // 실패해도 조용히 넘어간다 — 읽음 표시는 곁가지라, 이것 때문에 학생이
+  // 질문을 못 보게 되면 안 된다. (표를 아직 안 만든 상태에서도 앱은 돌아간다)
+  async function markQnaRead({ qnaId, studentId }) {
+    if (!qnaId || !studentId) return false
+    const readAt = new Date().toISOString()
+
+    const { error } = await supabase
+      .from('qna_reads')
+      .upsert({ qna_id: qnaId, student_id: studentId, read_at: readAt },
+              { onConflict: 'qna_id,student_id' })
+
+    if (error) { console.error('Q&A 읽음 기록 실패:', error); return false }
+
+    setQnaReads((prev) => {
+      const rest = prev.filter((r) => !(r.qnaId === qnaId && r.studentId === studentId))
+      return [...rest, { qnaId, studentId, readAt }]
+    })
+    return true
   }
 
   // ── Q&A 대화 ───────────────────────────────────────────
@@ -1238,6 +1276,7 @@ export function DataProvider({ children }) {
       addGrade, updateGrade, deleteGrade,
       addQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
       qnaMessages, addQnaMessage, updateQnaMessage, deleteQnaMessage,
+      qnaReads, markQnaRead,
       savePushSubscription, deletePushSubscription,
       addNotice, deleteNotice,
       addReport, updateReportChecks, deleteReport,

@@ -9,7 +9,6 @@ vi.mock('../../utils/datetime', async (orig) => ({
   todayKST: () => '2026-08-19',
 }))
 
-const user = { id: 'u1', role: 'teacher' }
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: { id: 'u1', role: 'teacher' } }),
 }))

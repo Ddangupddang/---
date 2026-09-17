@@ -20,6 +20,7 @@ import {
   visibleQuestions, unansweredCount, canDeleteQuestion,
   qnaStatus, canDeleteMessage, canEditMessage,
 } from '../utils/qnaAccess'
+import { qnaReadState, isMessageRead } from '../utils/qnaRead'
 import { QNA_CATEGORIES, QNA_CATEGORY, qnaCategoryLabel } from '../constants/qna'
 import QnaImagePicker from '../components/qna/QnaImagePicker'
 import { MAX_QNA_IMAGES } from '../utils/qnaImage'
@@ -49,6 +50,7 @@ export default function QnA() {
     qnaList, students, classes,
     addQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
     qnaMessages, addQnaMessage, updateQnaMessage, deleteQnaMessage,
+    qnaReads = [], markQnaRead,
   } = useData()
   const [view, setView]                         = useState('list') // list | detail | ask
   // 질문 자체가 아니라 id를 들고 있는다. 스냅샷을 들고 있으면 답변을 고쳐도
@@ -60,6 +62,16 @@ export default function QnA() {
   // 말머리를 바꾸면 첫 쪽으로 돌아간다. 2쪽을 보던 중에 걸러내면
   // 그 자리에 남아 엉뚱한 데를 보게 된다.
   function pickCategory(c) { setFilterCategory(c); setPage(1) }
+
+  // 학생이 질문을 열면 읽은 것으로 적는다.
+  // 교사가 열 때는 적지 않는다 — '읽음'은 학생이 봤는지를 뜻한다.
+  // markQnaRead는 매 렌더마다 새로 만들어지므로 의존성에서 뺀다(넣으면 무한히 돈다).
+  useEffect(() => {
+    if (view !== 'detail' || !selectedId || isTeacherOrAdmin) return
+    const q = qnaList.find((x) => x.id === selectedId)
+    if (q) markQnaRead?.({ qnaId: q.id, studentId: q.studentId })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, selectedId, qnaList])
 
   const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin'
 
@@ -137,11 +149,18 @@ export default function QnA() {
                   <span className="text-xs bg-surface-alt text-ink-soft px-2 py-0.5 rounded-sm font-medium">
                     {qnaCategoryLabel(q.category)}
                   </span>
-                  {qnaStatus(q, qnaMessages) === 'answered' ? (
-                    <Badge tone="navy" className="shrink-0 ml-2">답변 완료</Badge>
-                  ) : (
-                    <Badge tone="warn" className="shrink-0 ml-2">답변 대기</Badge>
-                  )}
+                  <span className="flex items-center gap-1 shrink-0 ml-2">
+                    {/* 답은 했는데 학생이 아직 안 본 질문. 스레드를 일일이 열어보지
+                        않아도 누가 모르고 있는지 목록에서 바로 보인다. */}
+                    {isTeacherOrAdmin && qnaReadState(q, qnaMessages, qnaReads) === 'unread' && (
+                      <Badge tone="warn">안 읽음</Badge>
+                    )}
+                    {qnaStatus(q, qnaMessages) === 'answered' ? (
+                      <Badge tone="navy">답변 완료</Badge>
+                    ) : (
+                      <Badge tone="warn">답변 대기</Badge>
+                    )}
+                  </span>
                 </div>
                 <p className="text-sm text-ink font-medium line-clamp-2">{q.content}</p>
                 <p className="text-xs text-ink-faint mt-1 flex items-center gap-1">
@@ -192,6 +211,12 @@ export default function QnA() {
           .filter((m) => m.qnaId === selectedQuestion.id)
           .sort((a, b) => a.createdAt.localeCompare(b.createdAt))}
         canDeleteMessageOf={(m) => canDeleteMessage(m, selectedQuestion, students, classes, user)}
+        // 읽음 표시는 교사 화면에만 둔다. 학생에게는 자기가 읽었다는 표시라 쓸모가 없다.
+        readMarkOf={isTeacherOrAdmin
+          ? (m) => (m.authorRole === 'teacher'
+              ? (isMessageRead(m, selectedQuestion, qnaReads) ? '읽음' : '안 읽음')
+              : null)
+          : null}
         canEditMessageOf={(m) => canEditMessage(m, user)}
         onSendMessage={async ({ content, photos }) => {
           // 사진부터 올린다. 한 장이라도 실패하면 글을 등록하지 않는다 —
@@ -250,9 +275,11 @@ export default function QnA() {
 }
 
 // ────────── DetailView 컴포넌트 ──────────
+// readMarkOf: 이 글에 붙일 읽음 표시('읽음'/'안 읽음'), 붙일 것이 없으면 null.
+// 판단은 부르는 쪽이 한다 — 여기서는 받은 것을 그리기만 한다.
 function DetailView({
   question, displayName, qnaImageUrl, canDelete, messages,
-  canDeleteMessageOf, canEditMessageOf,
+  canDeleteMessageOf, canEditMessageOf, readMarkOf = null,
   onDelete, onSendMessage, onUpdateMessage, onDeleteMessage, onBack,
 }) {
   // 질문 삭제 — 사진까지 함께 사라지는 동작이라 한 번 물어본다
@@ -338,8 +365,20 @@ function DetailView({
               : 'bg-surface border border-line rounded p-4'}
           >
             <div className="flex justify-between items-start mb-2">
-              <p className="text-xs font-semibold text-ink-soft">
+              <p className="text-xs font-semibold text-ink-soft flex items-center gap-1.5">
                 {m.authorRole === 'teacher' ? '선생님' : displayName(question.studentId)}
+                {(() => {
+                  const mark = readMarkOf?.(m)
+                  if (!mark) return null
+                  return (
+                    <span
+                      data-testid={`read-mark-${m.id}`}
+                      className={`text-xs font-normal ${mark === '읽음' ? 'text-ink-faint' : 'text-warn'}`}
+                    >
+                      {mark}
+                    </span>
+                  )
+                })()}
               </p>
               <div className="flex gap-2 shrink-0">
                 {/* 고치는 건 본인 글만. 남이 한 말을 고쳐 쓰면 학생이 하지 않은 말이
