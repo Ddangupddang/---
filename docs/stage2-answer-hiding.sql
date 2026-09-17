@@ -142,14 +142,32 @@ declare
   v_ans    text;
   v_choice text;
 begin
+  -- 시험 대상은 **테스트가 있는 반의 학생**으로 고른다.
+  -- 아무 학생이나 고르면 그 반에 테스트가 없어서, 창구가 0건을 돌려주고
+  -- ㉡이 "정답이 없다"로 통과해 버린다 — 볼 것이 없어서 통과한 것이라
+  -- 아무것도 증명하지 못한다(2026-09-17에 실제로 그렇게 나왔다).
   select p.id, p.student_id into v_prof, v_me
   from public.profiles p
-  where p.role = 'student' and p.student_id is not null
+  join public.students s on s.id = p.student_id
+  where p.role = 'student'
+    and s.class_id in (select t.class_id from public.tests t where t.class_id is not null)
   order by p.id limit 1;
 
   if v_prof is null then
-    insert into _s2b values (0, '준비', '명부와 연결된 학생 계정이 없습니다.');
-    return;
+    -- 테스트가 있는 반에 학생 계정이 없다. 그래도 ㉠·㉣은 볼 수 있으니
+    -- 아무 학생이나 골라 진행하되, 결과에 그 사실을 적어 둔다.
+    select p.id, p.student_id into v_prof, v_me
+    from public.profiles p
+    where p.role = 'student' and p.student_id is not null
+    order by p.id limit 1;
+
+    if v_prof is null then
+      insert into _s2b values (0, '준비', '명부와 연결된 학생 계정이 없습니다.');
+      return;
+    end if;
+
+    insert into _s2b values (0, '⚠️ 주의',
+      '테스트가 있는 반에 학생 계정이 없다. ㉡·㉢은 판단할 수 없으니, 그 반 학생으로 시험하거나 그 반에 테스트를 하나 내고 다시 돌릴 것.');
   end if;
 
   select s.class_id into v_class from public.students s where s.id = v_me;
