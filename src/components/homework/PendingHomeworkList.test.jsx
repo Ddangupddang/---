@@ -135,7 +135,7 @@ describe('PendingHomeworkList', () => {
     render(<PendingHomeworkList />)
     // 월 = 기한 지남, 수 = 오늘이라 아직 낼 수 있음
     expect(chipsOf('김가나')).toEqual([['월', 'late'], ['수', 'open']])
-    expect(screen.getByRole('button', { name: /김가나/ })).toHaveTextContent('2일')
+    expect(screen.getByRole('button', { name: /김가나/ })).toHaveTextContent('2건')
   })
 
   it('열어준 요일은 칩이 열어줌으로 바뀐다', () => {
@@ -161,5 +161,18 @@ describe('PendingHomeworkList', () => {
     expect(screen.getAllByRole('button', { name: '열어주기' })).toHaveLength(1)
     expand('김가나')
     expect(screen.queryByRole('button', { name: '열어주기' })).not.toBeInTheDocument()
+  })
+
+  it('같은 요일에 과제가 둘이면 칩은 하나, 더 급한 상태를 따른다', () => {
+    // 월요일에 정시과제가 하나 더 있다. 내신 월요일은 열어줬고 정시 월요일은 그대로다.
+    data.students = [{ ...STUDENTS[0], jeongsiLevel: 2 }]
+    data.homeworkSets = [...SETS, { id: 21, category: 'jeongsi', target: 2, weekStart: '2026-08-17' }]
+    data.homeworkDays = [...DAYS, { id: 210, setId: 21, weekday: 1, date: '2026-08-17' }]
+    data.homeworkReopens = [{ dayId: 110, studentId: 1 }]
+    render(<PendingHomeworkList />)
+    // 열어줌보다 기한 지남이 급하다 — 불러야 할 일이 남아 있다
+    expect(chipsOf('김가나')).toEqual([['월', 'late'], ['수', 'open']])
+    // 개수는 칩 수가 아니라 빠뜨린 건수다
+    expect(screen.getByRole('button', { name: /김가나/ })).toHaveTextContent('3건')
   })
 })

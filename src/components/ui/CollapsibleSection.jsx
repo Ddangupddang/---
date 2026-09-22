@@ -12,6 +12,9 @@
 // 보인다 — 접혀 있을 뿐 똑같이 유효한 자료다. 열림/닫힘은 왼쪽 선과
 // 글씨 굵기로만 가른다.
 //
+// 제목 칸은 min-w-0 이다 — 이게 없으면 안에 든 긴 글자가 줄어들지 않아
+// 폰에서 제목이 한 글자씩 세로로 쪼개진다.
+//
 // 접힌 상태에서도 개수를 보여준다. 몇 개가 들어 있는지 모르면
 // 펼쳐보기 전에는 빠뜨린 게 있는지 알 수 없다.
 import { useState } from 'react'
@@ -27,10 +30,10 @@ export default function CollapsibleSection({ title, meta, defaultOpen = false, c
         aria-expanded={open}
         className="w-full flex items-baseline gap-3 px-4 py-3 text-left hover:bg-surface-alt transition-colors"
       >
-        <span className={`text-base text-ink flex-1 ${open ? 'font-semibold' : 'font-medium'}`}>
+        <span className={`text-base text-ink flex-1 min-w-0 ${open ? 'font-semibold' : 'font-medium'}`}>
           {title}
         </span>
-        <span className="text-sm text-ink-mute shrink-0 tabular-nums">{meta}</span>
+        {meta != null && <span className="text-sm text-ink-mute shrink-0 tabular-nums">{meta}</span>}
       </button>
 
       {open && <div className="pl-4 pr-1 pb-3">{children}</div>}

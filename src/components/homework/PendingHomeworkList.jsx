@@ -35,6 +35,19 @@ function chipStateOf(day, today, isOpen) {
   return isOpen ? 'reopened' : 'late'
 }
 
+// 같은 요일에 과제가 여럿이면(내신+정시) 칩은 하나만 — 더 급한 상태를 따른다.
+// 칩이 "월 월 화 화"로 늘어서면 폰 한 줄을 넘기고, 읽기에도 겹친다.
+const URGENCY = { late: 2, reopened: 1, open: 0 }
+function chipsByWeekday(days) {
+  const byWeekday = new Map()
+  for (const { day, state } of days) {
+    const prev = byWeekday.get(day.weekday)
+    if (!prev || URGENCY[state] > URGENCY[prev]) byWeekday.set(day.weekday, state)
+  }
+  // days가 날짜순이라 Map도 요일 순서대로 쌓인다
+  return [...byWeekday].map(([weekday, state]) => ({ weekday, state }))
+}
+
 function DayChip({ state, children, title }) {
   return (
     <span
@@ -132,19 +145,22 @@ export default function PendingHomeworkList() {
           <CollapsibleSection
             key={student.id}
             title={
-              <>
-                {student.name}
-                <span className="ml-2 text-xs font-normal text-ink-faint">{classNameOf(student.classId)}</span>
-              </>
-            }
-            meta={
-              <span className="flex items-center gap-1">
-                {days.map(({ day, state }) => (
-                  <DayChip key={day.id} state={state} title={`${WEEKDAY_LABELS[day.weekday]}요일 ${CHIP[state].label}`}>
-                    {WEEKDAY_LABELS[day.weekday]}
-                  </DayChip>
-                ))}
-                <span className="ml-1">{days.length}일</span>
+              // 폰에서 이름이 한 글자씩 세로로 쪼개지지 않게 두 줄로 나눈다.
+              //   1줄: 이름(절대 안 줄임) + 반 이름(길면 … 으로 자름)
+              //   2줄: 요일 칩 + 건수(넘치면 다음 줄로)
+              <span className="block min-w-0">
+                <span className="flex items-baseline gap-2 min-w-0">
+                  <span className="shrink-0 whitespace-nowrap">{student.name}</span>
+                  <span className="truncate text-xs font-normal text-ink-faint">{classNameOf(student.classId)}</span>
+                </span>
+                <span className="flex flex-wrap items-center gap-1 mt-1.5">
+                  {chipsByWeekday(days).map(({ weekday, state }) => (
+                    <DayChip key={weekday} state={state} title={`${WEEKDAY_LABELS[weekday]}요일 ${CHIP[state].label}`}>
+                      {WEEKDAY_LABELS[weekday]}
+                    </DayChip>
+                  ))}
+                  <span className="ml-1 text-xs font-normal text-ink-mute whitespace-nowrap">{days.length}건</span>
+                </span>
               </span>
             }
           >
