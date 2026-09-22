@@ -1,5 +1,7 @@
 // src/pages/Notices.jsx
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useViewMode } from '../hooks/useViewMode'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { visibleClasses, visibleClassIds } from '../utils/classAccess'
@@ -13,8 +15,9 @@ import Badge from '../components/ui/Badge'
 export default function Notices() {
   const { user } = useAuth()
   const { classes, notices, addNotice, deleteNotice, staffProfiles } = useData()
-  const [view, setView]         = useState('list') // list | detail | create
-  const [selected, setSelected] = useState(null)
+  // 화면과 고른 공지를 주소에 담는다 — 상세에서 뒤로가기를 누르면 목록으로 온다
+  const { mode: view, id: selectedId, go } = useViewMode('list') // list | detail | create
+  const selected = notices.find((n) => n.id === selectedId) ?? null
 
   const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin'
 
@@ -40,7 +43,7 @@ export default function Notices() {
         <div className="flex justify-between items-center gap-3 mb-4">
           <PageTitle title="공지사항" />
           {isTeacherOrAdmin && (
-            <Button onClick={() => setView('create')}>+ 공지 작성</Button>
+            <Button onClick={() => go('create')}>+ 공지 작성</Button>
           )}
         </div>
 
@@ -65,7 +68,7 @@ export default function Notices() {
                   className="bg-surface border border-line rounded p-4 hover:bg-surface-alt transition-colors"
                 >
                   <div
-                    onClick={() => { setSelected(n); setView('detail') }}
+                    onClick={() => go('detail', n.id)}
                     className="cursor-pointer"
                   >
                     <div className="flex justify-between items-start mb-1">
@@ -77,7 +80,7 @@ export default function Notices() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div
-                      onClick={() => { setSelected(n); setView('detail') }}
+                      onClick={() => go('detail', n.id)}
                       className="flex items-center gap-2 text-xs text-ink-faint cursor-pointer"
                     >
                       <span>{formatDate(n.createdAt)}</span>
@@ -109,6 +112,8 @@ export default function Notices() {
 
   // ────────── detail 뷰 ──────────
   if (view === 'detail') {
+    // 지워졌거나 주소가 낡았으면 볼 것이 없다
+    if (!selected) return <Navigate to="/notices" replace />
     const n          = selected
     const author     = staffProfiles.find((p) => p.id === n.authorId)
     const isAllClass = n.targetClassIds.length === classes.length
@@ -122,7 +127,7 @@ export default function Notices() {
     return (
       <Layout>
       <div>
-        <button onClick={() => setView('list')} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">
+        <button onClick={() => go('list')} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">
           ← 목록
         </button>
         <PageTitle title="공지사항" />
@@ -148,7 +153,7 @@ export default function Notices() {
 
   // ────────── create 뷰 ──────────
   if (view === 'create') {
-    if (!isTeacherOrAdmin) { setView('list'); return null }
+    if (!isTeacherOrAdmin) return <Navigate to="/notices" replace />
     return (
       <Layout>
       <CreateView
@@ -157,10 +162,10 @@ export default function Notices() {
           const res = await addNotice(newNotice)
           // 실패했는데 목록으로 넘기면 올라간 줄 알고 지나간다
           if (res?.error) return res.error
-          setView('list')
+          go('list', null, { replace: true })
           return null
         }}
-        onCancel={() => setView('list')}
+        onCancel={() => go('list')}
       />
       </Layout>
     )

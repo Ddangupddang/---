@@ -1,9 +1,13 @@
 // src/pages/QnA.test.jsx
 // Q&A 간편화 — 말머리로 받고, 테스트·문항 선택은 없앴다.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render as rtlRender, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import QnA from './QnA'
+
+// 화면 상태가 주소에 담기므로(useViewMode) 라우터 안에서 그려야 한다
+const render = (ui) => rtlRender(<MemoryRouter initialEntries={['/qna']}>{ui}</MemoryRouter>)
 
 // jsdom에는 없다. 미리보기가 이걸 쓴다.
 globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview')

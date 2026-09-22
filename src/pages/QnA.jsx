@@ -4,6 +4,8 @@
 // (1) 과제 관련 질문은 낼 방법이 없고
 // (2) 종료된 테스트가 하나도 없으면 질문 자체를 못 했다.
 import { useState, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useViewMode } from '../hooks/useViewMode'
 import { Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
@@ -52,10 +54,10 @@ export default function QnA() {
     qnaMessages, addQnaMessage, updateQnaMessage, deleteQnaMessage,
     qnaReads = [], markQnaRead,
   } = useData()
-  const [view, setView]                         = useState('list') // list | detail | ask
-  // 질문 자체가 아니라 id를 들고 있는다. 스냅샷을 들고 있으면 답변을 고쳐도
-  // 화면이 옛 내용 그대로 남는다.
-  const [selectedId,       setSelectedId]       = useState(null)
+  // 화면 상태를 주소에 남긴다 — 상세에서 뒤로가기를 누르면 목록으로 돌아온다.
+  // 전에는 Q&A 안에서 아무리 옮겨 다녀도 주소가 그대로여서, 뒤로가기가
+  // 그 전에 있던 다른 페이지로 튕겼다.
+  const { mode: view, id: selectedId, go } = useViewMode('list') // list | detail | ask
   const [filterCategory, setFilterCategory]     = useState('all')
   const [page,           setPage]               = useState(1)
 
@@ -104,7 +106,7 @@ export default function QnA() {
         <div className="flex justify-between items-start">
           <PageTitle title="Q&A" />
           {user.role === 'student' && (
-            <Button onClick={() => setView('ask')}>+ 질문하기</Button>
+            <Button onClick={() => go('ask')}>+ 질문하기</Button>
           )}
         </div>
         {/* 교사에게 급함을 알리는 신호라 PageTitle의 lead(고정 회색)로는 표현할 수 없어 직접 그린다 */}
@@ -142,7 +144,7 @@ export default function QnA() {
               <div
                 key={q.id}
                 data-testid={`question-${q.id}`}
-                onClick={() => { setSelectedId(q.id); setView('detail') }}
+                onClick={() => go('detail', q.id)}
                 className="bg-surface border border-line rounded p-4 cursor-pointer hover:bg-surface-alt transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
@@ -191,7 +193,8 @@ export default function QnA() {
   if (view === 'detail') {
     const selectedQuestion = myQuestions.find((q) => q.id === selectedId)
     // 지워졌거나 더 이상 보이지 않는 질문이면 목록으로 돌려보낸다
-    if (!selectedQuestion) { setView('list'); return null }
+    // 렌더 도중에 화면을 바꾸면 안 된다. 주소를 갈아끼워 목록으로 되돌린다.
+    if (!selectedQuestion) return <Navigate to="/qna" replace />
 
     return (
       <Layout>
@@ -204,7 +207,7 @@ export default function QnA() {
           const res = await deleteQuestion(selectedQuestion.id, selectedQuestion.imagePaths ?? [])
           // 실패했는데 목록으로 넘기면 지워진 줄 알고 지나간다 — 새로고침하면 되살아난다
           if (res?.error) return res.error
-          setView('list')
+          go('list', null, { replace: true })
           return null
         }}
         messages={qnaMessages
@@ -244,7 +247,7 @@ export default function QnA() {
           const res = await deleteQnaMessage(m.id, m.imagePaths ?? [])
           return res?.error ?? null
         }}
-        onBack={() => setView('list')}
+        onBack={() => go('list')}
       />
       </Layout>
     )
@@ -252,7 +255,7 @@ export default function QnA() {
 
   // ────────── ask 뷰 (학생 질문 작성) ──────────
   if (view === 'ask') {
-    if (user.role !== 'student') { setView('list'); return null }
+    if (user.role !== 'student') return <Navigate to="/qna" replace />
     return (
       <Layout>
       <AskView
@@ -262,10 +265,10 @@ export default function QnA() {
           const res = await addQuestion({ ...newQ, studentId: user.studentId })
           // 실패했는데 목록으로 넘기면 올라간 줄 알고 지나간다 — 작성 화면에 머문다
           if (res?.error) return res.error
-          setView('list')
+          go('list', null, { replace: true })
           return null
         }}
-        onBack={() => setView('list')}
+        onBack={() => go('list')}
       />
       </Layout>
     )

@@ -1,9 +1,13 @@
 // src/pages/Notices.test.jsx
 // 등록 실패를 화면에 알린다. 조용히 목록으로 돌아가면 올라간 줄 알고 지나간다.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import Notices from './Notices'
+
+// 화면 상태가 주소에 담기므로(useViewMode) 라우터 안에서 그려야 한다
+const render = (ui) => rtlRender(<MemoryRouter initialEntries={['/notices']}>{ui}</MemoryRouter>)
 
 const state = {}
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: state.user }) }))

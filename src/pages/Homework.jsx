@@ -1,7 +1,7 @@
 // src/pages/Homework.jsx
 // 과제 — 상단 내신/정시 탭. 학생: 제출/결과, 교사: 목록/출제/현황.
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useViewMode } from '../hooks/useViewMode'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
@@ -31,29 +31,29 @@ export default function Homework() {
   const isStaff = user.role === 'teacher' || user.role === 'admin'
 
   const [category, setCategory] = useState(HW_CATEGORY.NAESIN)
-  // 대시보드의 "과제 미제출"이 ?view=pending 으로 보낸다. 주소에 남겨 두는 이유는
-  // 새로고침해도 보던 화면이 유지되게 하려는 것이다(홈 화면 앱에는 주소창이 없다).
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [mode, setMode] = useState(
-    searchParams.get('view') === 'pending' ? 'pending' : 'list'
-  ) // list | form | status | report | pending
-  const [editSet, setEditSet] = useState(null) // null이면 새로 출제, 세트가 있으면 수정
+  // 화면 상태를 주소에 남긴다 — 뒤로가기가 화면 단위로 동작하고, 새로고침해도
+  // 보던 화면이 유지된다. 대시보드의 "과제 미제출"도 ?view=pending 으로 들어온다.
+  const { mode, id: editSetId, go } = useViewMode('list') // list | form | status | report | pending
+  // 수정할 세트는 주소에 담는다(?view=form&id=12). 화면 상태로만 들고 있으면
+  // 새로고침했을 때 "수정"이 조용히 "새로 출제"로 바뀌어, 교사가 같은 과제를
+  // 하나 더 만들게 된다. id가 없으면 새로 출제다.
+  const editSet = homeworkSets.find((s) => s.id === editSetId) ?? null
   // 복제할 원본. 문항·정답·해설을 그대로 가져와 다른 반에 새로 내는 데 쓴다.
   const [copySet, setCopySet] = useState(null)
   // 같은 주에 이미 과제가 있어 기존 세트로 옮겨 갈 때, 그때까지 입력하던 요일.
   // 이게 없으면 교사가 15문항 정답을 다시 찍어야 한다.
   const [pendingDays, setPendingDays] = useState(null)
 
+  // 목록으로 돌아갈 때는 기록을 남기지 않는다(replace).
+  // 남기면 방금 저장하고 나온 작성 화면을 뒤로가기가 다시 연다.
   function openList() {
-    setEditSet(null); setCopySet(null); setPendingDays(null); setMode('list')
-    // 목록으로 돌아왔는데 주소에 ?view=pending 이 남아 있으면, 새로고침 때
-    // 미제출 화면으로 되돌아가 버린다.
-    if (searchParams.get('view')) setSearchParams({}, { replace: true })
+    setCopySet(null); setPendingDays(null)
+    go('list', null, { replace: true })
   }
 
   function openPending() {
-    setEditSet(null); setCopySet(null); setPendingDays(null); setMode('pending')
-    setSearchParams({ view: 'pending' }, { replace: true })
+    setCopySet(null); setPendingDays(null)
+    go('pending')
   }
 
   return (
@@ -63,9 +63,9 @@ export default function Homework() {
         {isStaff && mode === 'list' && (
           <div className="flex gap-2 flex-wrap justify-end">
             <Button variant="ghost" onClick={openPending}>미제출</Button>
-            <Button variant="ghost" onClick={() => setMode('report')}>리포트</Button>
-            <Button variant="ghost" onClick={() => setMode('status')}>제출 현황</Button>
-            <Button variant="primary" onClick={() => { setEditSet(null); setCopySet(null); setPendingDays(null); setMode('form') }}>+ 주간 과제</Button>
+            <Button variant="ghost" onClick={() => go('report')}>리포트</Button>
+            <Button variant="ghost" onClick={() => go('status')}>제출 현황</Button>
+            <Button variant="primary" onClick={() => { setCopySet(null); setPendingDays(null); go('form') }}>+ 주간 과제</Button>
           </div>
         )}
       </div>
@@ -95,7 +95,7 @@ export default function Homework() {
           category={category} editSet={editSet} copySet={copySet}
           pendingDays={pendingDays}
           // 같은 주에 이미 과제가 있을 때, 입력하던 요일을 그 과제로 옮겨 붙인다
-          onContinueInto={(set, days) => { setCopySet(null); setPendingDays(days); setEditSet(set) }}
+          onContinueInto={(set, days) => { setCopySet(null); setPendingDays(days); go('form', set.id, { replace: true }) }}
           onDone={openList}
         />
       )}
@@ -123,8 +123,8 @@ export default function Homework() {
           // 3쪽에 있다가 넘어가면 있지도 않은 쪽을 보게 된다.
           key={category}
           category={category} sets={homeworkSets} classes={myClasses}
-          onEdit={(s) => { setCopySet(null); setPendingDays(null); setEditSet(s); setMode('form') }}
-          onCopy={(s) => { setEditSet(null); setPendingDays(null); setCopySet(s); setMode('form') }}
+          onEdit={(s) => { setCopySet(null); setPendingDays(null); go('form', s.id) }}
+          onCopy={(s) => { setPendingDays(null); setCopySet(s); go('form') }}
           onDelete={deleteHomeworkSet}
           userRole={user.role} userId={user.id}
         />

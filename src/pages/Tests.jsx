@@ -1,5 +1,7 @@
 // src/pages/Tests.jsx
 import { useState, useEffect, useRef } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useViewMode } from '../hooks/useViewMode'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
@@ -31,10 +33,20 @@ export default function Tests() {
     addSubmission, updateSubmissionScores,
   } = useData()
 
-  const [view,                setView]                = useState('list')
-  const [selectedTest,        setSelectedTest]        = useState(null)
-  const [selectedSubmission,  setSelectedSubmission]  = useState(null)
+  // 화면과 선택한 항목을 주소에 담는다 — 채점 화면에서 뒤로가기를 누르면
+  // 제출 목록으로 돌아온다. 전에는 그 전에 있던 다른 페이지로 튕겼다.
+  //   ?view=submissions&id=<테스트>   ?view=grade&id=<제출>
+  const { mode: view, id: urlId, go } = useViewMode('list')
   const [filterClassId,       setFilterClassId]       = useState('all')
+
+  // 고른 항목은 주소의 id로 매번 되짚는다. 따로 들고 있으면 목록이 갱신돼도
+  // 옛 내용이 남아서, 전에는 effect로 일일이 맞춰줘야 했다.
+  const selectedSubmission = view === 'grade'
+    ? submissions.find((s) => s.id === urlId) ?? null
+    : null
+  const selectedTest = view === 'grade'
+    ? tests.find((t) => t.id === selectedSubmission?.testId) ?? null
+    : tests.find((t) => t.id === urlId) ?? null
 
   // 관리자는 전체, 교사는 담당 반, 학생은 본인 반
   const accessibleClasses = visibleClasses(classes, user)
@@ -55,17 +67,6 @@ export default function Tests() {
     return submissions.find((s) => s.testId === testId && s.studentId === user.studentId)
   }
 
-  // selectedTest가 업데이트되면 최신 버전으로 동기화
-  useEffect(() => {
-    if (selectedTest) {
-      const updated = tests.find((t) => t.id === selectedTest.id)
-      // 목록(tests)이 갱신될 때 선택된 항목을 최신 버전으로 동기화
-      if (updated) setSelectedTest(updated)
-    }
-    // selectedTest는 의존성에서 제외 — 목록(tests) 변경 시에만 동기화하려는 의도
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tests])
-
   // ────────── list 뷰 ──────────
   if (view === 'list') {
     return (
@@ -74,7 +75,7 @@ export default function Tests() {
         <div className="flex justify-between items-center gap-3 mb-4">
           <PageTitle title="테스트" />
           {(user.role === 'teacher' || user.role === 'admin') && (
-            <Button onClick={() => setView('create')}>+ 테스트 만들기</Button>
+            <Button onClick={() => go('create')}>+ 테스트 만들기</Button>
           )}
         </div>
 
@@ -124,15 +125,11 @@ export default function Tests() {
                 <div
                   key={test.id}
                   onClick={() => {
-                    setSelectedTest(test)
                     if (user.role === 'student') {
-                      if (test.status === 'active' && !mySub) {
-                        setView('take')
-                      } else if (mySub && mySub.scores.length > 0) {
-                        setView('result')
-                      }
+                      if (test.status === 'active' && !mySub) go('take', test.id)
+                      else if (mySub && mySub.scores.length > 0) go('result', test.id)
                     } else {
-                      setView('submissions')
+                      go('submissions', test.id)
                     }
                   }}
                   className="bg-surface border border-line rounded p-4 cursor-pointer hover:bg-surface-alt transition-colors"
@@ -211,7 +208,7 @@ export default function Tests() {
 
   // ────────── create 뷰 ──────────
   if (view === 'create') {
-    if (user.role === 'student') { setView('list'); return null }
+    if (user.role === 'student') return <Navigate to="/tests" replace />
     return (
       <Layout>
       <CreateView
@@ -219,9 +216,9 @@ export default function Tests() {
         user={user}
         onSubmit={async (newTest) => {
           await addTest(newTest)
-          setView('list')
+          go('list', null, { replace: true })
         }}
-        onCancel={() => setView('list')}
+        onCancel={() => go('list')}
       />
       </Layout>
     )
@@ -229,14 +226,15 @@ export default function Tests() {
 
   // ────────── submissions 뷰 ──────────
   if (view === 'submissions') {
-    if (user.role === 'student') { setView('list'); return null }
+    if (user.role === 'student') return <Navigate to="/tests" replace />
+    if (!selectedTest) return <Navigate to="/tests" replace />
     const testSubs    = submissions.filter((s) => s.testId === selectedTest.id)
     const totalPoints = selectedTest.questions.reduce((sum, q) => sum + q.points, 0)
 
     return (
       <Layout>
       <div>
-        <button onClick={() => setView('list')} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">
+        <button onClick={() => go('list')} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">
           ← 목록
         </button>
         <PageTitle title={selectedTest.title} lead="제출 목록" />
@@ -254,8 +252,7 @@ export default function Tests() {
                 <div
                   key={sub.id}
                   onClick={() => {
-                    setSelectedSubmission(sub)
-                    setView('grade')
+                    go('grade', sub.id)
                   }}
                   className="bg-surface border border-line rounded p-4 cursor-pointer hover:bg-surface-alt transition-colors flex justify-between items-center"
                 >
@@ -287,7 +284,8 @@ export default function Tests() {
 
   // ────────── take 뷰 (학생 응시) ──────────
   if (view === 'take') {
-    if (user.role !== 'student') { setView('list'); return null }
+    if (user.role !== 'student') return <Navigate to="/tests" replace />
+    if (!selectedTest) return <Navigate to="/tests" replace />
     return (
       <TakeView
         test={selectedTest}
@@ -308,16 +306,18 @@ export default function Tests() {
             answers,
             scores: hasSA ? [] : mcScores,
           })
-          setView('list')
+          go('list', null, { replace: true })
         }}
-        onBack={() => setView('list')}
+        onBack={() => go('list')}
       />
     )
   }
 
   // ────────── grade 뷰 ──────────
   if (view === 'grade') {
-    if (user.role === 'student') { setView('list'); return null }
+    if (user.role === 'student') return <Navigate to="/tests" replace />
+    // 제출이 취소됐거나 주소가 낡았으면 채점할 대상이 없다
+    if (!selectedSubmission || !selectedTest) return <Navigate to="/tests" replace />
     return (
       <Layout>
       <GradeView
@@ -326,9 +326,9 @@ export default function Tests() {
         students={students}
         onSave={async (updatedScores) => {
           await updateSubmissionScores(selectedSubmission.id, updatedScores)
-          setView('submissions')
+          go('submissions', selectedTest.id, { replace: true })
         }}
-        onBack={() => setView('submissions')}
+        onBack={() => go('submissions', selectedTest.id)}
       />
       </Layout>
     )
@@ -336,14 +336,14 @@ export default function Tests() {
 
   // ────────── result 뷰 (학생 결과 확인) ──────────
   if (view === 'result') {
-    if (!selectedTest) { setView('list'); return null }
+    if (!selectedTest) return <Navigate to="/tests" replace />
     return (
       <Layout>
       <ResultView
         test={selectedTest}
         user={user}
         submissions={submissions}
-        onBack={() => setView('list')}
+        onBack={() => go('list')}
       />
       </Layout>
     )

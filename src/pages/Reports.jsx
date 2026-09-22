@@ -1,6 +1,8 @@
 // src/pages/Reports.jsx
 // 진도 리포트 — 교사/관리자만 접근 가능
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useViewMode } from '../hooks/useViewMode'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import Layout from '../components/Layout'
@@ -19,8 +21,11 @@ export default function Reports() {
   const classes  = visibleClasses(allClasses, user)
   const students = visibleStudents(allStudents, allClasses, user)
 
-  const [view,          setView]          = useState('list')
-  const [selected,      setSelected]      = useState(null)
+  // 화면과 고른 리포트를 주소에 담는다 — 상세에서 뒤로가기를 누르면 목록으로 온다.
+  // 고른 리포트를 따로 들고 있지 않고 목록에서 되짚는다. 그래야 과제 체크를
+  // 저장했을 때 화면과 목록이 저절로 같아진다(전에는 양쪽을 따로 갱신했다).
+  const { mode: view, id: selectedId, go } = useViewMode('list')
+  const selected = reports.find((r) => r.id === selectedId) ?? null
   const [filterClassId, setFilterClassId] = useState('all')
 
   // 학생은 이 페이지에 접근 불가
@@ -60,7 +65,7 @@ export default function Reports() {
       <div>
         <div className="flex justify-between items-center gap-3 mb-4">
           <PageTitle title="진도 리포트" />
-          <Button onClick={() => setView('create')}>+ 리포트 작성</Button>
+          <Button onClick={() => go('create')}>+ 리포트 작성</Button>
         </div>
 
         {/* 반 탭 */}
@@ -101,7 +106,7 @@ export default function Reports() {
               return (
                 <div key={r.id} className="bg-surface border border-line rounded p-4 hover:bg-surface-alt transition-colors">
                   <div
-                    onClick={() => { setSelected(r); setView('detail') }}
+                    onClick={() => go('detail', r.id)}
                     className="cursor-pointer"
                   >
                     <div className="flex justify-between items-start mb-2">
@@ -120,7 +125,7 @@ export default function Reports() {
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <div
-                      onClick={() => { setSelected(r); setView('detail') }}
+                      onClick={() => go('detail', r.id)}
                       className="flex items-center gap-2 text-xs text-ink-faint cursor-pointer"
                     >
                       <span>{r.date}</span>
@@ -150,15 +155,16 @@ export default function Reports() {
 
   // ────────── detail 뷰 ──────────
   if (view === 'detail') {
+    // 지워졌거나 주소가 낡았으면 볼 것이 없다
+    if (!selected) return <Navigate to="/reports" replace />
     return (
       <Layout>
       <DetailView
         report={selected}
         onUpdateChecks={async (studentChecks) => {
           await updateReportChecks(selected.id, studentChecks)
-          setSelected((prev) => ({ ...prev, studentChecks }))
         }}
-        onBack={() => setView('list')}
+        onBack={() => go('list')}
         classStudents={classStudents}
         staffProfiles={staffProfiles}
       />
@@ -176,10 +182,10 @@ export default function Reports() {
           const res = await addReport(newReport)
           // 실패했는데 목록으로 넘기면 올라간 줄 알고 지나간다
           if (res?.error) return res.error
-          setView('list')
+          go('list', null, { replace: true })
           return null
         }}
-        onCancel={() => setView('list')}
+        onCancel={() => go('list')}
         classStudents={classStudents}
       />
       </Layout>
