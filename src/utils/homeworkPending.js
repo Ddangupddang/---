@@ -8,16 +8,13 @@
 // 대시보드에서 알고 싶은 건 "몇 명을 불러야 하는가"이기 때문이다.
 
 import { mondayOf } from './homeworkWeek'
-import { HW_CATEGORY } from '../constants/homework'
+import { matchesStudent } from './homeworkSelect'
 
-// 이 과제 세트가 이 학생에게 배정되는가.
-// 내신은 학년, 정시는 정시 레벨로 배정된다(반이 아니다).
-function assignedTo(set, student) {
-  if (set.category === HW_CATEGORY.NAESIN) return set.target === student.grade
-  // 정시 레벨이 없는 학생에게는 정시과제가 배정되지 않는다.
-  // null === null 로 엉뚱하게 걸리지 않게 값이 있는지 먼저 본다.
-  return student.jeongsiLevel != null && set.target === student.jeongsiLevel
-}
+// 이 과제 세트가 이 학생에게 배정되는가 — 학생 화면·리포트와 같은 규칙을 쓴다.
+// 예전엔 여기에 따로 "내신은 학년으로" 규칙을 두었는데, 내신이 반 단위로 바뀐
+// 뒤에도 이곳만 학년으로 맞춰서, 고1 학생에게 고1 모든 반의 과제가 붙었다.
+// 규칙을 한 곳(matchesStudent)에만 두어 다시 갈라지지 않게 한다.
+const assignedTo = matchesStudent
 
 // 마감이 지난 과제를 안 낸 학생들과, 각자 빠뜨린 요일.
 //

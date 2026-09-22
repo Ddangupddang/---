@@ -134,4 +134,27 @@ describe('pendingHomeworkStudents', () => {
     ]
     for (const c of cases) expect(list(c)).toHaveLength(count(c))
   })
+
+  it('반별 내신 과제는 그 반 학생에게만 배정된다', () => {
+    // 같은 고2라도 7반 과제는 7반 학생 것이다 — 8반 학생은 세지 않는다
+    const students = [
+      { id: 1, name: '가', grade: 5, classId: 7, jeongsiLevel: null },
+      { id: 2, name: '나', grade: 5, classId: 8, jeongsiLevel: null },
+    ]
+    const sets = [{ id: 11, category: 'naesin', classId: 7, target: null, weekStart: WEEK }]
+    const rows = pendingHomeworkStudents({ students, sets, days: DAYS, submissions: [], today: WED })
+    expect(rows.map((r) => r.student.id)).toEqual([1])
+  })
+
+  it('한 학년에 반이 여럿이어도 내 반 과제만 빠뜨린 것으로 친다', () => {
+    const students = [{ id: 1, name: '가', grade: 5, classId: 7, jeongsiLevel: null }]
+    const sets = [
+      { id: 11, category: 'naesin', classId: 7, target: null, weekStart: WEEK },
+      { id: 12, category: 'naesin', classId: 8, target: null, weekStart: WEEK },
+    ]
+    const days = [...DAYS, { id: 120, setId: 12, weekday: 1, date: '2026-08-17' }]
+    const [row] = pendingHomeworkStudents({ students, sets, days, submissions: [], today: WED })
+    // 7반의 월·수만 — 8반 월요일은 남의 반 과제다
+    expect(row.days.map((d) => d.day.id)).toEqual([110, 112])
+  })
 })
