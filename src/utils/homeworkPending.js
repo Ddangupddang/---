@@ -1,15 +1,17 @@
 // src/utils/homeworkPending.js
 // 대시보드용 — "지금 챙겨야 할 과제 미제출"을 세는 곳.
 //
-// 제출 기한이 지난 회차만 센다. 기한은 다음날까지다("월요일 과제는 화요일까지").
-// 아직 낼 수 있는 과제까지 세면 매일 오후마다 반 전원이 미제출로 잡혀서,
-// 정작 불러야 할 학생이 묻힌다.
+// 어제까지 나간 과제만 센다. 오늘 과제는 세지 않는다 — 세면 매일 오후마다
+// 반 전원이 미제출로 잡혀서, 정작 챙겨야 할 학생이 묻힌다.
+// 어제 과제는 오늘까지 낼 수 있지만("월요일 과제는 화요일까지") 센다.
+// 화요일에 월요일 과제를 안 낸 학생을 챙기는 게 교사가 원하는 것이다.
+// 아직 낼 수 있는지는 화면이 칩 색으로 가른다.
 //
 // 세는 단위는 "학생 수"다. 한 학생이 여러 날 빼먹어도 1명으로 센다 —
 // 대시보드에서 알고 싶은 건 "몇 명을 불러야 하는가"이기 때문이다.
 
 import { mondayOf } from './homeworkWeek'
-import { matchesStudent, canSubmitOn } from './homeworkSelect'
+import { matchesStudent } from './homeworkSelect'
 
 // 이 과제 세트가 이 학생에게 배정되는가 — 학생 화면·리포트와 같은 규칙을 쓴다.
 // 예전엔 여기에 따로 "내신은 학년으로" 규칙을 두었는데, 내신이 반 단위로 바뀐
@@ -32,11 +34,11 @@ export function pendingHomeworkStudents({ students = [], sets = [], days = [], s
   const setById = new Map(
     sets.filter((s) => s.weekStart === weekStart).map((s) => [s.id, s])
   )
-  // 제출 기한이 지난 요일만, 날짜순으로.
-  // 열어준 요일도 남긴다 — 열어줬어도 아직 안 낸 건 안 낸 것이다(그래서 reopened는 넘기지 않는다).
+  // 어제까지의 요일만, 날짜순으로.
+  // 열어준 요일도 남긴다 — 열어줬어도 아직 안 낸 건 안 낸 것이다.
   // 화면이 "월·수를 빼먹었다"처럼 읽히려면 순서가 정해져 있어야 한다.
   const dueDays = days
-    .filter((d) => setById.has(d.setId) && !canSubmitOn(d, today))
+    .filter((d) => setById.has(d.setId) && d.date < today)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id))
   if (dueDays.length === 0) return []
 

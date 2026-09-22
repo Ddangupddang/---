@@ -181,4 +181,25 @@ describe('PendingHomeworkList', () => {
     // 개수는 칩 수가 아니라 빠뜨린 건수다
     expect(screen.getByRole('button', { name: /김가나/ })).toHaveTextContent('2건')
   })
+
+  it('어제 과제는 오늘 마감으로 보이고 열어주기 대신 안내가 나온다', () => {
+    // 화요일(어제) 과제 — 오늘(수)까지 낼 수 있다
+    data.homeworkDays = [...DAYS, { id: 111, setId: 11, weekday: 2, date: '2026-08-18' }]
+    data.homeworkSubmissions = [{ dayId: 110, studentId: 1 }, { dayId: 110, studentId: 2 }]
+    render(<PendingHomeworkList />)
+    expect(chipsOf('김가나')).toEqual([['화', 'dueToday']])
+    expand('김가나')
+    expect(screen.queryByRole('button', { name: '열어주기' })).not.toBeInTheDocument()
+    expect(screen.getByText('오늘까지 낼 수 있음')).toBeInTheDocument()
+  })
+
+  it('기한 지난 학생이 오늘 마감만 있는 학생보다 위에 온다', () => {
+    data.homeworkDays = [...DAYS, { id: 111, setId: 11, weekday: 2, date: '2026-08-18' }]
+    // 김가나는 월요일을 냈다 → 화요일(오늘 마감)만 남는다. 이다라는 월요일 기한 지남.
+    data.homeworkSubmissions = [{ dayId: 110, studentId: 1 }]
+    render(<PendingHomeworkList />)
+    const names = screen.getAllByRole('button', { name: /김가나|이다라/ })
+      .map((b) => (b.textContent.includes('김가나') ? '김가나' : '이다라'))
+    expect(names).toEqual(['이다라', '김가나'])
+  })
 })

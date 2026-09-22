@@ -3,10 +3,10 @@ import { describe, it, expect } from 'vitest'
 import { pendingHomeworkCount, pendingHomeworkStudents } from './homeworkPending'
 
 // 2026-08-17(월) 주. 오늘은 수요일 2026-08-19로 두고 본다.
-// 제출 기한은 다음날까지라, 수요일에 기한이 지난 건 월요일 과제뿐이다.
+// 어제까지 나간 과제를 센다(오늘 과제는 세지 않는다). 수요일이면 월·화 과제다.
 const WEEK = '2026-08-17'
 const WED = '2026-08-19'
-const FRI = '2026-08-21' // 월·수 과제 기한이 모두 지난 날
+const FRI = '2026-08-21' // 월·수 과제가 모두 어제 이전인 날
 
 // 고2(학년 5) 두 명, 정시 2레벨은 한 명만
 const STUDENTS = [
@@ -43,16 +43,16 @@ describe('pendingHomeworkCount', () => {
     expect(count({ submissions, today: FRI })).toBe(1)
   })
 
-  it('아직 낼 수 있는 과제는 세지 않는다', () => {
-    // 월요일은 둘 다 냈고, 오늘(수) 과제는 내일까지 낼 수 있다 → 불러야 할 학생 없음
+  it('오늘 나간 과제는 세지 않는다', () => {
+    // 월요일은 둘 다 냈고, 오늘(수) 과제는 아직 하루가 안 지났다
     const submissions = [{ dayId: 110, studentId: 1 }, { dayId: 110, studentId: 2 }]
     expect(count({ submissions })).toBe(0)
   })
 
-  it('어제 과제도 오늘까지는 낼 수 있어 세지 않는다', () => {
-    // 목요일: 수요일 과제 기한이 오늘이다
+  it('어제 과제는 오늘까지 낼 수 있어도 센다', () => {
+    // 목요일: 수요일 과제는 오늘까지 낼 수 있지만, 교사는 오늘 챙겨야 한다
     const submissions = [{ dayId: 110, studentId: 1 }, { dayId: 110, studentId: 2 }]
-    expect(count({ submissions, today: '2026-08-20' })).toBe(0)
+    expect(count({ submissions, today: '2026-08-20' })).toBe(2)
   })
 
   it('지난 주 과제는 세지 않는다', () => {
