@@ -5,6 +5,10 @@
 // 누가 냈나"를 볼 때 맞는 모양인데, 대시보드에서 알고 싶은 건 "오늘 몇 명을
 // 불러야 하나"다. 그래서 여기서는 칸막이를 없애고, 대시보드가 센 것과 똑같은
 // 사람들을 그대로 보여준다 — 숫자와 명단이 어긋나지 않는다.
+//
+// 학생마다 접어 둔다. 한 학생이 사흘을 빠뜨리면 네 줄이 되어 15명이면
+// 화면 몇 장이 된다. 접힌 한 줄에 이름·반·요일 칩을 두어, 펼치지 않고도
+// "누구를 불러야 하나"가 보이게 했다. 열어주기 버튼만 펼쳐야 나온다.
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useData } from '../../context/DataContext'
@@ -13,6 +17,35 @@ import { pendingHomeworkStudents } from '../../utils/homeworkPending'
 import { canSubmitOn } from '../../utils/homeworkSelect'
 import { todayKST } from '../../utils/datetime'
 import { WEEKDAY_LABELS, CATEGORY_LABELS } from '../../constants/homework'
+import CollapsibleSection from '../ui/CollapsibleSection'
+
+// 요일 칩의 상태 세 가지.
+//   late     — 기한이 지났고 열어주지도 않았다. 불러야 할 학생이다.
+//   reopened — 열어줬는데 아직 안 냈다.
+//   open     — 기한 전이라 아직 낼 수 있다.
+// 색만으로 가르지 않게 칩 위에 설명(title)도 단다.
+const CHIP = {
+  late:     { label: '기한 지남',       className: 'bg-danger-soft text-danger border-danger-soft' },
+  reopened: { label: '열어줌',          className: 'bg-surface text-navy border-navy' },
+  open:     { label: '아직 낼 수 있음', className: 'bg-surface-alt text-ink-soft border-surface-alt' },
+}
+
+function chipStateOf(day, today, isOpen) {
+  if (canSubmitOn(day, today)) return 'open'
+  return isOpen ? 'reopened' : 'late'
+}
+
+function DayChip({ state, children, title }) {
+  return (
+    <span
+      data-chip={state}
+      title={title}
+      className={`inline-block whitespace-nowrap px-1.5 py-[2px] rounded-sm border text-xs font-bold ${CHIP[state].className}`}
+    >
+      {children}
+    </span>
+  )
+}
 
 export default function PendingHomeworkList() {
   const { user } = useAuth()
@@ -35,6 +68,19 @@ export default function PendingHomeworkList() {
   })
 
   const reopened  = new Set(homeworkReopens.map((r) => `${r.dayId}:${r.studentId}`))
+
+  // 요일마다 칩 상태를 미리 붙여 둔다 — 접힌 줄과 펼친 줄이 같은 값을 쓴다
+  const withState = rows.map(({ student, days }) => ({
+    student,
+    days: days.map(({ day, set }) => {
+      const isOpen = reopened.has(`${day.id}:${student.id}`)
+      return { day, set, isOpen, state: chipStateOf(day, today, isOpen) }
+    }),
+  }))
+  // 기한 지난 요일이 하나라도 있는 학생을 위로. 그 안에서는 원래 순서를 지킨다.
+  // (sort는 같은 값끼리 순서를 바꾸지 않는다)
+  const urgent = (r) => r.days.some((d) => d.state === 'late')
+  withState.sort((a, b) => Number(urgent(b)) - Number(urgent(a)))
   const classNameOf = (id) => classes.find((c) => c.id === id)?.name ?? '반 없음'
 
   // 되돌릴 수 있는 동작이라 확인을 받지 않는다 — 잘못 눌러도 "닫기"로 되돌린다.
@@ -66,24 +112,45 @@ export default function PendingHomeworkList() {
         아직 마감 전인 과제는 세지 않습니다.
       </p>
 
+      {/* 칩 색이 무엇을 뜻하는지 — 처음 보는 교사도 읽을 수 있게 */}
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-mute mb-3">
+        {Object.entries(CHIP).map(([state, { label }]) => (
+          <span key={state} className="flex items-center gap-1">
+            <DayChip state={state}>요일</DayChip>{label}
+          </span>
+        ))}
+      </p>
+
       {error && (
         <p className="text-sm text-danger bg-danger-soft border border-line rounded px-3 py-2 mb-3">
           {error}
         </p>
       )}
 
-      <div className="flex flex-col gap-2">
-        {rows.map(({ student, days }) => (
-          <div key={student.id} className="bg-surface border border-line rounded p-3">
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="font-semibold text-ink">{student.name}</span>
-              <span className="text-xs text-ink-faint">{classNameOf(student.classId)}</span>
-            </div>
-
+      <div>
+        {withState.map(({ student, days }) => (
+          <CollapsibleSection
+            key={student.id}
+            title={
+              <>
+                {student.name}
+                <span className="ml-2 text-xs font-normal text-ink-faint">{classNameOf(student.classId)}</span>
+              </>
+            }
+            meta={
+              <span className="flex items-center gap-1">
+                {days.map(({ day, state }) => (
+                  <DayChip key={day.id} state={state} title={`${WEEKDAY_LABELS[day.weekday]}요일 ${CHIP[state].label}`}>
+                    {WEEKDAY_LABELS[day.weekday]}
+                  </DayChip>
+                ))}
+                <span className="ml-1">{days.length}일</span>
+              </span>
+            }
+          >
             <div className="flex flex-col gap-1.5">
-              {days.map(({ day, set }) => {
+              {days.map(({ day, set, isOpen }) => {
                 const key    = `${day.id}:${student.id}`
-                const isOpen = reopened.has(key)
                 // 기한 자체가 지났는가 — 열어주기가 필요한 상황인지 본다.
                 // 열어준 것은 셈에서 빼지 않는다. 열어줬어도 아직 안 낸 건 안 낸 것이다.
                 const closed = !canSubmitOn(day, today)
@@ -111,7 +178,7 @@ export default function PendingHomeworkList() {
                 )
               })}
             </div>
-          </div>
+          </CollapsibleSection>
         ))}
       </div>
     </div>

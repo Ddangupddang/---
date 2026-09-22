@@ -43,6 +43,22 @@ beforeEach(() => {
   }
 })
 
+// 학생은 처음에 접혀 있다 — 열어주기 버튼을 보려면 펼쳐야 한다
+function expand(name) {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(name) }))
+}
+function expandAll() {
+  STUDENTS.forEach((s) => {
+    const btn = screen.queryByRole('button', { name: new RegExp(s.name) })
+    if (btn) fireEvent.click(btn)
+  })
+}
+// 학생 줄에 붙은 요일 칩들 — [요일, 상태] 목록으로 읽는다
+function chipsOf(name) {
+  const btn = screen.getByRole('button', { name: new RegExp(name) })
+  return [...btn.querySelectorAll('[data-chip]')].map((c) => [c.textContent, c.dataset.chip])
+}
+
 describe('PendingHomeworkList', () => {
   it('안 낸 학생의 이름과 반을 보여준다', () => {
     render(<PendingHomeworkList />)
@@ -63,6 +79,7 @@ describe('PendingHomeworkList', () => {
   it('빠뜨린 요일을 보여준다', () => {
     data.homeworkSubmissions = [{ dayId: 110, studentId: 1 }, { dayId: 110, studentId: 2 }]
     render(<PendingHomeworkList />)
+    expandAll()
     // 월요일은 둘 다 냈으니 수요일만 남는다
     expect(screen.getAllByText(/수요일/).length).toBe(2)
     expect(screen.queryByText(/월요일/)).not.toBeInTheDocument()
@@ -70,12 +87,14 @@ describe('PendingHomeworkList', () => {
 
   it('기한이 지난 요일에만 열어주기가 보인다', () => {
     render(<PendingHomeworkList />)
+    expandAll()
     // 월(기한 지남) 2명 → 열어주기 2개. 수(오늘)는 아직 낼 수 있어 버튼이 없다.
     expect(screen.getAllByRole('button', { name: '열어주기' })).toHaveLength(2)
   })
 
   it('열어주기를 누르면 그 학생·그 요일로 연다', async () => {
     render(<PendingHomeworkList />)
+    expand('김가나')
     fireEvent.click(screen.getAllByRole('button', { name: '열어주기' })[0])
     await waitFor(() => expect(openHomeworkDay).toHaveBeenCalledWith(
       expect.objectContaining({ dayId: 110, studentId: 1, openedBy: 'u1' })
@@ -85,6 +104,7 @@ describe('PendingHomeworkList', () => {
   it('이미 열어준 요일은 닫기로 바뀐다', () => {
     data.homeworkReopens = [{ dayId: 110, studentId: 1 }]
     render(<PendingHomeworkList />)
+    expandAll()
     expect(screen.getAllByRole('button', { name: '닫기' })).toHaveLength(1)
     // 2번 학생 것은 아직 열어주기
     expect(screen.getAllByRole('button', { name: '열어주기' })).toHaveLength(1)
@@ -103,5 +123,43 @@ describe('PendingHomeworkList', () => {
     data.students = [...STUDENTS, { id: 9, name: '남의반', classId: 99, grade: 5, jeongsiLevel: null }]
     render(<PendingHomeworkList />)
     expect(screen.queryByText('남의반')).not.toBeInTheDocument()
+  })
+
+  it('처음에는 학생이 모두 접혀 있다', () => {
+    render(<PendingHomeworkList />)
+    expect(screen.getByRole('button', { name: /김가나/ })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: '열어주기' })).not.toBeInTheDocument()
+  })
+
+  it('접힌 줄에 빠뜨린 요일과 개수가 보인다', () => {
+    render(<PendingHomeworkList />)
+    // 월 = 기한 지남, 수 = 오늘이라 아직 낼 수 있음
+    expect(chipsOf('김가나')).toEqual([['월', 'late'], ['수', 'open']])
+    expect(screen.getByRole('button', { name: /김가나/ })).toHaveTextContent('2일')
+  })
+
+  it('열어준 요일은 칩이 열어줌으로 바뀐다', () => {
+    data.homeworkReopens = [{ dayId: 110, studentId: 1 }]
+    render(<PendingHomeworkList />)
+    expect(chipsOf('김가나')).toEqual([['월', 'reopened'], ['수', 'open']])
+    expect(chipsOf('이다라')).toEqual([['월', 'late'], ['수', 'open']])
+  })
+
+  it('기한 지난 요일이 있는 학생이 위로 온다', () => {
+    // 김가나는 월요일을 냈다 → 수요일(아직 낼 수 있음)만 남는다
+    data.homeworkSubmissions = [{ dayId: 110, studentId: 1 }]
+    render(<PendingHomeworkList />)
+    const names = screen.getAllByRole('button', { name: /김가나|이다라/ })
+      .map((b) => (b.textContent.includes('김가나') ? '김가나' : '이다라'))
+    expect(names).toEqual(['이다라', '김가나'])
+  })
+
+  it('누르면 펼쳐지고 다시 누르면 접힌다', () => {
+    render(<PendingHomeworkList />)
+    expand('김가나')
+    expect(screen.getByRole('button', { name: /김가나/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getAllByRole('button', { name: '열어주기' })).toHaveLength(1)
+    expand('김가나')
+    expect(screen.queryByRole('button', { name: '열어주기' })).not.toBeInTheDocument()
   })
 })
