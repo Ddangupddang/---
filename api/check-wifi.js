@@ -4,12 +4,17 @@
 // 환경변수 ACADEMY_IPS 에 지점 IP를 쉼표로 이어 적는다 (예: 1.2.3.4,5.6.7.8)
 // 지점이 늘면 코드는 그대로 두고 값만 덧붙이면 된다.
 // ACADEMY_IP(단수)는 지점이 하나이던 시절의 이름이라 함께 읽어준다.
+// 겹치는 주소는 한 번만 센다.
+// 두 변수에 같은 값을 넣어두면(안전하게 하려고 흔히 그렇게 된다) 개수가
+// 두 배로 부풀려지고, 화면의 "등록된 주소 N개"가 거짓말을 한다.
+// 그 숫자는 원인을 짚으라고 만든 것이라 틀리면 안 된다.
 export function academyIps(env) {
-  return [env.ACADEMY_IPS, env.ACADEMY_IP]
+  const all = [env.ACADEMY_IPS, env.ACADEMY_IP]
     .filter(Boolean)
     .flatMap((v) => v.split(','))
     .map((ip) => ip.trim())
     .filter(Boolean)
+  return [...new Set(all)]
 }
 
 export function isAcademyIp(clientIp, env) {

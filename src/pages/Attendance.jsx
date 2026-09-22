@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
-import { checkAcademyWifi, wifiFailureHint } from '../utils/checkWifi'
+import { checkAcademyWifi, wifiFailureHint, wifiFailureCause } from '../utils/checkWifi'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import PageTitle from '../components/ui/PageTitle'
@@ -235,7 +235,7 @@ function ClinicAttendance({ records, upsertAttendance, deleteAttendance }) {
 }
 
 // ── 학생 화면 ──────────────────────────────────────────────
-function StudentAttendance({ user, records, upsertAttendance }) {
+function StudentAttendance({ user, records, upsertAttendance, logWifiCheck }) {
   const today = todayKST()
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [activeTab, setActiveTab] = useState('수업')
@@ -258,6 +258,10 @@ function StudentAttendance({ user, records, upsertAttendance }) {
     setChecking(true)
     setCheckResult(null)
     const { ok, clientIp } = await checkAcademyWifi()
+    // 성공이든 실패든 남긴다. 성공한 주소가 있어야 "이 지점은 보통 이 주소"라는
+    // 기준이 생겨서 실패한 주소와 견줄 수 있다.
+    // 기다리지 않는다 — 기록이 늦어도 출석은 바로 되어야 한다.
+    logWifiCheck?.({ studentId: user.studentId, clientIp, ok })
     if (ok) {
       await upsertAttendance(user.studentId, today, 'present', '수업')
       setCheckResult('success')
@@ -306,7 +310,11 @@ function StudentAttendance({ user, records, upsertAttendance }) {
                 <p className="text-xs text-ink-faint">감지된 주소</p>
                 <p className="font-mono text-xs text-ink break-all">{failedIp}</p>
                 <p className="text-xs text-ink-mute mt-1">
-                  WiFi를 껐다 켠 뒤 다시 눌러 보세요. 그래도 안 되면 이 화면을 선생님께 보여주세요.
+                  {/* 사설 릴레이일 때 "WiFi를 껐다 켜보라"고 하면 헛돈다.
+                      WiFi는 멀쩡하고, 껐다 켜면 릴레이 출구만 바뀔 뿐 계속 실패한다. */}
+                  {wifiFailureCause(failedIp) === 'relay'
+                    ? '위 설정을 끈 뒤 다시 눌러 보세요. 그래도 안 되면 이 화면을 선생님께 보여주세요.'
+                    : 'WiFi를 껐다 켠 뒤 다시 눌러 보세요. 그래도 안 되면 이 화면을 선생님께 보여주세요.'}
                 </p>
               </div>
             )}
@@ -388,14 +396,14 @@ function StudentAttendance({ user, records, upsertAttendance }) {
 // ── 메인 ──────────────────────────────────────────────────
 function Attendance() {
   const { user } = useAuth()
-  const { attendance, upsertAttendance, deleteAttendance } = useData()
+  const { attendance, upsertAttendance, deleteAttendance, logWifiCheck } = useData()
   const [activeTab, setActiveTab] = useState('수업')
 
   if (user?.role === 'student') {
     return (
       <Layout>
         <PageTitle title="출결 관리" />
-        <StudentAttendance user={user} records={attendance} upsertAttendance={upsertAttendance} />
+        <StudentAttendance user={user} records={attendance} upsertAttendance={upsertAttendance} logWifiCheck={logWifiCheck} />
       </Layout>
     )
   }

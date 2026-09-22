@@ -17,6 +17,17 @@ describe('academyIps', () => {
     expect(academyIps({ ACADEMY_IP: '1.2.3.4', ACADEMY_IPS: '5.6.7.8' }))
       .toEqual(['5.6.7.8', '1.2.3.4'])
   })
+
+  // 두 변수에 같은 값을 넣어두면 개수가 부풀려져, 화면의 "등록된 주소 N개"가
+  // 거짓말을 한다. 그 숫자를 보고 원인을 짚다가 엉뚱한 곳을 의심했다.
+  it('두 변수에 겹치는 주소는 한 번만 센다', () => {
+    expect(academyIps({ ACADEMY_IPS: '1.2.3.4,5.6.7.8', ACADEMY_IP: '1.2.3.4,5.6.7.8' }))
+      .toEqual(['1.2.3.4', '5.6.7.8'])
+  })
+
+  it('같은 변수 안에서 겹쳐도 한 번만 센다', () => {
+    expect(academyIps({ ACADEMY_IPS: '1.2.3.4,1.2.3.4' })).toEqual(['1.2.3.4'])
+  })
 })
 
 describe('isAcademyIp', () => {

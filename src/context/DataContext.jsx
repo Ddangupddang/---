@@ -484,6 +484,25 @@ export function DataProvider({ children }) {
     return data.signedUrl
   }
 
+  // ── 출석 체크 기록 ─────────────────────────────────────
+
+  // 출석 체크 때 감지된 주소를 한 줄 남긴다(docs/wifi-check-logs.sql).
+  //
+  // 실패할 때마다 증거가 증발해서 "일부 학생만 출석이 안 된다"를 한 달 넘게
+  // 못 고쳤다. 주소 하나만 있으면 원인이 갈린다 — 2026-09-17에 한 학생의
+  // 주소가 Fastly·Cloudflare로 나오면서 아이폰 사설 릴레이라는 게 드러났다.
+  //
+  // 실패해도 조용히 넘어간다. 기록은 곁가지라, 이것 때문에 출석이 막히면
+  // 본말이 뒤집힌다. (표를 아직 안 만든 상태에서도 앱은 그대로 돌아간다)
+  async function logWifiCheck({ studentId, clientIp, ok }) {
+    if (!studentId) return false
+    const { error } = await supabase
+      .from('wifi_check_logs')
+      .insert({ student_id: studentId, client_ip: clientIp ?? null, ok: Boolean(ok) })
+    if (error) { console.error('출석 체크 기록 실패:', error); return false }
+    return true
+  }
+
   // ── Q&A 읽음 ───────────────────────────────────────────
 
   // 학생이 그 질문을 열었다고 적는다. 교사 화면의 '읽음' 표시가 이걸 본다.
@@ -1277,6 +1296,7 @@ export function DataProvider({ children }) {
       addQuestion, deleteQuestion, uploadQnaImage, qnaImageUrl,
       qnaMessages, addQnaMessage, updateQnaMessage, deleteQnaMessage,
       qnaReads, markQnaRead,
+      logWifiCheck,
       savePushSubscription, deletePushSubscription,
       addNotice, deleteNotice,
       addReport, updateReportChecks, deleteReport,
