@@ -41,7 +41,6 @@ describe('공지 작성', () => {
       content:        '다음 주 화요일 휴원합니다',
       authorId:       't1',
       targetClassIds: [10],
-      kakaoSent:      false,
     })
     expect(await screen.findByRole('button', { name: '+ 공지 작성' })).toBeInTheDocument()
   })
@@ -59,5 +58,23 @@ describe('공지 작성', () => {
     expect(await screen.findByTestId('notice-error')).toHaveTextContent('integer')
     // 작성 화면에 그대로 머문다 — 쓴 내용도 살아 있다
     expect(screen.getByPlaceholderText('공지 제목을 입력하세요')).toHaveValue('휴원 안내')
+  })
+})
+
+// 「카카오톡 전송하기」 버튼은 2026-09-22에 걷어냈다.
+// 아무것도 보내지 않으면서 1.5초 뒤 "✓ 전송 완료"라고 표시했고, 그 상태가
+// 목록에 「카카오 전송」 배지로까지 남았다 — 교사는 보냈다고 믿는데
+// 학부모에게는 아무것도 가지 않았다.
+// 진짜 연동(카카오 비즈니스 채널 + 템플릿 심사) 전까지는 없어야 한다.
+describe('카카오 알림톡', () => {
+  it('보내지도 않으면서 보낸 척하는 버튼이 없다', async () => {
+    const user = userEvent.setup()
+    await fillForm(user)
+    expect(screen.queryByRole('button', { name: /카카오톡 전송/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/알림톡/)).not.toBeInTheDocument()
+  })
+
+  it('목록에 "카카오 전송" 배지를 띄우지 않는다', () => {
+    expect(screen.queryByText('카카오 전송')).not.toBeInTheDocument()
   })
 })

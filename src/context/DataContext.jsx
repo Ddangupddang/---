@@ -69,7 +69,6 @@ function toNotice(n) {
     authorId:       n.author_id,
     targetClassIds: n.target_class_ids ?? [],
     createdAt:      n.created_at,
-    kakaoSent:      n.kakao_sent ?? false,
   }
 }
 function toReport(r) {
@@ -668,7 +667,13 @@ export function DataProvider({ children }) {
         content:          data.content,
         author_id:        data.authorId,
         target_class_ids: data.targetClassIds,
-        kakao_sent:       data.kakaoSent ?? false,
+        // 카카오 알림톡은 아직 연동되지 않았다. 예전에는 화면에 "전송하기"
+        // 버튼이 있었지만 실제로는 아무것도 보내지 않으면서 "전송 완료"라고
+        // 표시했다 — 교사는 보냈다고 믿는데 학부모에게는 안 갔다. 그래서 그
+        // 버튼을 걷어냈고, 이 칸은 항상 false다.
+        // 칸 자체를 지우지 않는 이유: 기존 행의 기록이 사라지고, 나중에 진짜
+        // 연동할 때 다시 만들어야 한다.
+        kakao_sent:       false,
       }])
       .select()
       .single()

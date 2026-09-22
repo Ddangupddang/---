@@ -72,7 +72,6 @@ export default function Notices() {
                       <p className="font-semibold text-ink flex-1 pr-2">{n.title}</p>
                       {/* 이미 발송이 끝난 상태라 '완료' 톤(navy)을 쓴다.
                           warn은 이 앱에서 채점중·답변 대기처럼 "아직 안 끝났다"는 뜻이다 */}
-                      {n.kakaoSent && <Badge tone="navy" className="shrink-0">카카오 전송</Badge>}
                     </div>
                     <p className="text-sm text-ink-mute line-clamp-2 mb-2">{n.content}</p>
                   </div>
@@ -132,7 +131,6 @@ export default function Notices() {
           <div className="flex justify-between items-start mb-3">
             <h2 className="text-lg font-bold text-ink flex-1 pr-2">{n.title}</h2>
             {/* 목록과 같은 이유로 완료 톤(navy) */}
-            {n.kakaoSent && <Badge tone="navy" className="shrink-0">카카오 전송</Badge>}
           </div>
           <div className="flex items-center gap-2 text-xs text-ink-faint mb-4 pb-4 border-b border-line">
             <span>{formatDate(n.createdAt)}</span>
@@ -179,9 +177,6 @@ function CreateView({ user, onSubmit, onCancel }) {
   const [title,           setTitle]          = useState('')
   const [content,         setContent]        = useState('')
   const [selectedClasses, setSelectedClasses] = useState(classes.map((c) => c.id)) // 기본: 전체
-  const [sendKakao,       setSendKakao]      = useState(false)
-  const [kakaoSending,    setKakaoSending]   = useState(false)
-  const [kakaoSent,       setKakaoSent]      = useState(false)
   const [submitting,      setSubmitting]     = useState(false)
   const [error,           setError]          = useState('')
 
@@ -189,16 +184,6 @@ function CreateView({ user, onSubmit, onCancel }) {
     setSelectedClasses((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
     )
-  }
-
-  function handleKakaoSend() {
-    if (!title.trim() || !content.trim()) return
-    setKakaoSending(true)
-    // 실제 서비스에서는 카카오 알림톡 API 호출
-    setTimeout(() => {
-      setKakaoSending(false)
-      setKakaoSent(true)
-    }, 1500)
   }
 
   async function handleSubmit(e) {
@@ -211,7 +196,6 @@ function CreateView({ user, onSubmit, onCancel }) {
       content:        content.trim(),
       authorId:       user.id,
       targetClassIds: selectedClasses,
-      kakaoSent:      kakaoSent,
     })
     if (failed) setError(failed)
     setSubmitting(false)
@@ -289,42 +273,6 @@ function CreateView({ user, onSubmit, onCancel }) {
           )}
         </div>
 
-        {/* 카카오톡 알림톡 전송 — 팔레트에 카카오 고유 노랑이 없어 warn(주의) 톤으로 대응한다 */}
-        <div className="bg-warn-soft border border-line rounded p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-sm font-medium text-ink-soft">카카오톡 알림톡 전송</p>
-              <p className="text-xs text-ink-mute">학생/학부모에게 카카오톡으로 공지를 발송합니다.</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={sendKakao}
-                onChange={(e) => { setSendKakao(e.target.checked); setKakaoSent(false) }}
-                className="sr-only"
-              />
-              <div className={`w-10 h-6 rounded-full transition-colors ${sendKakao ? 'bg-warn' : 'bg-line'}`}>
-                <div className={`w-4 h-4 bg-surface rounded-full m-1 transition-transform ${sendKakao ? 'translate-x-4' : ''}`} />
-              </div>
-            </label>
-          </div>
-          {sendKakao && (
-            <button
-              type="button"
-              onClick={handleKakaoSend}
-              disabled={kakaoSending || kakaoSent || !title.trim() || !content.trim()}
-              className={`w-full py-2 rounded text-sm font-medium transition-colors ${
-                kakaoSent
-                  ? 'bg-navy text-white cursor-default'
-                  : kakaoSending
-                  ? 'bg-warn-soft text-warn cursor-wait'
-                  : 'bg-warn text-white hover:opacity-90 disabled:opacity-40'
-              }`}
-            >
-              {kakaoSent ? '✓ 전송 완료' : kakaoSending ? '전송 중...' : '카카오톡 전송하기'}
-            </button>
-          )}
-        </div>
 
         {error && (
           <div data-testid="notice-error" className="bg-danger-soft border border-line rounded p-4">
