@@ -3,8 +3,10 @@ import { describe, it, expect } from 'vitest'
 import { pendingHomeworkCount, pendingHomeworkStudents } from './homeworkPending'
 
 // 2026-08-17(월) 주. 오늘은 수요일 2026-08-19로 두고 본다.
+// 제출 기한은 다음날까지라, 수요일에 기한이 지난 건 월요일 과제뿐이다.
 const WEEK = '2026-08-17'
 const WED = '2026-08-19'
+const FRI = '2026-08-21' // 월·수 과제 기한이 모두 지난 날
 
 // 고2(학년 5) 두 명, 정시 2레벨은 한 명만
 const STUDENTS = [
@@ -36,15 +38,21 @@ describe('pendingHomeworkCount', () => {
   })
 
   it('한 학생이 여러 날 빼먹어도 1명으로 센다', () => {
-    // 2번 학생만 월·수 모두 냈다 → 1번 학생 한 명만 남는다
+    // 금요일 기준 월·수 기한이 지났다. 2번 학생만 둘 다 냈다 → 1번 학생 한 명
     const submissions = [{ dayId: 110, studentId: 2 }, { dayId: 112, studentId: 2 }]
-    expect(count({ submissions })).toBe(1)
+    expect(count({ submissions, today: FRI })).toBe(1)
   })
 
-  it('오늘 마감인 과제도 센다', () => {
-    // 월요일은 둘 다 냈고, 오늘(수)은 아무도 안 냈다
+  it('아직 낼 수 있는 과제는 세지 않는다', () => {
+    // 월요일은 둘 다 냈고, 오늘(수) 과제는 내일까지 낼 수 있다 → 불러야 할 학생 없음
     const submissions = [{ dayId: 110, studentId: 1 }, { dayId: 110, studentId: 2 }]
-    expect(count({ submissions })).toBe(2)
+    expect(count({ submissions })).toBe(0)
+  })
+
+  it('어제 과제도 오늘까지는 낼 수 있어 세지 않는다', () => {
+    // 목요일: 수요일 과제 기한이 오늘이다
+    const submissions = [{ dayId: 110, studentId: 1 }, { dayId: 110, studentId: 2 }]
+    expect(count({ submissions, today: '2026-08-20' })).toBe(0)
   })
 
   it('지난 주 과제는 세지 않는다', () => {
@@ -95,7 +103,7 @@ describe('pendingHomeworkStudents', () => {
   })
 
   it('빠뜨린 요일을 전부 담는다', () => {
-    const rows = list({ submissions: [{ dayId: 110, studentId: 1 }] })
+    const rows = list({ submissions: [{ dayId: 110, studentId: 1 }], today: FRI })
     const 가 = rows.find((r) => r.student.id === 1)
     // 1번은 월을 냈으니 수요일만 남는다
     expect(가.days.map((d) => d.day.id)).toEqual([112])
@@ -121,7 +129,7 @@ describe('pendingHomeworkStudents', () => {
       { id: 112, setId: 11, weekday: 3, date: WED },
       { id: 110, setId: 11, weekday: 1, date: '2026-08-17' },
     ]
-    expect(list({ days })[0].days.map((d) => d.day.id)).toEqual([110, 112])
+    expect(list({ days, today: FRI })[0].days.map((d) => d.day.id)).toEqual([110, 112])
   })
 
   it('세는 함수와 길이가 항상 같다', () => {
@@ -154,7 +162,7 @@ describe('pendingHomeworkStudents', () => {
     ]
     const days = [...DAYS, { id: 120, setId: 12, weekday: 1, date: '2026-08-17' }]
     const [row] = pendingHomeworkStudents({ students, sets, days, submissions: [], today: WED })
-    // 7반의 월·수만 — 8반 월요일은 남의 반 과제다
-    expect(row.days.map((d) => d.day.id)).toEqual([110, 112])
+    // 7반의 월요일만 — 8반 월요일은 남의 반 과제다 (수요일은 아직 낼 수 있다)
+    expect(row.days.map((d) => d.day.id)).toEqual([110])
   })
 })

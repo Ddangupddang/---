@@ -1,5 +1,5 @@
 // src/components/homework/PendingHomeworkList.jsx
-// 교사: 이번 주 마감이 지난 과제를 안 낸 학생을 한 목록으로.
+// 교사: 이번 주 기한이 지난 과제를 안 낸 학생을 한 목록으로.
 //
 // 제출 현황은 내신/정시 → 반 → 주차 → 요일로 잘게 나뉘어 있다. 그건 "이 요일을
 // 누가 냈나"를 볼 때 맞는 모양인데, 대시보드에서 알고 싶은 건 "오늘 몇 명을
@@ -14,30 +14,22 @@ import { useAuth } from '../../context/AuthContext'
 import { useData } from '../../context/DataContext'
 import { visibleStudents } from '../../utils/classAccess'
 import { pendingHomeworkStudents } from '../../utils/homeworkPending'
-import { canSubmitOn } from '../../utils/homeworkSelect'
 import { todayKST } from '../../utils/datetime'
 import { WEEKDAY_LABELS, CATEGORY_LABELS } from '../../constants/homework'
 import CollapsibleSection from '../ui/CollapsibleSection'
 
-// 요일 칩의 상태 세 가지.
-//   late     — 기한이 지났고 열어주지도 않았다. 불러야 할 학생이다.
+// 요일 칩의 상태 두 가지. 목록에는 기한이 지난 과제만 올라온다.
+//   late     — 열어주지도 않았다. 불러야 할 학생이다.
 //   reopened — 열어줬는데 아직 안 냈다.
-//   open     — 기한 전이라 아직 낼 수 있다.
 // 색만으로 가르지 않게 칩 위에 설명(title)도 단다.
 const CHIP = {
-  late:     { label: '기한 지남',       className: 'bg-danger-soft text-danger border-danger-soft' },
-  reopened: { label: '열어줌',          className: 'bg-surface text-navy border-navy' },
-  open:     { label: '아직 낼 수 있음', className: 'bg-surface-alt text-ink-soft border-surface-alt' },
-}
-
-function chipStateOf(day, today, isOpen) {
-  if (canSubmitOn(day, today)) return 'open'
-  return isOpen ? 'reopened' : 'late'
+  late:     { label: '기한 지남', className: 'bg-danger-soft text-danger border-danger-soft' },
+  reopened: { label: '열어줌',    className: 'bg-surface text-navy border-navy' },
 }
 
 // 같은 요일에 과제가 여럿이면(내신+정시) 칩은 하나만 — 더 급한 상태를 따른다.
 // 칩이 "월 월 화 화"로 늘어서면 폰 한 줄을 넘기고, 읽기에도 겹친다.
-const URGENCY = { late: 2, reopened: 1, open: 0 }
+const URGENCY = { late: 1, reopened: 0 }
 function chipsByWeekday(days) {
   const byWeekday = new Map()
   for (const { day, state } of days) {
@@ -87,7 +79,7 @@ export default function PendingHomeworkList() {
     student,
     days: days.map(({ day, set }) => {
       const isOpen = reopened.has(`${day.id}:${student.id}`)
-      return { day, set, isOpen, state: chipStateOf(day, today, isOpen) }
+      return { day, set, isOpen, state: isOpen ? 'reopened' : 'late' }
     }),
   }))
   // 기한 지난 요일이 하나라도 있는 학생을 위로. 그 안에서는 원래 순서를 지킨다.
@@ -113,7 +105,7 @@ export default function PendingHomeworkList() {
   if (rows.length === 0) {
     return (
       <p className="text-center text-ink-faint py-12">
-        이번 주 마감이 지난 과제를 안 낸 학생이 없습니다.
+        이번 주 기한이 지난 과제를 안 낸 학생이 없습니다.
       </p>
     )
   }
@@ -121,8 +113,8 @@ export default function PendingHomeworkList() {
   return (
     <div>
       <p className="text-sm text-ink-mute mb-3">
-        마감이 지난 과제를 안 낸 학생 <span className="font-semibold text-ink">{rows.length}</span>명입니다.
-        아직 마감 전인 과제는 세지 않습니다.
+        기한이 지난 과제를 안 낸 학생 <span className="font-semibold text-ink">{rows.length}</span>명입니다.
+        아직 낼 수 있는 과제(다음날까지)는 세지 않습니다.
       </p>
 
       {/* 칩 색이 무엇을 뜻하는지 — 처음 보는 교사도 읽을 수 있게 */}
@@ -166,30 +158,25 @@ export default function PendingHomeworkList() {
           >
             <div className="flex flex-col gap-1.5">
               {days.map(({ day, set, isOpen }) => {
-                const key    = `${day.id}:${student.id}`
-                // 기한 자체가 지났는가 — 열어주기가 필요한 상황인지 본다.
+                const key = `${day.id}:${student.id}`
+                // 목록에는 기한이 지난 것만 온다 — 모두 열어주기 대상이다.
                 // 열어준 것은 셈에서 빼지 않는다. 열어줬어도 아직 안 낸 건 안 낸 것이다.
-                const closed = !canSubmitOn(day, today)
                 return (
                   <div key={day.id} className="flex items-center justify-between gap-2">
                     <span className="text-sm text-ink-soft">
                       {CATEGORY_LABELS[set.category]} · {WEEKDAY_LABELS[day.weekday]}요일 · {day.date}
                     </span>
-                    {closed ? (
-                      <button
-                        onClick={() => toggleOpen(day, student, isOpen)}
-                        disabled={busy === key}
-                        className={`text-xs px-3 py-1 rounded whitespace-nowrap disabled:opacity-50 ${
-                          isOpen
-                            ? 'text-ink-faint hover:text-ink-soft bg-surface-alt'
-                            : 'bg-navy text-white hover:opacity-90'
-                        }`}
-                      >
-                        {isOpen ? '닫기' : '열어주기'}
-                      </button>
-                    ) : (
-                      <span className="text-xs text-ink-faint whitespace-nowrap">아직 낼 수 있음</span>
-                    )}
+                    <button
+                      onClick={() => toggleOpen(day, student, isOpen)}
+                      disabled={busy === key}
+                      className={`text-xs px-3 py-1 rounded whitespace-nowrap disabled:opacity-50 ${
+                        isOpen
+                          ? 'text-ink-faint hover:text-ink-soft bg-surface-alt'
+                          : 'bg-navy text-white hover:opacity-90'
+                      }`}
+                    >
+                      {isOpen ? '닫기' : '열어주기'}
+                    </button>
                   </div>
                 )
               })}
