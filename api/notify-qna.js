@@ -9,19 +9,23 @@ import { qnaCategoryLabel } from '../src/constants/qna.js'
 
 // 이 질문의 알림을 받을 사람들의 profile id.
 // 인자는 전부 DB 행 모양(snake_case)이다 — 웹훅 payload를 변환 없이 그대로 받는다.
+//
+// 담당 교사와 관리자 전원이 받는다. 원장이 학원 전체 질문을 봐야 해서
+// 관리자를 넣었다(2026-09-28). 그전에는 담당 교사 한 명에게만 가서,
+// 원장 폰에는 새 질문 알림이 오지 않았다.
+//
+// 담당 교사를 못 찾아도 관리자에게는 간다. 계정과 명부가 어긋나 학생을 못
+// 찾는 경우가 실제로 있었는데, 그때 알림을 버리면 질문이 묻힌다.
 export function notifyTargets(question, students = [], classes = [], admins = []) {
-  const adminIds = admins.map((a) => a.id)
-
-  // 받을 교사를 못 찾으면 관리자에게 넘긴다.
-  // 계정과 명부가 어긋나 학생을 못 찾는 경우가 실제로 있었다.
-  // 그때 알림을 버리면 질문이 아무에게도 안 보인 채로 묻힌다.
   const student = students.find((s) => s.id === question.student_id)
-  if (!student) return adminIds
+  const klass   = student && classes.find((c) => c.id === student.class_id)
 
-  const klass = classes.find((c) => c.id === student.class_id)
-  if (!klass?.teacher_id) return adminIds
-
-  return [klass.teacher_id]
+  // 담당 교사가 관리자를 겸하면 두 번 담기므로 Set으로 한 번만 남긴다 —
+  // 두 번 보내면 폰에 알림이 두 개 뜬다.
+  return [...new Set([
+    ...(klass?.teacher_id ? [klass.teacher_id] : []),
+    ...admins.map((a) => a.id),
+  ])]
 }
 
 // 잠금화면에 그대로 뜨는 내용이다. 질문 본문은 넣지 않는다.

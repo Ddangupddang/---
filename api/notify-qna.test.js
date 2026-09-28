@@ -18,8 +18,19 @@ const CLASSES = [
 const ADMINS = [{ id: 'a1' }, { id: 'a2' }]
 
 describe('notifyTargets', () => {
-  it('담당 교사에게만 보낸다', () => {
-    expect(notifyTargets({ student_id: 1 }, STUDENTS, CLASSES, ADMINS)).toEqual(['t1'])
+  it('담당 교사와 관리자 전원에게 보낸다', () => {
+    // 원장이 학원 전체 질문을 보고 싶어 한다(2026-09-28). 담당 교사는 그대로 받는다.
+    expect(notifyTargets({ student_id: 1 }, STUDENTS, CLASSES, ADMINS)).toEqual(['t1', 'a1', 'a2'])
+  })
+
+  it('담당 교사가 관리자여도 한 번만 보낸다', () => {
+    // 같은 사람에게 두 번 보내면 알림이 두 개 뜬다
+    const classes = [{ id: 10, teacher_id: 'a1' }]
+    expect(notifyTargets({ student_id: 1 }, STUDENTS, classes, ADMINS)).toEqual(['a1', 'a2'])
+  })
+
+  it('관리자가 없어도 담당 교사에게는 간다', () => {
+    expect(notifyTargets({ student_id: 1 }, STUDENTS, CLASSES, [])).toEqual(['t1'])
   })
 
   it('반이 배정되지 않은 학생의 질문은 관리자 전원에게 간다', () => {
