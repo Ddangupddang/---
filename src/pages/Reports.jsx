@@ -63,7 +63,7 @@ export default function Reports() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-center gap-3 mb-4">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <PageTitle title="진도 리포트" />
           <Button onClick={() => go('create')}>+ 리포트 작성</Button>
         </div>

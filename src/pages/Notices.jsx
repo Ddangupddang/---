@@ -40,7 +40,7 @@ export default function Notices() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-center gap-3 mb-4">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <PageTitle title="공지사항" />
           {isTeacherOrAdmin && (
             <Button onClick={() => go('create')}>+ 공지 작성</Button>

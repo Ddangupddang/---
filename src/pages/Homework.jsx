@@ -62,7 +62,7 @@ export default function Homework() {
 
   return (
     <Layout>
-      <div className="flex justify-between items-center gap-3 mb-4">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
         <PageTitle title="과제" />
         {isStaff && mode === 'list' && (
           <div className="flex gap-2 flex-wrap justify-end">

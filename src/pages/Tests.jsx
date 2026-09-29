@@ -72,7 +72,7 @@ export default function Tests() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-center gap-3 mb-4">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <PageTitle title="테스트" />
           {(user.role === 'teacher' || user.role === 'admin') && (
             <Button onClick={() => go('create')}>+ 테스트 만들기</Button>

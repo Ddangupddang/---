@@ -103,7 +103,7 @@ export default function QnA() {
     return (
       <Layout>
       <div>
-        <div className="flex justify-between items-start">
+        <div className="flex flex-wrap justify-between items-start gap-3">
           <PageTitle title="Q&A" />
           {user.role === 'student' && (
             <Button onClick={() => go('ask')}>+ 질문하기</Button>
