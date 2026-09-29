@@ -9,6 +9,7 @@ import StudentHomeworkView from '../components/homework/StudentHomeworkView'
 import TeacherHomeworkCreate from '../components/homework/TeacherHomeworkCreate'
 import TeacherHomeworkStatus from '../components/homework/TeacherHomeworkStatus'
 import PendingHomeworkList from '../components/homework/PendingHomeworkList'
+import HomeworkBacklogList from '../components/homework/HomeworkBacklogList'
 import HomeworkReport from '../components/homework/HomeworkReport'
 import PageTitle from '../components/ui/PageTitle'
 import PushToggle from '../components/PushToggle'
@@ -43,6 +44,9 @@ export default function Homework() {
   // 같은 주에 이미 과제가 있어 기존 세트로 옮겨 갈 때, 그때까지 입력하던 요일.
   // 이게 없으면 교사가 15문항 정답을 다시 찍어야 한다.
   const [pendingDays, setPendingDays] = useState(null)
+  // 미제출 보기 안의 탭 — 이번 주 / 밀린 과제.
+  // 화면이 아니라 같은 화면 안의 전환이라 주소에 담지 않는다(뒤로가기는 화면 단위로 움직인다).
+  const [pendingTab, setPendingTab] = useState('week')
 
   // 목록으로 돌아갈 때는 기록을 남기지 않는다(replace).
   // 남기면 방금 저장하고 나온 작성 화면을 뒤로가기가 다시 연다.
@@ -108,7 +112,20 @@ export default function Homework() {
       {isStaff && mode === 'pending' && (
         <>
           <button onClick={openList} className="text-sm text-ink-mute mb-4">← 목록</button>
-          <PendingHomeworkList />
+
+          {/* 이번 주는 "지금 불러야 할 사람", 밀린 과제는 "아직 안 끝난 주"를 본다.
+              둘을 한 목록에 섞으면 오늘 챙길 학생이 지난 주 밀린 건에 묻힌다. */}
+          <div className="flex gap-2 mb-4">
+            {[['week', '이번 주'], ['backlog', '밀린 과제']].map(([key, label]) => (
+              <button key={key} onClick={() => setPendingTab(key)}
+                aria-current={pendingTab === key ? 'page' : undefined}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+                  pendingTab === key ? 'bg-navy text-white' : 'bg-surface-alt text-ink-soft'
+                }`}>{label}</button>
+            ))}
+          </div>
+
+          {pendingTab === 'week' ? <PendingHomeworkList /> : <HomeworkBacklogList />}
         </>
       )}
       {isStaff && mode === 'report' && (
