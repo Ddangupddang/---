@@ -815,6 +815,43 @@ export function DataProvider({ children }) {
     return newTest
   }
 
+  // 시작 전(준비중) 테스트의 내용을 통째로 고친다 — 제목·반·날짜·시간 제한·문항(정답·배점).
+  // 화면이 준비중일 때만 버튼을 보여준다. 준비중이면 학생이 응시할 수 없어 제출이 없으므로
+  // 문항 번호를 다시 매겨도 이미 낸 답안과 어긋날 일이 없다.
+  async function updateTest(id, data) {
+    const { data: updated, error } = await supabase
+      .from('tests')
+      .update({
+        title:      data.title,
+        class_id:   data.classId   ?? null,
+        date:       data.date,
+        time_limit: data.timeLimit ?? null,
+        questions:  data.questions ?? [],
+      })
+      .eq('id', id)
+      // 다른 기기에서 그 사이 시작했다면 고치지 않는다 — 응시 중에 정답이 바뀌면
+      // 같은 시험을 두 기준으로 채점하게 된다
+      .eq('status', 'ready')
+      .select()
+      .maybeSingle()
+
+    if (error) { console.error('테스트 수정 실패:', error); return null }
+    if (!updated) return null   // 이미 시작됐다
+    const next = toTest(updated)
+    setTests((prev) => prev.map((t) => t.id === id ? next : t))
+    return next
+  }
+
+  // 테스트 한 건을 창구(tests_visible)에서 다시 읽는다.
+  // 학생은 채점이 끝나야 정답이 담긴 문항을 받는데, 앱은 처음 열 때 한 번만 불러온다.
+  // 제출 직후 다시 읽지 않으면 결과 화면에 정답이 비어 모든 문항이 ✗로 보인다.
+  async function refreshTest(id) {
+    const { data, error } = await supabase.from('tests_visible').select('*').eq('id', id).maybeSingle()
+    if (error || !data) return
+    const next = toTest(data)
+    setTests((prev) => prev.map((t) => t.id === id ? next : t))
+  }
+
   async function updateTestStatus(id, status, startedAt = null) {
     const updates = { status }
     if (startedAt) updates.started_at = startedAt
@@ -840,7 +877,9 @@ export function DataProvider({ children }) {
         test_id:    data.testId,
         student_id: data.studentId ?? null,
         answers:    data.answers   ?? [],
-        scores:     data.scores    ?? [],
+        // 점수는 DB(grade_submission 트리거)가 정답과 맞춰 매긴다 — 학생 폰에는 정답이 없다.
+        // 무엇을 보내든 트리거가 덮어쓰고, 돌려받은 행(inserted)에 채점 결과가 담겨 온다.
+        scores:     [],
       }])
       .select()
       .single()
@@ -1306,7 +1345,7 @@ export function DataProvider({ children }) {
       addNotice, deleteNotice,
       addReport, updateReportChecks, deleteReport,
       addVideo, deleteVideo, addVideoComment, replyVideoComment,
-      addTest, updateTestStatus, deleteTest,
+      addTest, updateTest, refreshTest, updateTestStatus, deleteTest,
       addSubmission, updateSubmissionScores,
       homeworkSets, homeworkDays, homeworkQuestions, homeworkSubmissions,
       addHomeworkSet, updateHomeworkSet, deleteHomeworkSet, upsertHomeworkSubmission,

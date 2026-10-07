@@ -18,9 +18,12 @@ vi.mock('../context/DataContext', async () => {
   const { submissions } = await import('../data/submissions')
   return {
     useData: () => ({
-      classes, students, submissions,
+      classes, students,
+      submissions: state.submissions ?? submissions,
       tests: state.tests ?? tests,
       addTest: state.addTest,
+      updateTest: state.updateTest,
+      refreshTest: state.refreshTest,
       updateTestStatus: () => {},
       deleteTest: () => {},
       addSubmission: state.addSubmission,
@@ -31,7 +34,10 @@ vi.mock('../context/DataContext', async () => {
 
 beforeEach(() => {
   state.tests         = null
+  state.submissions   = null
   state.addTest       = vi.fn()
+  state.updateTest    = vi.fn(async () => ({}))
+  state.refreshTest   = vi.fn()
   state.addSubmission = vi.fn()
 })
 
@@ -139,21 +145,35 @@ describe('Tests — 교사 정답 지정 (CreateView)', () => {
     expect(state.addTest.mock.calls[0][0].questions[1].answer).toBe('③')
   })
 
-  it('총점이 문항 수로 나누어떨어지지 않으면 가까운 총점을 알려준다', () => {
+  it('나누어떨어지지 않으면 1점 단위로 나눠 합계가 딱 100점이다', () => {
     renderWithAuth(teacher)
     fireEvent.click(screen.getByText('+ 테스트 만들기'))
-    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '3' } })
+    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '30' } })
 
-    expect(screen.getByTestId('even-total-hint'))
-      .toHaveTextContent('99점(문항당 33점) 또는 102점(문항당 34점)')
+    expect(screen.getByTestId('points-summary'))
+      .toHaveTextContent('30문항 · 4점 × 10문항, 3점 × 20문항 · 합계 100점')
   })
 
-  it('딱 나누어떨어지면 총점 안내를 띄우지 않는다', () => {
+  it('문항별 배점을 고칠 수 있고, 합계가 총점과 다르면 저장을 막고 이유를 알려준다', async () => {
     renderWithAuth(teacher)
     fireEvent.click(screen.getByText('+ 테스트 만들기'))
-    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '20' } })
+    fireEvent.change(screen.getByPlaceholderText('예: 4월 2주차 독서 테스트'), {
+      target: { value: '배점 고치기' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('예: 20'), { target: { value: '4' } })
+    for (let n = 1; n <= 4; n++) fireEvent.click(screen.getByTestId(`cell-${n}-①`))
+    fireEvent.click(screen.getByText('문항별 배점 고치기'))
 
-    expect(screen.queryByTestId('even-total-hint')).toBeNull()
+    // 25점씩 → 1번을 40점으로 올리면 합계 115점이 돼 저장이 막힌다
+    fireEvent.change(screen.getByTestId('points-1'), { target: { value: '40' } })
+    expect(screen.getByTestId('save-blocked')).toHaveTextContent('배점 합계(115점)를 총점 100점에 맞춰 주세요.')
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
+
+    // 2번을 10점으로 내려 다시 100점을 맞추면 저장된다
+    fireEvent.change(screen.getByTestId('points-2'), { target: { value: '10' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(state.addTest).toHaveBeenCalledTimes(1))
+    expect(state.addTest.mock.calls[0][0].questions.map((q) => q.points)).toEqual([40, 10, 25, 25])
   })
 
   it('주관식은 객관식 뒤 번호로 붙고 배점도 함께 나눠 갖는다', async () => {
@@ -175,43 +195,111 @@ describe('Tests — 교사 정답 지정 (CreateView)', () => {
   })
 })
 
-describe('Tests — 학생 다중 선택 응시 (TakeView)', () => {
+describe('Tests — 학생 응시 (TakeView)', () => {
   const student = { id: 4, name: '홍길동', role: 'student', classId: 1, studentId: 1 }
 
-  // 기본 Mock에는 학생이 응시할 수 있는(진행중 + 미제출) 테스트가 없어 직접 심는다.
-  // timeLimit이 null이라 타이머가 돌지 않고, 정답은 두 선지를 모두 골라야 하는 문항이다.
-  const multiTest = {
+  // 학생이 받는 문항에는 정답이 없다(tests_visible 이 덜어낸다) — 실제와 똑같이 answer를 뺀다.
+  // 예전 테스트는 정답을 넣어 둔 채 "학생 폰이 채점한다"를 확인해서, 실제로는
+  // 정답이 없어 전부 0점이 되던 문제(2026-09-16~10-07)를 잡지 못했다.
+  const activeTest = {
     id: 99, title: '복수 정답 응시 테스트', classId: 1, teacherId: 2,
     date: '2026-04-20', timeLimit: null, status: 'active', startedAt: null,
     questions: [
-      { id: 1, type: 'mc', content: '1번', choices: ['①', '②', '③', '④', '⑤'], answer: '①③', points: 10 },
+      { id: 1, type: 'mc', content: '', choices: ['①', '②', '③', '④', '⑤'], points: 10 },
     ],
   }
 
-  // 선지 몇 개를 켜고 제출한 뒤 addSubmission이 받은 payload를 돌려준다
   async function submitWith(picks) {
-    const { unmount } = renderWithAuth(student)
+    renderWithAuth(student)
     fireEvent.click(screen.getByText('복수 정답 응시 테스트'))
     picks.forEach((c) => fireEvent.click(screen.getByRole('button', { name: c })))
     fireEvent.click(screen.getByRole('button', { name: '제출하기' }))
     await waitFor(() => expect(state.addSubmission).toHaveBeenCalledTimes(1))
-    const payload = state.addSubmission.mock.calls[0][0]
-    unmount()
-    return payload
+    return state.addSubmission.mock.calls[0][0]
   }
 
-  it('두 선지를 모두 골라야 만점이고, 하나만 고르면 0점이다', async () => {
-    state.tests = [multiTest]
+  it('고른 답만 보내고 점수는 매기지 않는다 — 채점은 DB가 한다', async () => {
+    state.tests = [activeTest]
+    const payload = await submitWith(['①', '③'])
+    expect(payload.answers).toContainEqual({ questionId: 1, answer: '①③' })
+    expect(payload.scores).toBeUndefined()
+  })
 
-    const both = await submitWith(['①', '③'])
-    expect(both.answers).toContainEqual({ questionId: 1, answer: '①③' })
-    expect(both.scores).toContainEqual({ questionId: 1, score: 10 })
+  it('DB가 채점해 돌려주면 정답이 담긴 문항을 다시 받는다', async () => {
+    state.tests = [activeTest]
+    state.addSubmission = vi.fn(async () => ({ id: 1, scores: [{ questionId: 1, score: 10 }] }))
+    await submitWith(['①'])
+    await waitFor(() => expect(state.refreshTest).toHaveBeenCalledWith(99))
+  })
+})
 
-    // 부분 점수는 없다 — 덜 고르면 0점
-    state.addSubmission = vi.fn()
-    const one = await submitWith(['①'])
-    expect(one.answers).toContainEqual({ questionId: 1, answer: '①' })
-    expect(one.scores).toContainEqual({ questionId: 1, score: 0 })
+describe('Tests — 학생 결과 (ResultView)', () => {
+  const student = { id: 4, name: '홍길동', role: 'student', classId: 1, studentId: 1 }
+
+  it('틀린 문항 번호를 위에 모아 보여주고, 총점은 소수 찌꺼기 없이 표시한다', () => {
+    state.tests = [{
+      id: 77, title: '결과 테스트', classId: 1, teacherId: 2,
+      date: '2026-10-07', timeLimit: null, status: 'closed', startedAt: null,
+      questions: [
+        { id: 1, type: 'mc', choices: ['①', '②', '③', '④', '⑤'], answer: '①', points: 3.4 },
+        { id: 2, type: 'mc', choices: ['①', '②', '③', '④', '⑤'], answer: '②', points: 3.3 },
+        { id: 3, type: 'mc', choices: ['①', '②', '③', '④', '⑤'], answer: '③', points: 3.3 },
+      ],
+    }]
+    state.submissions = [{
+      id: 5, testId: 77, studentId: 1, submittedAt: '2026-10-07T01:00:00Z',
+      answers: [{ questionId: 1, answer: '①' }, { questionId: 2, answer: '④' }, { questionId: 3, answer: '③' }],
+      scores:  [{ questionId: 1, score: 3.4 }, { questionId: 2, score: 0 }, { questionId: 3, score: 3.3 }],
+    }]
+    renderWithAuth(student)
+    fireEvent.click(screen.getByText('결과 테스트'))
+
+    expect(screen.getByTestId('result-total')).toHaveTextContent('6.7 / 10점')
+    expect(screen.getByTestId('wrong-list')).toHaveTextContent('2번')
+    expect(screen.getByTestId('wrong-list')).not.toHaveTextContent('1번')
+    expect(screen.getByTestId('cell-2')).toHaveAttribute('data-wrong', 'true')
+  })
+})
+
+describe('Tests — 시작 전 수정', () => {
+  const teacher = { id: 2, name: '김선생', role: 'teacher' }
+
+  it('준비중 테스트는 수정 버튼으로 시간·정답·배점을 고쳐 저장한다', async () => {
+    state.tests = [{
+      id: 55, title: '수정할 테스트', classId: 1, teacherId: 2,
+      date: '2026-10-07', timeLimit: 30, status: 'ready', startedAt: null,
+      questions: [
+        { id: 1, type: 'mc', content: '', choices: ['①', '②', '③', '④', '⑤'], answer: '①', points: 60 },
+        { id: 2, type: 'mc', content: '', choices: ['①', '②', '③', '④', '⑤'], answer: '②', points: 40 },
+      ],
+    }]
+    renderWithAuth(teacher)
+    fireEvent.click(screen.getByRole('button', { name: '수정' }))
+
+    // 기존 값이 채워져 있다 — 고친 배점(60/40)도 그대로
+    expect(screen.getByDisplayValue('수정할 테스트')).toBeInTheDocument()
+    expect(screen.getByTestId('points-1')).toHaveValue(60)
+
+    fireEvent.change(screen.getByTestId('time-limit'), { target: { value: '45' } })
+    fireEvent.click(screen.getByTestId('cell-2-②'))   // ② 끄기
+    fireEvent.click(screen.getByTestId('cell-2-⑤'))   // ⑤ 켜기
+    fireEvent.click(screen.getByRole('button', { name: '수정 저장' }))
+
+    await waitFor(() => expect(state.updateTest).toHaveBeenCalledTimes(1))
+    const [id, data] = state.updateTest.mock.calls[0]
+    expect(id).toBe(55)
+    expect(data.timeLimit).toBe(45)
+    expect(data.questions.map((q) => q.answer)).toEqual(['①', '⑤'])
+    expect(data.questions.map((q) => q.points)).toEqual([60, 40])
+  })
+
+  it('진행중 테스트에는 수정 버튼이 없다', () => {
+    state.tests = [{
+      id: 56, title: '진행중 테스트', classId: 1, teacherId: 2,
+      date: '2026-10-07', timeLimit: 30, status: 'active', startedAt: null, questions: [],
+    }]
+    renderWithAuth(teacher)
+    expect(screen.queryByRole('button', { name: '수정' })).toBeNull()
   })
 })
 

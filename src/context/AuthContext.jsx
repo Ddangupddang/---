@@ -25,13 +25,29 @@ export function AuthProvider({ children }) {
 
     if (error || !data) return null
 
+    // 학생의 반은 계정(profiles.class_id)이 아니라 명부(students.class_id)에서 읽는다.
+    // 계정의 반은 계정을 만들 때 한 번 복사된 값이라, 나중에 명부에서 반을 옮기면
+    // 계정 쪽은 옛 반에 머문다. DB(tests_visible 등)는 명부의 반으로 테스트를 내려주는데
+    // 앱은 계정의 반으로 다시 걸러서, 반을 옮긴 학생은 테스트가 하나도 안 보였다.
+    let classId = data.class_id ?? null
+    if (data.role === 'student' && data.student_id) {
+      // 명부를 못 읽어도 로그인은 막지 않는다 — 그때는 계정의 반으로 버틴다
+      try {
+        const { data: roster } = await supabase
+          .from('students').select('class_id').eq('id', data.student_id).maybeSingle()
+        if (roster) classId = roster.class_id ?? null
+      } catch (e) {
+        console.error('학생 반 조회 실패 — 계정의 반을 씁니다:', e)
+      }
+    }
+
     return {
       id:              authUser.id,
       email:           authUser.email,
       username:        data.username,
       name:            data.name,
       role:            data.role,
-      classId:         data.class_id       ?? null,
+      classId,
       studentId:       data.student_id     ?? null,
       passwordChanged: data.password_changed ?? true,
     }

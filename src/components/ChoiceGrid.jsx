@@ -94,7 +94,9 @@ export default function ChoiceGrid({
     >
       {numbers.map((number) => {
         const isFocused = editable && number === focused
-        const isWrong = mode === 'check' && wrongSet.has(number)
+        // result 모드에서도 틀린 줄을 붉게 칠한다 — 선지 색만으로는 30문항 중 어디가
+        // 틀렸는지 폰에서 한눈에 안 들어온다(테스트 결과 화면이 wrong을 넘긴다)
+        const isWrong = (mode === 'check' || mode === 'result') && wrongSet.has(number)
         return (
           <div
             key={number}

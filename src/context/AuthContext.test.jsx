@@ -44,9 +44,12 @@ const { supabaseMock, resetSupabaseMock, emitAuth, setHoldProfile, flushProfiles
       },
     },
     // fetchProfile: from('profiles').select('*').eq('id', ...).single()
+    //   학생이면 이어서 from('students').select('class_id').eq('id', ...).maybeSingle()
     from: () => ({
       select: () => ({
         eq: () => ({
+          // 명부의 반 — 계정(profiles.class_id=1)과 일부러 다르게 둔다(반을 옮긴 학생)
+          maybeSingle: () => Promise.resolve({ data: { class_id: 3 }, error: null }),
           single: () => {
             const result = {
               data: state.profileRow,
@@ -89,6 +92,7 @@ function TestComponent() {
   return (
     <div>
       <span data-testid="role">{user?.role ?? 'none'}</span>
+      <span data-testid="class">{user?.classId ?? 'none'}</span>
       <button onClick={() => login('admin', '1234')}>관리자 로그인</button>
       <button onClick={() => login('student1', '1234')}>학생 로그인</button>
       <button onClick={() => login('wrong', 'wrong')}>잘못된 로그인</button>
@@ -124,6 +128,17 @@ describe('AuthContext', () => {
       screen.getByText('학생 로그인').click()
     })
     await waitFor(() => expect(screen.getByTestId('role')).toHaveTextContent('student'))
+  })
+
+  // 계정의 반은 만들 때 한 번 복사된 값이라, 명부에서 반을 옮기면 낡는다.
+  // 낡은 반으로 거르면 그 학생에게 테스트가 하나도 안 보인다(2026-10-07 이재빈 학생 건).
+  it('학생의 반은 계정이 아니라 명부에서 읽는다', async () => {
+    render(<AuthProvider><TestComponent /></AuthProvider>)
+    await screen.findByTestId('role')
+    await act(async () => {
+      screen.getByText('학생 로그인').click()
+    })
+    await waitFor(() => expect(screen.getByTestId('class')).toHaveTextContent('3'))
   })
 
   it('잘못된 계정으로 로그인 시 user는 null 유지', async () => {

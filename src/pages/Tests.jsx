@@ -10,7 +10,7 @@ import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { sameChoiceSet, toggleChoice } from '../utils/answerSet'
 import ChoiceGrid from '../components/ChoiceGrid'
-import { distributePoints, evenTotalSuggestions } from '../utils/testPoints'
+import { distributePoints, sumPoints } from '../utils/testPoints'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
 import { formatDateTime, todayKST } from '../utils/datetime'
@@ -29,7 +29,7 @@ export default function Tests() {
   const {
     classes, students,
     tests, submissions,
-    addTest, updateTestStatus, deleteTest,
+    addTest, updateTest, refreshTest, updateTestStatus, deleteTest,
     addSubmission, updateSubmissionScores,
   } = useData()
 
@@ -154,6 +154,17 @@ export default function Tests() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
+                              go('edit', test.id)
+                            }}
+                            className="text-xs px-3 py-1 whitespace-nowrap border border-line text-ink-soft rounded hover:bg-surface-alt"
+                          >
+                            수정
+                          </button>
+                        )}
+                        {test.status === 'ready' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
                               updateTestStatus(test.id, 'active', new Date().toISOString())
                             }}
                             className="text-xs px-3 py-1 whitespace-nowrap bg-navy text-white rounded"
@@ -224,12 +235,36 @@ export default function Tests() {
     )
   }
 
+  // ────────── edit 뷰 (시작 전 수정) ──────────
+  // 준비중일 때만 연다. 시작한 뒤에는 학생이 이미 풀고 있어서 정답·배점을 바꾸면
+  // 같은 시험을 두 기준으로 채점하게 된다.
+  if (view === 'edit') {
+    if (user.role === 'student') return <Navigate to="/tests" replace />
+    if (!selectedTest || selectedTest.status !== 'ready') return <Navigate to="/tests" replace />
+    return (
+      <Layout>
+      <CreateView
+        key={selectedTest.id}
+        initial={selectedTest}
+        classes={accessibleClasses}
+        user={user}
+        onSubmit={async (data) => {
+          const saved = await updateTest(selectedTest.id, data)
+          if (!saved) alert('저장하지 못했습니다. 그 사이 테스트가 시작됐다면 더 고칠 수 없습니다.')
+          go('list', null, { replace: true })
+        }}
+        onCancel={() => go('list')}
+      />
+      </Layout>
+    )
+  }
+
   // ────────── submissions 뷰 ──────────
   if (view === 'submissions') {
     if (user.role === 'student') return <Navigate to="/tests" replace />
     if (!selectedTest) return <Navigate to="/tests" replace />
     const testSubs    = submissions.filter((s) => s.testId === selectedTest.id)
-    const totalPoints = selectedTest.questions.reduce((sum, q) => sum + q.points, 0)
+    const totalPoints = sumPoints(selectedTest.questions.map((q) => q.points))
 
     return (
       <Layout>
@@ -246,7 +281,7 @@ export default function Tests() {
             {testSubs.map((sub) => {
               const student  = students.find((s) => s.id === sub.studentId)
               const isGraded = sub.scores.length > 0
-              const totalScore = sub.scores.reduce((sum, s) => sum + s.score, 0)
+              const totalScore = sumPoints(sub.scores.map((s) => s.score))
 
               return (
                 <div
@@ -291,22 +326,23 @@ export default function Tests() {
         test={selectedTest}
         user={user}
         onSubmit={async (answers) => {
-          const hasSA = selectedTest.questions.some((q) => q.type === 'sa')
-          const mcScores = selectedTest.questions
-            .filter((q) => q.type === 'mc')
-            .map((q) => {
-              const ans = answers.find((a) => a.questionId === q.id)
-              // 다중 정답은 순서 무관 집합 비교 — 덜 골라도 더 골라도 0점이다
-              return { questionId: q.id, score: sameChoiceSet(ans?.answer, q.answer) ? q.points : 0 }
-            })
-
-          await addSubmission({
+          // 채점은 여기서 하지 않는다. 학생 폰에는 정답이 내려오지 않으므로
+          // (docs/stage2-answer-hiding.sql) 여기서 채점하면 전부 0점이 된다 —
+          // 2026-09-16부터 10-07까지 실제로 그랬다. DB가 제출을 받는 순간
+          // 정답과 맞춰 점수를 매긴다(docs/test-grading-fix.sql).
+          const saved = await addSubmission({
             testId:    selectedTest.id,
             studentId: user.studentId,
             answers,
-            scores: hasSA ? [] : mcScores,
           })
-          go('list', null, { replace: true })
+          // 객관식만 있는 시험은 바로 채점돼 돌아온다 → 정답이 담긴 문항을 다시 받아
+          // 결과 화면으로 간다. 주관식이 있으면 교사 채점을 기다린다.
+          if (saved?.scores.length > 0) {
+            await refreshTest(selectedTest.id)
+            go('result', selectedTest.id, { replace: true })
+          } else {
+            go('list', null, { replace: true })
+          }
         }}
         onBack={() => go('list')}
       />
@@ -343,6 +379,7 @@ export default function Tests() {
         test={selectedTest}
         user={user}
         submissions={submissions}
+        onNeedAnswers={() => refreshTest(selectedTest.id)}
         onBack={() => go('list')}
       />
       </Layout>
@@ -472,20 +509,60 @@ function TakeView({ test, onSubmit, onBack }) {
   )
 }
 
-// ────────── CreateView 컴포넌트 ──────────
+// ────────── CreateView 컴포넌트 (만들기 · 시작 전 수정 겸용) ──────────
 const MC_CHOICES = ['①', '②', '③', '④', '⑤']
 
-function CreateView({ classes, user, onSubmit, onCancel }) {
-  const [title,     setTitle]     = useState('')
-  const [classId,   setClassId]   = useState(String(classes[0]?.id ?? ''))
-  const [date,      setDate]      = useState(todayKST())
-  const [timeLimit, setTimeLimit] = useState(30)
+// 수정할 때 이미 있는 테스트를 폼 값으로 펼친다
+function formFromTest(test) {
+  const mc = test.questions.filter((q) => q.type === 'mc')
+  const sa = test.questions.filter((q) => q.type !== 'mc')
+  const answers = {}
+  mc.forEach((q, i) => { if (q.answer) answers[i + 1] = q.answer })
+  const total = sumPoints(test.questions.map((q) => q.points))
+  // 균등 배분과 다른 배점만 "직접 고친 값"으로 남긴다 — 나머지는 자동 배분 그대로
+  const auto = distributePoints(total, mc.length + sa.length)
+  const overrides = {}
+  ;[...mc, ...sa].forEach((q, i) => {
+    if (q.points !== auto[i]) overrides[i + 1] = String(q.points)
+  })
+  return {
+    title:       test.title ?? '',
+    classId:     String(test.classId ?? ''),
+    date:        test.date ?? todayKST(),
+    timeLimit:   test.timeLimit ?? '',
+    mcCount:     mc.length,
+    answers,
+    saList:      sa.map((q) => ({ content: q.content ?? '' })),
+    totalPoints: total,
+    overrides,
+  }
+}
+
+// 배점 묶음 요약 — [4,4,3,3,3] → "4점 × 2문항, 3점 × 3문항"
+function pointGroups(points) {
+  const counts = new Map()
+  points.forEach((p) => counts.set(p, (counts.get(p) ?? 0) + 1))
+  return [...counts.entries()].map(([p, n]) => `${p}점 × ${n}문항`).join(', ')
+}
+
+function CreateView({ initial, classes, user, onSubmit, onCancel }) {
+  const isEdit = Boolean(initial)
+  // 수정이면 기존 값으로, 새로 만들면 빈 값으로 시작한다 (첫 렌더에 한 번만 계산)
+  const [start] = useState(() => initial ? formFromTest(initial) : null)
+
+  const [title,     setTitle]     = useState(start?.title ?? '')
+  const [classId,   setClassId]   = useState(start?.classId ?? String(classes[0]?.id ?? ''))
+  const [date,      setDate]      = useState(start?.date ?? todayKST())
+  const [timeLimit, setTimeLimit] = useState(start?.timeLimit ?? 30)
   // 오프라인 시험지를 나눠주고 답만 입력하는 쓰임이라, 객관식은 문항 수를 넣고
   // 정답 표에서 한 번에 찍는다 (과제 출제 화면과 같은 방식).
-  const [mcCount,   setMcCount]   = useState(0)
-  const [answers,   setAnswers]   = useState({})   // { 문항번호: '①③' }
-  const [saList,    setSaList]    = useState([])   // 주관식은 필요할 때만 따로 추가
-  const [totalPoints, setTotalPoints] = useState(100)
+  const [mcCount,   setMcCount]   = useState(start?.mcCount ?? 0)
+  const [answers,   setAnswers]   = useState(start?.answers ?? {})   // { 문항번호: '①③' }
+  const [saList,    setSaList]    = useState(start?.saList ?? [])    // 주관식은 필요할 때만 따로 추가
+  const [totalPoints, setTotalPoints] = useState(start?.totalPoints ?? 100)
+  // 교사가 직접 고친 배점 { 문항번호: '5' } — 없는 번호는 자동 배분 값을 쓴다
+  const [overrides, setOverrides] = useState(start?.overrides ?? {})
+  const [showPoints, setShowPoints] = useState(Object.keys(start?.overrides ?? {}).length > 0)
   const [saving,    setSaving]    = useState(false)
 
   function changeMcCount(val) {
@@ -498,13 +575,20 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
       return next
     })
     setMcCount(n)
+    // 문항 수가 바뀌면 번호가 밀리므로 배점은 다시 균등하게 나눈다
+    setOverrides({})
   }
 
-  // 배점은 총점을 문항 수로 나눠 자동으로 정한다
+  // 배점: 먼저 총점을 문항 수로 고르게 나누고(1점 단위, 합계는 총점과 딱 맞음),
+  // 교사가 고친 문항만 그 값으로 바꾼다
   const questionCount = mcCount + saList.length
-  const points = distributePoints(totalPoints, questionCount)
-  // 배점이 갈리면 총점을 조금 고치는 편이 낫다 — 가까운 값을 알려준다
-  const evenTotals = evenTotalSuggestions(totalPoints, questionCount)
+  const autoPoints = distributePoints(totalPoints, questionCount)
+  const points = autoPoints.map((p, i) =>
+    overrides[i + 1] !== undefined ? Number(overrides[i + 1]) || 0 : p
+  )
+  const pointSum = sumPoints(points)
+  const totalNum = sumPoints([totalPoints])
+  const pointsMismatch = questionCount > 0 && pointSum !== totalNum
 
   const questions = [
     ...Array.from({ length: mcCount }, (_, i) => ({
@@ -529,6 +613,7 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
     Boolean(title.trim()) &&
     questionCount > 0 &&
     unanswered.length === 0 &&
+    !pointsMismatch &&
     !saving
 
   // 버튼이 꺼져 있는 이유 — 화면만 보고 알 수 있어야 한다
@@ -538,20 +623,27 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
   if (unanswered.length > 0) {
     blockedReasons.push(`${unanswered.join(', ')}번 정답을 지정해 주세요.`)
   }
+  if (pointsMismatch) {
+    blockedReasons.push(`배점 합계(${pointSum}점)를 총점 ${totalNum}점에 맞춰 주세요.`)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!canSave) return
     setSaving(true)
-    await onSubmit({
+    const payload = {
       title:     title.trim(),
       classId:   Number(classId),
-      teacherId: user.id,
       date,
-      timeLimit: Number(timeLimit),
+      // 비우면 시간 제한 없음
+      timeLimit: Number(timeLimit) || null,
+      questions,
+    }
+    await onSubmit(isEdit ? payload : {
+      ...payload,
+      teacherId: user.id,
       status:    'ready',
       startedAt: null,
-      questions,
     })
     setSaving(false)
   }
@@ -559,7 +651,10 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
   return (
     <div>
       <button onClick={onCancel} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">← 목록</button>
-      <PageTitle title="테스트 만들기" />
+      <PageTitle
+        title={isEdit ? '테스트 수정' : '테스트 만들기'}
+        lead={isEdit ? '시작 전이라 시간·정답·배점까지 모두 고칠 수 있습니다' : undefined}
+      />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div>
@@ -587,7 +682,7 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
         </div>
 
         <div className="flex gap-4">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <label className="block text-sm font-medium text-ink-soft mb-1">날짜</label>
             <input
               type="date"
@@ -596,20 +691,22 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
               className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
             />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <label className="block text-sm font-medium text-ink-soft mb-1">시간 제한 (분)</label>
             <input
               type="number"
               value={timeLimit}
               onChange={(e) => setTimeLimit(e.target.value)}
               min="1"
+              placeholder="비우면 제한 없음"
+              data-testid="time-limit"
               className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
             />
           </div>
         </div>
 
         <div className="flex gap-4">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <label className="block text-sm font-medium text-ink-soft mb-1">객관식 문항 수</label>
             <input
               type="number"
@@ -621,12 +718,12 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
               className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
             />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <label className="block text-sm font-medium text-ink-soft mb-1">총점</label>
             <input
               type="number"
               value={totalPoints}
-              onChange={(e) => setTotalPoints(e.target.value)}
+              onChange={(e) => { setTotalPoints(e.target.value); setOverrides({}) }}
               min="0"
               step="0.1"
               className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy"
@@ -636,15 +733,64 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
 
         {questionCount > 0 && (
           <div className="-mt-3">
-            <p className="text-xs text-ink-mute">
-              {questionCount}문항 · 문항당 {points[0]}점
-              {points[0] !== points[questionCount - 1] && ` (뒤쪽 ${questionCount - points.filter((p) => p === points[0]).length}문항은 ${points[questionCount - 1]}점)`}
-            </p>
-            {evenTotals.length > 0 && (
-              <p data-testid="even-total-hint" className="text-xs text-ink-soft mt-1">
-                {questionCount}문항은 {totalPoints}점으로 나누어떨어지지 않습니다.{' '}
-                {evenTotals.map((v) => `${v}점(문항당 ${v / questionCount}점)`).join(' 또는 ')}으로 하면 딱 맞습니다.
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p data-testid="points-summary" className="text-xs text-ink-mute">
+                {questionCount}문항 · {pointGroups(points)} ·{' '}
+                <span className={pointsMismatch ? 'text-danger font-semibold' : 'text-ink-soft font-semibold'}>
+                  합계 {pointSum}점
+                </span>
               </p>
+              <button
+                type="button"
+                onClick={() => setShowPoints((v) => !v)}
+                className="text-xs px-3 py-1 whitespace-nowrap border border-line text-ink-soft rounded hover:bg-surface-alt"
+              >
+                {showPoints ? '배점 접기' : '문항별 배점 고치기'}
+              </button>
+            </div>
+
+            {showPoints && (
+              <div className="mt-2 border border-line rounded p-3">
+                <p className="text-xs text-ink-mute mb-2">
+                  총점을 고르게 나눈 값입니다. 고친 칸은 남색으로 표시됩니다.
+                  총점이나 문항 수를 바꾸면 다시 고르게 나뉩니다.
+                </p>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-1.5">
+                  {points.map((p, i) => {
+                    const n = i + 1
+                    const edited = overrides[n] !== undefined
+                    return (
+                      <label
+                        key={n}
+                        className={`flex items-center gap-1 px-2 py-1 rounded border ${
+                          edited ? 'border-navy bg-navy-soft' : 'border-line'
+                        }`}
+                      >
+                        <span className="text-xs text-ink-mute w-8 shrink-0">{n}번</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.1"
+                          value={overrides[n] ?? p}
+                          data-testid={`points-${n}`}
+                          onChange={(e) => setOverrides((prev) => ({ ...prev, [n]: e.target.value }))}
+                          className="w-full min-w-0 bg-transparent text-sm text-right text-ink focus:outline-none"
+                        />
+                      </label>
+                    )
+                  })}
+                </div>
+                {Object.keys(overrides).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setOverrides({})}
+                    className="mt-2 text-xs text-ink-soft underline"
+                  >
+                    고르게 다시 나누기
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -669,7 +815,7 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
             </label>
             <button
               type="button"
-              onClick={() => setSaList((prev) => [...prev, { content: '' }])}
+              onClick={() => { setSaList((prev) => [...prev, { content: '' }]); setOverrides({}) }}
               className="text-xs px-3 py-1 whitespace-nowrap bg-ink text-white rounded"
             >
               + 주관식
@@ -683,11 +829,11 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
                 value={sa.content}
                 onChange={(e) => setSaList((prev) => prev.map((it, i) => (i === j ? { content: e.target.value } : it)))}
                 placeholder="문항 내용 (참고용, 비워도 됩니다)"
-                className="flex-1 border border-line rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-navy"
+                className="flex-1 min-w-0 border border-line rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-navy"
               />
               <button
                 type="button"
-                onClick={() => setSaList((prev) => prev.filter((_, i) => i !== j))}
+                onClick={() => { setSaList((prev) => prev.filter((_, i) => i !== j)); setOverrides({}) }}
                 className="text-xs text-danger hover:opacity-80"
               >
                 삭제
@@ -703,66 +849,131 @@ function CreateView({ classes, user, onSubmit, onCancel }) {
         )}
 
         <Button type="submit" disabled={!canSave} className="w-full">
-          {saving ? '저장 중...' : '저장'}
+          {saving ? '저장 중...' : isEdit ? '수정 저장' : '저장'}
         </Button>
       </form>
     </div>
   )
 }
 
-// ────────── ResultView 컴포넌트 ──────────
-function ResultView({ test, user, submissions, onBack }) {
+// ────────── ResultView 컴포넌트 (학생 결과) ──────────
+// 학생은 폰으로만 본다. 30문항을 카드로 한 줄씩 늘어놓으면 어디가 틀렸는지
+// 스크롤해야 알 수 있어서, 위에 "틀린 문항" 번호를 먼저 보여주고
+// 아래 표는 과제 결과와 같은 선지 격자로 정답/내 답을 색으로 구분한다.
+function ResultView({ test, user, submissions, onNeedAnswers, onBack }) {
   const mySub = submissions.find(
     (s) => s.testId === test.id && s.studentId === user.studentId
   )
-  const totalPoints = test.questions.reduce((sum, q) => sum + q.points, 0)
-  const totalScore  = mySub?.scores.reduce((sum, s) => sum + s.score, 0) ?? 0
+  const mcQs = test.questions.filter((q) => q.type === 'mc')
+  const saQs = test.questions.filter((q) => q.type !== 'mc')
+  const graded = (mySub?.scores.length ?? 0) > 0
+
+  // 앱을 연 뒤에 채점이 끝났으면 손에 든 문항에는 아직 정답이 없다 → 한 번 다시 받는다
+  const answersMissing = graded && mcQs.some((q) => !q.answer)
+  useEffect(() => {
+    if (answersMissing) onNeedAnswers?.()
+    // 정답이 비었을 때 한 번만 부른다 (다시 받아도 비어 있으면 또 부르지 않는다)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answersMissing])
+
+  const answerOf = (q) => mySub?.answers.find((a) => a.questionId === q.id)?.answer ?? ''
+  const scoreOf  = (q) => mySub?.scores.find((s) => s.questionId === q.id)?.score ?? null
+
+  const totalPoints = sumPoints(test.questions.map((q) => q.points))
+  const totalScore  = sumPoints(mySub?.scores.map((s) => s.score) ?? [])
+  // 맞음/틀림은 DB가 매긴 점수로 판단한다 — 화면과 점수가 어긋날 수 없게
+  const wrongMc   = graded ? mcQs.filter((q) => !(scoreOf(q) > 0)) : []
+  const correctMc = mcQs.length - wrongMc.length
+
+  const values    = Object.fromEntries(mcQs.map((q) => [q.id, answerOf(q)]))
+  const answerKey = Object.fromEntries(mcQs.map((q) => [q.id, q.answer ?? '']))
 
   return (
     <div>
       <button onClick={onBack} className="text-sm text-ink-mute hover:text-ink-soft mb-2 block">← 목록</button>
       <PageTitle title={`${test.title} — 결과`} />
 
-      <div className="bg-ink text-white rounded p-6 text-center mb-6">
+      <div className="bg-ink text-white rounded p-5 text-center mb-4">
         <p className="text-sm text-white/60 mb-1">총점</p>
-        <p className="text-4xl font-bold">{totalScore}점</p>
-        <p className="text-sm text-white/60 mt-1">/ {totalPoints}점</p>
+        <p data-testid="result-total" className="text-4xl font-bold">
+          {totalScore}<span className="text-lg font-medium text-white/60"> / {totalPoints}점</span>
+        </p>
+        {mcQs.length > 0 && graded && (
+          <p className="text-sm text-white/80 mt-2">
+            객관식 {mcQs.length}문항 중 <span className="font-bold text-white">{correctMc}개</span> 맞음
+          </p>
+        )}
       </div>
 
-      <div className="flex flex-col gap-3">
-        {test.questions.map((q, idx) => {
-          const ans        = mySub?.answers.find((a) => a.questionId === q.id)?.answer ?? ''
-          const scoreEntry = mySub?.scores.find((s) => s.questionId === q.id)
-          const score      = scoreEntry?.score ?? null
-          // 다중 정답은 순서 무관 집합 비교여야 정오답이 올바르게 표시된다
-          const isCorrect  = q.type === 'mc' ? sameChoiceSet(ans, q.answer) : null
-
-          return (
-            <div key={q.id} className="bg-surface border border-line rounded p-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-ink">{idx + 1}번</span>
-                <span className={`text-sm font-bold ${
-                  score === null ? 'text-ink-faint'
-                  : score === q.points ? 'text-navy'
-                  : score > 0 ? 'text-warn'
-                  : 'text-danger'
-                }`}>
-                  {score === null ? '채점 대기' : `${score} / ${q.points}점`}
-                </span>
+      {mcQs.length > 0 && graded && (
+        <div className={`rounded p-4 mb-4 border ${wrongMc.length > 0 ? 'border-danger bg-danger-soft' : 'border-navy bg-navy-soft'}`}>
+          {wrongMc.length > 0 ? (
+            <>
+              <p className="text-sm font-semibold text-danger mb-2">틀린 문항 {wrongMc.length}개</p>
+              <div data-testid="wrong-list" className="flex flex-wrap gap-1.5">
+                {wrongMc.map((q) => (
+                  <span key={q.id} className="px-2 py-0.5 rounded-sm bg-surface border border-danger text-danger text-sm font-semibold">
+                    {q.id}번
+                  </span>
+                ))}
               </div>
-              <p className="text-sm text-ink-mute">
-                내 답: <span className="text-ink font-medium">{ans || '(미입력)'}</span>
-              </p>
-              {q.type === 'mc' && (
-                <p className="text-sm text-ink-mute">
-                  정답: <span className="text-navy font-medium">{q.answer}</span>
-                  <span className="ml-2">{isCorrect ? '✓' : '✗'}</span>
+            </>
+          ) : (
+            <p className="text-sm font-semibold text-navy">객관식을 모두 맞혔습니다</p>
+          )}
+        </div>
+      )}
+
+      {mcQs.length > 0 && (
+        <div className="mb-6">
+          {answersMissing ? (
+            <p className="text-sm text-ink-mute py-4 text-center">정답을 불러오는 중…</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-mute mb-2">
+                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 rounded-full bg-navy inline-block" />맞게 고름</span>
+                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 rounded-full bg-danger inline-block" />잘못 고름</span>
+                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 rounded-full border-2 border-navy inline-block" />정답</span>
+              </div>
+              <ChoiceGrid
+                numbers={mcQs.map((q) => q.id)}
+                mode="result"
+                values={values}
+                answerKey={answerKey}
+                wrong={wrongMc.map((q) => q.id)}
+                onChange={() => {}}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {saQs.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-semibold text-ink-soft">주관식</p>
+          {saQs.map((q) => {
+            const score = scoreOf(q)
+            return (
+              <div key={q.id} className="bg-surface border border-line rounded p-4">
+                <div className="flex justify-between items-center mb-2 gap-2">
+                  <span className="font-semibold text-ink">{q.id}번{q.content ? ` — ${q.content}` : ''}</span>
+                  <span className={`text-sm font-bold whitespace-nowrap ${
+                    score === null ? 'text-ink-faint'
+                    : score === q.points ? 'text-navy'
+                    : score > 0 ? 'text-warn'
+                    : 'text-danger'
+                  }`}>
+                    {score === null ? '채점 대기' : `${score} / ${q.points}점`}
+                  </span>
+                </div>
+                <p className="text-sm text-ink-mute break-words">
+                  내 답: <span className="text-ink font-medium">{answerOf(q) || '(미입력)'}</span>
                 </p>
-              )}
-            </div>
-          )
-        })}
-      </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -770,23 +981,26 @@ function ResultView({ test, user, submissions, onBack }) {
 // ────────── GradeView 컴포넌트 ──────────
 function GradeView({ test, submission, students, onSave, onBack }) {
   const student     = students.find((s) => s.id === submission.studentId)
-  const totalPoints = test.questions.reduce((sum, q) => sum + q.points, 0)
+  const totalPoints = sumPoints(test.questions.map((q) => q.points))
   const [saving, setSaving] = useState(false)
 
+  // 객관식은 저장된 점수를 믿지 않고 늘 답안과 정답으로 다시 매긴다.
+  // 2026-09-16~10-07에 학생 폰이 정답 없이 채점해 0점이 저장된 제출이 있는데,
+  // 저장된 값을 그대로 쓰면 교사 화면도 0점으로 보이고 저장하면 그대로 굳는다.
+  // 주관식만 저장된 점수를 이어받는다.
   const [localScores, setLocalScores] = useState(() =>
     test.questions.map((q) => {
-      const existing = submission.scores.find((s) => s.questionId === q.id)
-      if (existing) return existing
       if (q.type === 'mc') {
         const ans = submission.answers.find((a) => a.questionId === q.id)
         // 다중 정답은 순서 무관 집합 비교 — 덜 골라도 더 골라도 0점이다
         return { questionId: q.id, score: sameChoiceSet(ans?.answer, q.answer) ? q.points : 0 }
       }
-      return { questionId: q.id, score: 0 }
+      const existing = submission.scores.find((s) => s.questionId === q.id)
+      return existing ?? { questionId: q.id, score: 0 }
     })
   )
 
-  const totalScore = localScores.reduce((sum, s) => sum + s.score, 0)
+  const totalScore = sumPoints(localScores.map((s) => s.score))
 
   return (
     <div>
@@ -827,6 +1041,7 @@ function GradeView({ test, submission, students, onSave, onBack }) {
                     type="number"
                     min="0"
                     max={q.points}
+                    step="0.1"
                     value={scoreEntry?.score ?? 0}
                     onChange={(e) =>
                       setLocalScores(localScores.map((s) =>
