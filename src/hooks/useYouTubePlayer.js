@@ -23,17 +23,19 @@ export function useYouTubePlayer(youtubeId, { onStateChange } = {}) {
   const containerRef = useRef(null)
   const playerRef = useRef(null)
   const stateRef = useRef(onStateChange)
-  stateRef.current = onStateChange
+  // 최신 콜백을 기억해 둔다 — 그리는 도중이 아니라 그린 직후에 바꾼다 (React 규칙)
+  useEffect(() => { stateRef.current = onStateChange })
 
   useEffect(() => {
     let alive = true
+    const box = containerRef.current     // 정리할 때 같은 칸을 비우려고 잡아 둔다
     loadApi().then((YT) => {
-      if (!alive || !containerRef.current) return
+      if (!alive || !box) return
       // YouTube 는 넘겨받은 칸을 iframe 으로 통째로 바꿔 끼운다.
       // React 가 관리하는 칸을 넘기면 화면을 나갈 때 React 가 사라진 칸을 지우려다 오류가 난다 —
       // 그래서 안쪽에 칸을 하나 직접 만들어 그걸 넘긴다
       const el = document.createElement('div')
-      containerRef.current.appendChild(el)
+      box.appendChild(el)
       playerRef.current = new YT.Player(el, {
         videoId: youtubeId,
         width: '100%',
@@ -46,7 +48,7 @@ export function useYouTubePlayer(youtubeId, { onStateChange } = {}) {
       alive = false
       playerRef.current?.destroy?.()
       playerRef.current = null
-      if (containerRef.current) containerRef.current.innerHTML = ''
+      if (box) box.innerHTML = ''
     }
   }, [youtubeId])
 
