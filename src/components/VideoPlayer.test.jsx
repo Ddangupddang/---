@@ -2,8 +2,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
+const resume = vi.fn()
 vi.mock('./video/TrackedPlayer', () => ({
-  default: (p) => <div data-testid="player" data-track={String(p.trackAs)} data-seek={String(p.seekTo)} />,
+  default: (p) => {
+    if (p.controlRef) p.controlRef.current = { resume }
+    return <div data-testid="player" data-track={String(p.trackAs)} />
+  },
 }))
 vi.mock('./CommentSection', () => ({ default: () => <div>댓글 칸</div> }))
 
@@ -19,7 +23,10 @@ describe('VideoPlayer', () => {
       progressRows={[row]} rosterStudents={[]} onProgressSaved={() => {}} />)
     expect(screen.getByTestId('player').dataset.track).toBe('student')
     fireEvent.click(screen.getByRole('button', { name: '이어보기' }))
-    expect(screen.getByTestId('player').dataset.seek).toBe('750')
+    // 누르는 그 순간 플레이어를 직접 움직인다 (아이폰은 사용자 동작 밖의 재생을 막는다)
+    expect(resume).toHaveBeenCalledWith(750)
+    // 한 번 누르면 줄은 사라진다
+    expect(screen.queryByRole('button', { name: '이어보기' })).toBeNull()
     expect(screen.getByText('실제 시청 18:20 / 25:00 (73%)')).toBeInTheDocument()
     expect(screen.queryByRole('tab')).toBeNull()
   })

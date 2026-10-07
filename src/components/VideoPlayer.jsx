@@ -1,5 +1,5 @@
 // src/components/VideoPlayer.jsx
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import CommentSection from './CommentSection'
 import TrackedPlayer from './video/TrackedPlayer'
 import ResumeBanner from './video/ResumeBanner'
@@ -30,7 +30,8 @@ export default function VideoPlayer({
   onBack, onAddComment, onAddReply,
 }) {
   const isStudent = role === 'student'
-  const [seekTo, setSeekTo] = useState(null)
+  const controlRef = useRef(null)          // 플레이어를 직접 움직이는 손잡이 (이어보기)
+  const [resumed, setResumed] = useState(false)
   const [tab, setTab] = useState('comments')
   const myRow = isStudent ? progressRows[0] : undefined
 
@@ -57,15 +58,21 @@ export default function VideoPlayer({
 
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="lg:w-2/3">
-          {isStudent && (
-            <ResumeBanner row={myRow} onResume={(sec) => setSeekTo(sec)} />
+          {isStudent && !resumed && (
+            <ResumeBanner
+              row={myRow}
+              onResume={(sec) => {
+                controlRef.current?.resume(sec)   // 누른 그 순간 움직인다
+                setResumed(true)                  // 한 번 눌렀으면 줄을 거둔다
+              }}
+            />
           )}
           <TrackedPlayer
             youtubeId={video.videoId}
             dbVideoId={video.id}
             title={video.title}
             trackAs={isStudent ? 'student' : null}
-            seekTo={seekTo}
+            controlRef={controlRef}
             onSaved={onProgressSaved}
           />
           <h2 className="mt-3 text-lg font-bold text-ink">{video.title}</h2>

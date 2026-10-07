@@ -21,7 +21,7 @@ function installFakeYT() {
       this.seekTo = fake.seekTo
       this.playVideo = fake.playVideo
       this.destroy = () => {}
-      setTimeout(() => opts.events.onReady?.({ target: this }), 0)
+      fake.ready = () => opts.events.onReady?.({ target: this })   // 준비 신호는 테스트가 직접 보낸다
     },
   }
 }
@@ -64,11 +64,49 @@ describe('TrackedPlayer', () => {
     expect(save).not.toHaveBeenCalled()
   })
 
-  it('이어보기 위치가 오면 그 위치로 이동해 재생한다', async () => {
-    const { rerender } = render(<TrackedPlayer youtubeId="abc" dbVideoId={3} title="t" trackAs="student" seekTo={null} onSaved={() => {}} />)
+  it('준비된 플레이어에서 이어보기를 누르면 바로 그 위치로 이동해 재생한다', async () => {
+    const control = { current: null }
+    render(<TrackedPlayer youtubeId="abc" dbVideoId={3} title="t" trackAs="student" controlRef={control} onSaved={() => {}} />)
     await act(async () => { vi.advanceTimersByTime(1) })
-    rerender(<TrackedPlayer youtubeId="abc" dbVideoId={3} title="t" trackAs="student" seekTo={750} onSaved={() => {}} />)
+    act(() => fake.ready())
+    act(() => control.current.resume(750))
     expect(fake.seekTo).toHaveBeenCalledWith(750, true)
     expect(fake.playVideo).toHaveBeenCalled()
+  })
+
+  it('준비 전에 이어보기를 누르면 준비되는 순간 그 위치로 이동한다', async () => {
+    const control = { current: null }
+    render(<TrackedPlayer youtubeId="abc" dbVideoId={3} title="t" trackAs="student" controlRef={control} onSaved={() => {}} />)
+    await act(async () => { vi.advanceTimersByTime(1) })
+    act(() => control.current.resume(750))
+    expect(fake.seekTo).not.toHaveBeenCalled()
+    act(() => fake.ready())
+    expect(fake.seekTo).toHaveBeenCalledWith(750, true)
+  })
+
+  it('같은 위치로 두 번 눌러도 두 번 다 이동한다', async () => {
+    const control = { current: null }
+    render(<TrackedPlayer youtubeId="abc" dbVideoId={3} title="t" trackAs="student" controlRef={control} onSaved={() => {}} />)
+    await act(async () => { vi.advanceTimersByTime(1) })
+    act(() => fake.ready())
+    act(() => control.current.resume(750))
+    act(() => control.current.resume(750))
+    expect(fake.seekTo).toHaveBeenCalledTimes(2)
+  })
+
+  it('YouTube 스크립트를 못 불러오면 기록 없이 일반 플레이어로 재생한다', async () => {
+    delete window.YT
+    const { container } = render(<TrackedPlayer youtubeId="abc" dbVideoId={3} title="t" trackAs="student" onSaved={() => {}} />)
+    const script = [...document.head.querySelectorAll('script')].find((x) => x.src.includes('iframe_api'))
+    await act(async () => { script.onerror(new Event('error')) })
+    expect(container.querySelector('iframe').src).toContain('youtube.com/embed/abc')
+    expect(container.textContent).toContain('시청 기록 없이 재생')
+  })
+
+  it('YouTube 스크립트가 10초 안에 안 오면 일반 플레이어로 재생한다', async () => {
+    delete window.YT
+    const { container } = render(<TrackedPlayer youtubeId="abc" dbVideoId={3} title="t" trackAs="student" onSaved={() => {}} />)
+    await act(async () => { vi.advanceTimersByTime(10000) })
+    expect(container.querySelector('iframe').src).toContain('youtube.com/embed/abc')
   })
 })
