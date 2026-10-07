@@ -40,4 +40,14 @@ describe('VideoCard', () => {
     fireEvent.click(screen.getByText('1강. 화법과 작문 기초'))
     expect(onClick).toHaveBeenCalledTimes(1)
   })
+
+  it('시청 표시가 있으면 보여준다', () => {
+    render(<VideoCard video={mockVideo} className="수능국어A반" commentCount={0} onClick={() => {}} progressLabel="완료 4/7" />)
+    expect(screen.getByText('완료 4/7')).toBeInTheDocument()
+  })
+
+  it('시청 표시가 없으면 아무것도 붙지 않는다', () => {
+    render(<VideoCard video={mockVideo} className="수능국어A반" commentCount={0} onClick={() => {}} />)
+    expect(screen.queryByText(/완료|%/)).toBeNull()
+  })
 })

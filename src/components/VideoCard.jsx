@@ -5,9 +5,10 @@
  *    video       - { id, videoId, title, thumbnail, classId }
  *    className   - 반 이름 문자열 (예: "수능국어A반")
  *    commentCount - 댓글 수
+ *    progressLabel - 시청 표시 ("✓ 완료", "73%", "완료 4/7") 또는 null
  *    onClick     - 카드 클릭 핸들러
  */
-export default function VideoCard({ video, className, commentCount, onClick, onDelete }) {
+export default function VideoCard({ video, className, commentCount, progressLabel, onClick, onDelete }) {
   return (
     <div className="relative bg-surface rounded overflow-hidden border border-line hover:bg-surface-alt transition-colors">
       <div onClick={onClick} className="cursor-pointer">
@@ -27,6 +28,12 @@ export default function VideoCard({ video, className, commentCount, onClick, onD
             <span>{className}</span>
             <span>·</span>
             <span>댓글 {commentCount}</span>
+            {progressLabel && (
+              <>
+                <span>·</span>
+                <span className="font-bold text-navy whitespace-nowrap">{progressLabel}</span>
+              </>
+            )}
           </div>
         </div>
       </div>

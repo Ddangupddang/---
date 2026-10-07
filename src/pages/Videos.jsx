@@ -1,5 +1,5 @@
 // src/pages/Videos.jsx
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import VideoCard from '../components/VideoCard'
@@ -11,6 +11,8 @@ import PageTitle from '../components/ui/PageTitle'
 import Button from '../components/ui/Button'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, visibleStudents, canSeeClass, hasNoAssignedClass } from '../utils/classAccess'
+import { fetchProgressForVideos } from '../utils/videoProgressApi'
+import { cardProgressLabel } from '../utils/videoProgress'
 
 export default function Videos() {
   const { user } = useAuth()
@@ -23,6 +25,8 @@ export default function Videos() {
   const [selectedVideo,   setSelectedVideo]   = useState(null)
   const [showForm,        setShowForm]        = useState(false)
   const [selectedClassId, setSelectedClassId] = useState('all')
+  // 시청 기록 — 화면에 보이는 영상들의 것만 읽는다 (학생은 행 수준 보안으로 자기 것만 온다)
+  const [progress, setProgress] = useState([])
 
   // 관리자는 전체, 교사는 담당 반, 학생은 본인 반
   const accessibleClasses = visibleClasses(classes, user)
@@ -35,6 +39,28 @@ export default function Videos() {
       selectedClassId === 'all' || v.classId === Number(selectedClassId)
     return classMatch && canSeeClass(classes, user, v.classId)
   })
+
+  const visibleIds = filteredVideos.map((v) => v.id).join(',')
+  useEffect(() => {
+    const ids = visibleIds ? visibleIds.split(',').map(Number) : []
+    let alive = true
+    fetchProgressForVideos(ids)
+      .then((rows) => { if (alive) setProgress(rows) })
+      .catch((e) => console.error('시청 기록을 불러오지 못했습니다:', e))
+    return () => { alive = false }
+  }, [visibleIds, selectedVideo?.id])   // 영상에서 나올 때 다시 읽어 카드 표시를 새로 고친다
+
+  // 저장이 끝난 최신 기록으로 바꿔 끼운다
+  function handleProgressSaved(row) {
+    setProgress((prev) => [...prev.filter((r) => r.id !== row.id), row])
+  }
+
+  // 그 영상을 볼 학생 명단 — 반이 비어 있으면 교사가 볼 수 있는 학생 전원
+  function rosterFor(video) {
+    return video.classId == null
+      ? accessibleStudents
+      : accessibleStudents.filter((s) => s.classId === video.classId)
+  }
 
   async function handleAddVideo(data) {
     const videoId = data.videoId ?? extractVideoId(data.youtubeUrl)
@@ -77,6 +103,9 @@ export default function Videos() {
         onBack={() => setSelectedVideo(null)}
         onAddComment={handleAddComment}
         onAddReply={handleAddReply}
+        progressRows={progress.filter((r) => r.videoId === currentVideo.id)}
+        rosterStudents={rosterFor(currentVideo)}
+        onProgressSaved={handleProgressSaved}
       />
     )
   }
@@ -150,6 +179,11 @@ export default function Videos() {
                 video={video}
                 className={cls?.name ?? ''}
                 commentCount={commentCount}
+                progressLabel={cardProgressLabel(
+                  user.role,
+                  progress.filter((r) => r.videoId === video.id),
+                  rosterFor(video).length,
+                )}
                 onClick={() => setSelectedVideo(video)}
                 onDelete={user.role !== 'student' ? () => handleDeleteVideo(video.id) : undefined}
               />

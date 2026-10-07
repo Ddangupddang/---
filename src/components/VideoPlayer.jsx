@@ -1,30 +1,51 @@
 // src/components/VideoPlayer.jsx
+import { useState } from 'react'
 import CommentSection from './CommentSection'
+import TrackedPlayer from './video/TrackedPlayer'
+import ResumeBanner from './video/ResumeBanner'
+import WatchProgressLine from './video/WatchProgressLine'
+import WatchRoster from './video/WatchRoster'
 
 /** 영상 재생 화면
- *  PC: 플레이어(2/3) + 댓글(1/3) 2열
- *  모바일: 플레이어 → 제목 → 댓글 세로 배치
+ *  PC: 플레이어(2/3) + 오른쪽 칸(1/3) 2열
+ *  모바일: 플레이어 → 제목 → 오른쪽 칸 세로 배치
+ *
+ *  학생: 이어보기 줄 · 실제 시청 진행 · 댓글
+ *  교사·관리자: [댓글 | 시청 현황] 탭
  *
  *  Props:
- *    video       - { id, videoId, title }
- *    role        - 'student' | 'teacher' | 'admin'
- *    currentUser - { id, role }
- *    comments    - 전체 댓글 배열
- *    students    - 학생 배열 (실명 조회용)
- *    onBack      - () => void
- *    onAddComment - ({ videoId, studentId, content }) => void
- *    onAddReply   - (commentId, replyText) => void
+ *    video           - { id, videoId, title, classId }
+ *    role            - 'student' | 'teacher' | 'admin'
+ *    currentUser     - { id, role, studentId }
+ *    comments        - 전체 댓글 배열
+ *    students        - 학생 배열 (실명 조회용)
+ *    progressRows    - 시청 기록 (학생은 자기 것 0~1줄, 교사는 이 영상 전부)
+ *    rosterStudents  - 이 영상을 볼 학생 명단 (교사 시청 현황용)
+ *    onProgressSaved - (row) => void  저장이 끝난 최신 기록
+ *    onBack, onAddComment, onAddReply
  */
 export default function VideoPlayer({
-  video,
-  role,
-  currentUser,
-  comments,
-  students,
-  onBack,
-  onAddComment,
-  onAddReply,
+  video, role, currentUser, comments, students,
+  progressRows = [], rosterStudents = [], onProgressSaved,
+  onBack, onAddComment, onAddReply,
 }) {
+  const isStudent = role === 'student'
+  const [seekTo, setSeekTo] = useState(null)
+  const [tab, setTab] = useState('comments')
+  const myRow = isStudent ? progressRows[0] : undefined
+
+  const comment = (
+    <CommentSection
+      videoId={video.id}
+      role={role}
+      currentUser={currentUser}
+      comments={comments}
+      students={students}
+      onAddComment={onAddComment}
+      onAddReply={onAddReply}
+    />
+  )
+
   return (
     <div>
       <button
@@ -34,33 +55,44 @@ export default function VideoPlayer({
         ← 목록으로
       </button>
 
-      {/* PC: flex-row / 모바일: flex-col */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* 플레이어 영역 */}
         <div className="lg:w-2/3">
-          <div className="aspect-video w-full bg-black rounded overflow-hidden">
-            <iframe
-              src={`https://www.youtube.com/embed/${video.videoId}`}
-              title={video.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full"
-            />
-          </div>
+          {isStudent && (
+            <ResumeBanner row={myRow} onResume={(sec) => setSeekTo(sec)} />
+          )}
+          <TrackedPlayer
+            youtubeId={video.videoId}
+            dbVideoId={video.id}
+            title={video.title}
+            trackAs={isStudent ? 'student' : null}
+            seekTo={seekTo}
+            onSaved={onProgressSaved}
+          />
           <h2 className="mt-3 text-lg font-bold text-ink">{video.title}</h2>
+          {isStudent && <WatchProgressLine row={myRow} />}
         </div>
 
-        {/* 댓글 영역 */}
         <div className="lg:w-1/3">
-          <CommentSection
-            videoId={video.id}
-            role={role}
-            currentUser={currentUser}
-            comments={comments}
-            students={students}
-            onAddComment={onAddComment}
-            onAddReply={onAddReply}
-          />
+          {isStudent ? comment : (
+            <>
+              <div role="tablist" className="flex gap-2 mb-3">
+                {[['comments', '댓글'], ['watch', '시청 현황']].map(([key, label]) => (
+                  <button
+                    key={key}
+                    role="tab"
+                    aria-selected={tab === key}
+                    onClick={() => setTab(key)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                      tab === key ? 'bg-ink text-white' : 'bg-surface-alt text-ink-soft hover:bg-line-soft'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {tab === 'comments' ? comment : <WatchRoster students={rosterStudents} rows={progressRows} />}
+            </>
+          )}
         </div>
       </div>
     </div>
