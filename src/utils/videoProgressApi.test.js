@@ -3,10 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const rpc = vi.fn()
 const range = vi.fn()
+const selected = []
 vi.mock('../lib/supabase', () => ({
   supabase: {
     rpc: (...a) => rpc(...a),
-    from: () => ({ select: () => ({ in: () => ({ order: () => ({ range: (...a) => range(...a) }) }) }) }),
+    from: () => ({ select: (cols) => { selected.push(cols); return { in: () => ({ order: () => ({ range: (...a) => range(...a) }) }) } } }),
   },
 }))
 
@@ -43,5 +44,14 @@ describe('videoProgressApi', () => {
   it('여러 영상의 기록을 받아 화면 모양으로', async () => {
     range.mockResolvedValue({ data: [DB], error: null })
     expect(await fetchProgressForVideos([3])).toEqual([toProgress(DB)])
+  })
+
+  it('칸 목록(watched_buckets)은 받지 않는다 — 교사 화면이 수 MB 를 받지 않게', async () => {
+    range.mockResolvedValue({ data: [], error: null })
+    selected.length = 0
+    await fetchProgressForVideos([3])
+    expect(selected[0]).not.toBe('*')
+    expect(selected[0]).not.toMatch(/watched_buckets/)
+    expect(selected[0]).toMatch(/completed_at/)
   })
 })

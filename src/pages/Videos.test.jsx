@@ -22,6 +22,10 @@ vi.mock('../context/DataContext', async () => {
   }
 })
 
+// 시청 기록 읽기 — 실제 Supabase 대신 횟수만 센다
+const fetchProgress = vi.fn().mockResolvedValue([])
+vi.mock('../utils/videoProgressApi', () => ({ fetchProgressForVideos: (...a) => fetchProgress(...a) }))
+
 function renderWithAuth(user) {
   return render(
     <AuthContext.Provider value={{ user, login: () => {}, logout: () => {} }}>
@@ -89,5 +93,20 @@ describe('Videos — 담당 반 제한', () => {
   it('담당 반이 없는 교사에게는 이유를 알려준다', () => {
     renderWithAuth({ id: 99, name: '신입선생', role: 'teacher' })
     expect(screen.getByText('담당 반이 없습니다.')).toBeInTheDocument()
+  })
+})
+
+describe('Videos — 시청 기록 읽기 횟수', () => {
+  it('목록에서 한 번, 영상에 들어갈 때는 다시 받지 않고, 목록으로 돌아오면 새로 받는다', async () => {
+    fetchProgress.mockClear()
+    renderWithAuth({ id: 2, name: '김선생', role: 'teacher' })
+    await screen.findByText('1강. 화법과 작문 기초')
+    expect(fetchProgress).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByText('1강. 화법과 작문 기초'))
+    await screen.findByText('← 목록으로')
+    expect(fetchProgress).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByText('← 목록으로'))
+    await screen.findByText('1강. 화법과 작문 기초')
+    expect(fetchProgress).toHaveBeenCalledTimes(2)
   })
 })

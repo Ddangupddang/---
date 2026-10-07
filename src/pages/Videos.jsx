@@ -41,14 +41,18 @@ export default function Videos() {
   })
 
   const visibleIds = filteredVideos.map((v) => v.id).join(',')
+  const viewing = Boolean(selectedVideo)
   useEffect(() => {
+    // 영상에 들어갈 때는 다시 받지 않는다 — 목록에서 받은 것을 쓰고, 저장된 것은 바로 끼워 넣는다.
+    // 목록으로 돌아올 때 새로 받아 카드 표시를 고친다
+    if (viewing) return undefined
     const ids = visibleIds ? visibleIds.split(',').map(Number) : []
     let alive = true
     fetchProgressForVideos(ids)
       .then((rows) => { if (alive) setProgress(rows) })
       .catch((e) => console.error('시청 기록을 불러오지 못했습니다:', e))
     return () => { alive = false }
-  }, [visibleIds, selectedVideo?.id])   // 영상에서 나올 때 다시 읽어 카드 표시를 새로 고친다
+  }, [visibleIds, viewing])
 
   // 저장이 끝난 최신 기록으로 바꿔 끼운다
   function handleProgressSaved(row) {

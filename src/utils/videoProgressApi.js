@@ -5,6 +5,11 @@
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './fetchAll'
 
+// 화면에 필요한 칸만 받는다. watched_buckets(5초 칸 목록)는 한 시간짜리 영상이면 칸이 720개라,
+// 교사 화면이 학생 52명 × 영상 20개를 받으면 수 MB 가 된다 — 판정은 DB가 하므로 화면엔 필요 없다
+export const PROGRESS_COLUMNS =
+  'id, video_id, student_id, duration_sec, last_position_sec, watched_sec, started_at, completed_at'
+
 export function toProgress(r) {
   return {
     id:              r.id,
@@ -35,7 +40,7 @@ export async function saveVideoProgress(videoId, { durationSec, positionSec, buc
 export async function fetchProgressForVideos(videoIds) {
   if (!videoIds.length) return []
   const { data, error } = await fetchAllRows(() =>
-    supabase.from('video_progress').select('*').in('video_id', videoIds).order('id'))
+    supabase.from('video_progress').select(PROGRESS_COLUMNS).in('video_id', videoIds).order('id'))
   if (error) throw error
   return (data ?? []).map(toProgress)
 }
