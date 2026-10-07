@@ -52,21 +52,26 @@
 3. **완료 판정**: `completed_at` 이 비어 있고 `watched_sec >= 0.9 × duration_sec` 이면 `completed_at = now()`. 한 번 찍히면 바뀌지 않는다
 4. `updated_at = now()`
 
-### 열 단위 권한 — 학생이 완료를 직접 넣지 못하게
+### 저장은 DB 함수 하나로만 — 학생이 완료를 직접 넣지 못하게
 
-```sql
-REVOKE INSERT, UPDATE ON video_progress FROM authenticated;
-GRANT  INSERT (video_id, student_id, duration_sec, last_position_sec, watched_buckets) ON video_progress TO authenticated;
-GRANT  UPDATE (duration_sec, last_position_sec, watched_buckets) ON video_progress TO authenticated;
-```
+> 2026-10-07 계획 단계에서 바꿈. 처음에는 열 단위 권한(GRANT INSERT/UPDATE (일부 열))으로 막으려 했다.
+> 그런데 upsert 는 `ON CONFLICT DO UPDATE` 로 모든 열을 다시 쓰기 때문에 `video_id`·`student_id` 에도
+> UPDATE 권한이 있어야 하고, 그러면 학생이 기록을 **다른 영상으로 옮겨** 완료를 꾸밀 틈이 생긴다.
 
-행 수준 보안은 행만 가린다. 열은 이렇게 막는다 — `profiles` 역할 변경을 막은 방식과 같다 (보안 점검 2026-09-30).
+- 학생(그리고 모든 로그인 사용자)은 `video_progress` 에 **INSERT · UPDATE · DELETE 권한이 없다**
+- 저장은 `save_video_progress(p_video_id, p_duration_sec, p_position_sec, p_buckets)` 만 쓴다 (`SECURITY DEFINER`)
+  - 학생 번호는 인자로 받지 않는다 — `hw_my_student_id()` 로 DB가 찾는다
+  - 학생 계정이 아니면(교사·관리자) 거절한다 → 교사가 영상을 봐도 기록이 생기지 않는다
+  - 그 학생이 볼 수 있는 영상(`videos.class_id` 가 비었거나 학생 반과 같다)이 아니면 거절한다
+  - upsert 는 함수 안에서 하고, 위의 트리거가 칸 합치기·완료 판정을 한다
+  - UPDATE 때 트리거가 `video_id`·`student_id`·`started_at`·`completed_at` 를 기존 값으로 되돌린다
+- `duration_sec` 가 0 이면 완료로 보지 않는다 (메타데이터가 오기 전 저장 — 0의 90%는 0이다)
 
 ### 행 수준 보안
 
 | 누가 | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
-| 학생 | `student_id = hw_my_student_id()` | 같음 (WITH CHECK) | 같음 (USING + WITH CHECK) | ✗ |
+| 학생 | `student_id = hw_my_student_id()` | ✗ (함수로만) | ✗ (함수로만) | ✗ |
 | 교사 · 관리자 | `hw_is_staff()` | ✗ | ✗ | ✗ |
 
 `USING (true)` 같은 열린 정책은 두지 않는다 — 정책은 논리합으로 결합된다 (2026-09-30 사고).
@@ -142,7 +147,7 @@ GRANT  UPDATE (duration_sec, last_position_sec, watched_buckets) ON video_progre
 | 재생 판정 (자연 재생은 세고, 건너뛰기·되감기는 안 센다) · 칸 계산 · 시간 표시 `12:30` | 순수 함수 단위 테스트 |
 | 알림 대상 · 문구 | 순수 함수 단위 테스트 |
 | 이어보기 줄 · 진행 표시 · 시청 현황 정렬과 요약 | 컴포넌트 테스트 (jsdom) |
-| 학생이 `completed_at` 을 못 넣는다 · 남의 줄을 못 읽는다 · 90%에서 완료 · 칸 누적 · 이벤트 행 생성 | **DB 검증 SQL** — 응답 코드가 아니라 **결과 행을 직접 조회**해서 판정 (RLS 로 막혀도 204 가 온다) |
+| 학생이 표에 직접 못 쓴다 · 남의 줄을 못 읽는다 · 교사는 저장 함수가 거절 · 90%에서 완료 · 길이 0은 완료 아님 · 칸 누적 · 이벤트 행 생성 | **DB 검증 SQL** — 응답 코드가 아니라 **결과 행을 직접 조회**해서 판정 (RLS 로 막혀도 204 가 온다) |
 | 화면 | 390px 캡처 |
 
 ## 5. 적용 순서
