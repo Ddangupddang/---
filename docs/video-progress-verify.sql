@@ -24,16 +24,15 @@ declare
   v_row      public.video_progress;
   v_cnt      int;
 begin
-  -- 시험 대상: 학생 계정 하나와 그 학생이 볼 수 있는 영상 하나 (아직 기록이 없는 것)
-  select p.student_id, p.id into v_student, v_profile
+  -- 시험 대상: 볼 수 있는 영상이 있는 학생 계정과 그 영상을 짝지어 고른다 (아직 기록이 없는 짝)
+  -- 학생을 먼저 고르면 그 반에 영상이 없을 때 시험을 못 한다 (2026-10-07 운영에서 겪었다)
+  select p.student_id, p.id, v.id into v_student, v_profile, v_video
   from public.profiles p
-  where p.role = 'student' and p.student_id is not null
-  limit 1;
-
-  select v.id into v_video
-  from public.videos v join public.students s on s.id = v_student
-  where (v.class_id is null or v.class_id = s.class_id)
-    and not exists (select 1 from public.video_progress vp where vp.video_id = v.id and vp.student_id = v_student)
+  join public.students s on s.id = p.student_id
+  join public.videos v on (v.class_id is null or v.class_id = s.class_id)
+  where p.role = 'student'
+    and not exists (select 1 from public.video_progress vp
+                    where vp.video_id = v.id and vp.student_id = p.student_id)
   limit 1;
 
   select id into v_teacher from public.profiles where role in ('teacher', 'admin') limit 1;
