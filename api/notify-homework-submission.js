@@ -1,5 +1,5 @@
 // api/notify-homework-submission.js
-// 학생이 과제를 낼 때마다 그 과제를 낸 교사 폰으로 알림을 보낸다.
+// 학생이 과제를 낼 때마다 출제자·담당 교사·관리자 폰으로 알림을 보낸다.
 //
 // 제출은 homework_submissions_v2에 한 줄이 들어가는 것으로 끝난다.
 // 한 줄 = 한 사건이라 웹훅으로 잡는 편이 정확하다(Q&A 알림과 같은 방식).
@@ -43,11 +43,17 @@ export default async function handler(req, res) {
 
   const [setRes, studentRes, adminsRes] = await Promise.all([
     admin.from('homework_sets').select('id, teacher_id, title').eq('id', day.set_id).single(),
-    admin.from('students').select('id, name').eq('id', record.student_id).single(),
+    admin.from('students').select('id, name, class_id').eq('id', record.student_id).single(),
     admin.from('profiles').select('id').eq('role', 'admin'),
   ])
 
-  const targets = submissionTargets(setRes.data, adminsRes.data ?? [])
+  // 그 학생 반의 담당 교사 — 반이 없거나 못 찾으면 없는 채로 둔다(관리자에게는 간다)
+  const classId = studentRes.data?.class_id
+  const { data: klass } = classId
+    ? await admin.from('classes').select('teacher_id').eq('id', classId).maybeSingle()
+    : { data: null }
+
+  const targets = submissionTargets(setRes.data, adminsRes.data ?? [], klass?.teacher_id ?? null)
   if (targets.length === 0) {
     return res.status(200).json({ sent: 0, removed: 0, reason: '받을 사람 없음' })
   }

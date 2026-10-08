@@ -54,11 +54,21 @@ describe('알림 문구', () => {
 describe('submissionTargets', () => {
   const admins = [{ id: 'admin-1' }, { id: 'admin-2' }]
 
-  it('그 과제를 낸 교사에게 간다', () => {
-    expect(submissionTargets({ teacher_id: 'teacher-9' }, admins)).toEqual(['teacher-9'])
+  // 원장님은 관리자·민상용(담당 교사) 두 계정을 한 폰에서 쓴다. 출제자에게만 보내면
+  // 폰이 쥔 알림 주소가 다른 계정 것일 때 과제 알림만 끊긴다(2026-10-08).
+  // Q&A 알림과 같은 규칙으로 맞춘다.
+  it('출제자 + 그 학생 반 담당 교사 + 관리자 전원이 받는다', () => {
+    expect(submissionTargets({ teacher_id: 'teacher-9' }, admins, 'teacher-3'))
+      .toEqual(['teacher-9', 'teacher-3', 'admin-1', 'admin-2'])
   })
 
-  it('출제자를 모르면 관리자에게 넘긴다', () => {
-    expect(submissionTargets({ teacher_id: null }, admins)).toEqual(['admin-1', 'admin-2'])
+  it('같은 사람은 한 번만 — 두 번 보내면 폰에 알림이 두 개 뜬다', () => {
+    expect(submissionTargets({ teacher_id: 'admin-1' }, admins, 'admin-1'))
+      .toEqual(['admin-1', 'admin-2'])
+  })
+
+  it('출제자·담당 교사를 몰라도 관리자에게는 간다', () => {
+    expect(submissionTargets({ teacher_id: null }, admins, null)).toEqual(['admin-1', 'admin-2'])
+    expect(submissionTargets(null, admins)).toEqual(['admin-1', 'admin-2'])
   })
 })

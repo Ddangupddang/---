@@ -41,9 +41,17 @@ export function submissionNotification(studentRow, dayRow) {
   }
 }
 
-// 제출 알림을 받을 사람 = 그 과제를 낸 교사.
-// 출제자를 못 찾으면 관리자에게 넘긴다 — 알림을 버리면 아무도 모른 채 묻힌다.
-export function submissionTargets(setRow, admins = []) {
-  if (setRow?.teacher_id) return [setRow.teacher_id]
-  return admins.map((a) => a.id)
+// 제출 알림을 받을 사람 = 출제자 + 그 학생 반 담당 교사 + 관리자 전원 (Q&A 알림과 같은 규칙).
+//
+// 예전에는 출제자 한 명에게만 갔다. 원장님은 관리자·민상용 두 계정을 한 폰에서 쓰는데,
+// 웹 푸시 주소는 기기당 하나라 폰이 쥔 주소가 출제자(관리자) 계정 것이 아니면
+// 과제 제출 알림만 끊겼다 — Q&A는 담당 교사에게도 가서 계속 왔다(2026-10-08).
+// 출제자·담당 교사를 몰라도 관리자에게는 간다. 알림을 버리면 아무도 모른 채 묻힌다.
+export function submissionTargets(setRow, admins = [], classTeacherId = null) {
+  // 한 사람이 출제자·담당 교사·관리자를 겸하면 여러 번 담기므로 한 번만 남긴다
+  return [...new Set([
+    ...(setRow?.teacher_id ? [setRow.teacher_id] : []),
+    ...(classTeacherId ? [classTeacherId] : []),
+    ...admins.map((a) => a.id),
+  ])]
 }
