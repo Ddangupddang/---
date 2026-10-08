@@ -2,6 +2,7 @@
 // Supabase에서 데이터를 불러와 앱 전체에 제공하는 컨텍스트
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from './AuthContext'
 import { QNA_DEFAULT_CATEGORY } from '../constants/qna'
 import { resizeQnaImage, qnaImagePath, qnaImageToken } from '../utils/qnaImage'
 import { subscriptionRow } from '../utils/pushSubscription'
@@ -258,10 +259,19 @@ export function DataProvider({ children }) {
       setDataLoading(false)
   }
 
-  // 앱을 열 때 한 번 불러온다. loadAll이 상태를 채우는 건 이 함수의 일이고,
-  // 새로고침 버튼도 같은 함수를 부른다 — 두 경로가 갈리면 한쪽만 고치게 된다.
+  // 로그인한 사람이 정해지거나 바뀔 때마다 불러온다. loadAll이 상태를 채우는 건
+  // 이 함수의 일이고, 새로고침 버튼도 같은 함수를 부른다 — 두 경로가 갈리면 한쪽만 고치게 된다.
+  //
+  // 예전에는 "앱을 열 때 한 번"만 불러왔다. 로그인 화면에서 앱이 열리면 그 순간은
+  // 로그인 전이라 DB가 테스트·과제를 0건 주고, 로그인한 뒤에도 다시 부르지 않아
+  // 빈 목록이 그대로 남았다. 로그인이 유지된 학생은 멀쩡하고, 새로 로그인한 학생만
+  // "테스트가 하나도 안 뜬다"(2026-10-08 이재빈 학생 — DB는 5건을 주고 있었다).
+  //
+  // AuthProvider는 세션 확인이 끝난 뒤에야 이 Provider를 그리므로, 로그인된 채로
+  // 앱을 열면 처음부터 id가 있어 한 번만 부른다. 로그인 전에는 부를 이유가 없다.
+  const userId = useAuth()?.user?.id ?? null
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-  useEffect(() => { loadAll() }, [])
+  useEffect(() => { if (userId) loadAll() }, [userId])
 
   // 화면에서 누르는 새로고침. 도는 동안 두 번 눌러도 한 번만 돈다.
   async function refreshAll() {
