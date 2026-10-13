@@ -4,6 +4,7 @@ import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { checkAcademyWifi, wifiFailureHint, wifiFailureCause } from '../utils/checkWifi'
+import { isDemoWifi, DEMO_STEPS, DEMO_STEP_MS } from '../utils/demoWifi'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import PageTitle from '../components/ui/PageTitle'
@@ -243,6 +244,9 @@ function StudentAttendance({ user, records, upsertAttendance, logWifiCheck }) {
   const [checkResult, setCheckResult] = useState(null) // null | 'success' | 'fail' | 'already'
   // 실패했을 때 감지된 공인 IP. 원인을 짚는 유일한 단서다.
   const [failedIp, setFailedIp] = useState(null)
+  // 졸업전시회 시연 모드 — 대조 과정을 단계별로 보여준다(utils/demoWifi.js)
+  const demo = isDemoWifi()
+  const [demoStep, setDemoStep] = useState(-1)   // 진행 중인 단계. -1이면 시작 전
 
   // 오늘 수업 출석 여부
   const todayRecord = records.find(
@@ -257,6 +261,19 @@ function StudentAttendance({ user, records, upsertAttendance, logWifiCheck }) {
     }
     setChecking(true)
     setCheckResult(null)
+    if (demo) {
+      // 시연: 서버 대조 없이 단계만 보여주고 기록한다. WiFi 기록(logWifiCheck)은
+      // 진짜 원인 조사용이라 남기지 않는다.
+      for (let i = 0; i < DEMO_STEPS.length; i++) {
+        setDemoStep(i)
+        if (i === DEMO_STEPS.length - 1) await upsertAttendance(user.studentId, today, 'present', '수업')
+        await new Promise((r) => setTimeout(r, DEMO_STEP_MS))
+      }
+      setDemoStep(DEMO_STEPS.length)
+      setCheckResult('success')
+      setChecking(false)
+      return
+    }
     const { ok, clientIp } = await checkAcademyWifi()
     // 성공이든 실패든 남긴다. 성공한 주소가 있어야 "이 지점은 보통 이 주소"라는
     // 기준이 생겨서 실패한 주소와 견줄 수 있다.
@@ -298,8 +315,23 @@ function StudentAttendance({ user, records, upsertAttendance, logWifiCheck }) {
         >
           {checking ? '확인 중...' : alreadyChecked ? '출석 완료 ✓' : '출석 체크'}
         </button>
+        {demo && demoStep >= 0 && (
+          <ol className="w-full flex flex-col gap-1.5 text-sm">
+            {DEMO_STEPS.map((label, i) => (
+              <li key={label} className={`flex items-center gap-2 ${i <= demoStep ? 'text-ink' : 'text-ink-faint'}`}>
+                <span className="w-5 shrink-0 text-center">{i < demoStep ? '✓' : i === demoStep ? '…' : `${i + 1}`}</span>
+                <span className="min-w-0">{label}</span>
+              </li>
+            ))}
+          </ol>
+        )}
         {checkResult === 'success' && (
           <p className="text-sm text-navy font-medium">출석이 기록됐습니다!</p>
+        )}
+        {demo && checkResult === 'success' && (
+          <p className="text-xs text-ink-mute text-center">
+            시연 모드 — 실제 학원에서는 폰의 공인 IP가 학원 WiFi 주소와 맞을 때만 기록됩니다.
+          </p>
         )}
         {checkResult === 'fail' && (
           <div className="text-sm">

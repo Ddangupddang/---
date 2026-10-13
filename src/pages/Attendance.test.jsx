@@ -15,12 +15,18 @@ vi.mock('../utils/checkWifi', async (orig) => ({
 }))
 
 const state = {}
+vi.mock('../utils/demoWifi', async (orig) => ({
+  ...(await orig()),
+  isDemoWifi: () => state.demo,
+  DEMO_STEP_MS: 0,
+}))
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: state.user }) }))
 vi.mock('../context/DataContext', () => ({ useData: () => state.data }))
 vi.mock('../components/Layout', () => ({ default: ({ children }) => <div>{children}</div> }))
 
 beforeEach(() => {
   checkAcademyWifi.mockReset()
+  state.demo = false
   state.user = { id: 's1', role: 'student', studentId: 7 }
   state.data = {
     attendance: [],
@@ -90,5 +96,38 @@ describe('실패 안내', () => {
     render(<Attendance />)
     press()
     await waitFor(() => expect(screen.getByText('104.28.102.59')).toBeInTheDocument())
+  })
+})
+
+// 졸업전시회 시연장은 학원이 아니고 서버 함수도 돌지 않는다.
+// 시연 모드에서는 대조 과정을 단계별로 보여주고 출석을 기록한다.
+describe('시연 모드', () => {
+  beforeEach(() => { state.demo = true })
+
+  it('서버에 묻지 않고 단계를 보여준 뒤 출석을 기록한다', async () => {
+    render(<Attendance />)
+    press()
+    await waitFor(() => expect(screen.getByText('출석이 기록됐습니다!')).toBeInTheDocument())
+    expect(checkAcademyWifi).not.toHaveBeenCalled()
+    expect(state.data.upsertAttendance).toHaveBeenCalledWith(7, expect.any(String), 'present', '수업')
+    expect(screen.getByText('학원 WiFi 주소와 대조')).toBeInTheDocument()
+    expect(screen.getByText(/시연 모드/)).toBeInTheDocument()
+  })
+
+  it('WiFi 조사 기록은 남기지 않는다 — 진짜 원인 조사용이다', async () => {
+    render(<Attendance />)
+    press()
+    await waitFor(() => expect(screen.getByText('출석이 기록됐습니다!')).toBeInTheDocument())
+    expect(state.data.logWifiCheck).not.toHaveBeenCalled()
+  })
+
+  it('시연 모드가 아니면 단계 목록도 안내도 없다', async () => {
+    state.demo = false
+    checkAcademyWifi.mockResolvedValue({ ok: true, clientIp: '119.64.94.220' })
+    render(<Attendance />)
+    press()
+    await waitFor(() => expect(screen.getByText('출석이 기록됐습니다!')).toBeInTheDocument())
+    expect(screen.queryByText('학원 WiFi 주소와 대조')).not.toBeInTheDocument()
+    expect(screen.queryByText(/시연 모드/)).not.toBeInTheDocument()
   })
 })
