@@ -39,6 +39,13 @@ export function toHomeworkCheck(r) {
   return {
     id: r.id, dayId: r.day_id, studentId: r.student_id,
     answers: r.answers ?? [], checkedAt: r.checked_at,
+    // DB 가 확인 순간에 채점해 적은 결과(09_read_scope.sql). 학생 폰에는 정답이 없어서
+    // 화면이 직접 채점할 수 없다. 그 SQL 적용 전 DB 의 행에는 없다 → null.
+    result: r.total == null ? null : {
+      correctCount: r.correct_count ?? 0,
+      total: r.total,
+      wrongNumbers: r.wrong_numbers ?? [],
+    },
   }
 }
 

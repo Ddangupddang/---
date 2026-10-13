@@ -42,6 +42,10 @@ export default function StudentHomeworkView({ category }) {
   const [checking, setChecking] = useState(false)
 
   const me = students.find((s) => s.id === user.studentId)
+
+  // 확인 결과는 DB 가 채점해 기록에 적어 둔 것을 쓴다 — 학생 폰에는 제출 전 정답이 없다.
+  // DB 가 아직 채점하지 않는 옛 환경(09_read_scope.sql 적용 전)에서만 화면이 직접 채점한다.
+  const resultOfCheck = (check, qs) => check.result ?? checkSummary(qs, check.answers ?? [])
   const today = todayKST()
   const thisWeek = mondayOf(today)
 
@@ -67,7 +71,7 @@ export default function StudentHomeworkView({ category }) {
     if (!check) return   // 확인 기록이 없으면 평소대로 빈 화면에서 시작한다
     const saved = check.answers ?? []
     setAnswers(Object.fromEntries(saved.map((a) => [a.number, a.answer])))
-    setCheckResult(checkSummary(questionsOf(openDayId), saved))
+    setCheckResult(resultOfCheck(check, questionsOf(openDayId)))
     // 요일을 열 때 딱 한 번만 되살린다. 확인 기록·문항 목록까지 의존성에 넣으면
     // 자료를 새로 불러올 때마다 학생이 고치던 답을 저장본으로 덮어쓴다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,7 +172,7 @@ export default function StudentHomeworkView({ category }) {
       // 지금 입력된 payload가 아니라 DB가 돌려준 saved.answers로 채점한다.
       // 이미 확인한 요일이면 서버가 그때 저장된 답을 돌려주는데, 화면 입력값으로
       // 다시 채점해버리면 답을 바꿔가며 몇 번이든 눌러 정답표를 알아낼 수 있다.
-      setCheckResult(checkSummary(qs, saved.answers ?? []))
+      setCheckResult(resultOfCheck(saved, qs))
     }
 
     async function handleSubmit() {

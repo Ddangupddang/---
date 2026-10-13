@@ -49,7 +49,15 @@ describe('toHomeworkCheck', () => {
       id: 5, dayId: 10, studentId: 7,
       answers: [{ number: 1, answer: '①' }],
       checkedAt: '2026-09-11T01:00:00Z',
+      result: null,
     })
+  })
+
+  it('DB 가 채점해 적은 결과를 함께 옮긴다', () => {
+    expect(toHomeworkCheck({
+      id: 5, day_id: 10, student_id: 7, answers: [],
+      correct_count: 3, total: 5, wrong_numbers: [2, 4],
+    }).result).toEqual({ correctCount: 3, total: 5, wrongNumbers: [2, 4] })
   })
 
   it('answers가 비어 있으면 빈 배열로 본다', () => {

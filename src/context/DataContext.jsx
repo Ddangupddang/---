@@ -14,6 +14,27 @@ import { todayKST } from '../utils/datetime'
 
 const DataContext = createContext(null)
 
+// 과제 문항은 원본 표가 아니라 창구(뷰)에서 읽는다.
+// homework_questions 에는 정답이 들어 있어서, 원본을 그대로 받으면 학생 브라우저로
+// 정답표가 내려간다. homework_questions_visible 은 교직원과 "그 요일을 제출한 학생"에게만
+// 정답·해설을 주고, 나머지에게는 번호만 준다(졸업전시회 seed/09_read_scope.sql).
+//
+// 뷰가 아직 없는 DB(SQL 적용 전)에서는 원본 표로 읽는다 — 앱을 먼저 배포해도 안 깨진다.
+const MISSING_RELATION = ['PGRST205', '42P01']
+async function fetchHomeworkQuestions(dayId = null) {
+  const query = (from) => () => {
+    const q = supabase.from(from).select('*')
+    return (dayId == null ? q : q.eq('day_id', dayId)).order('id')
+  }
+  const res = await fetchAllRows(query('homework_questions_visible'))
+  if (!MISSING_RELATION.includes(res.error?.code)) return res
+  return fetchAllRows(query('homework_questions'))
+}
+
+// 학생은 읽을 수 없는(그리고 화면에서 쓰지도 않는) 표는 아예 묻지 않는다.
+// DB 가 0건을 주더라도, 묻지 않으면 "학생이 읽는 것"이 코드에 그대로 드러난다.
+const skipped = () => Promise.resolve({ data: [], error: null })
+
 // Supabase snake_case → 앱 camelCase 변환
 function toAttendance(a) {
   return { id: a.id, studentId: a.student_id, date: a.date, status: a.status, type: a.type ?? '수업' }
@@ -194,6 +215,8 @@ export function DataProvider({ children }) {
   // 그래서 앱 안에 다시 불러올 수단이 있어야 한다 — 없으면 앱을 완전히
   // 종료했다 켜는 것 말고는 방법이 없다.
   async function loadAll() {
+      // 교직원 화면에서만 쓰는 표 — 진도 리포트, 주간 리포트 메모, 학생 계정 목록
+      const staffOnly = (load) => (isStaff ? load() : skipped())
       // 모든 질의가 id로 끝나는 이유:
       // 1,000행이 넘으면 여러 쪽에 나눠 받는데(fetchAll), 정렬 기준이 같은 행이
       // 여럿이면 쪽 경계에서 순서가 흔들려 어떤 행은 두 번 오고 어떤 행은 빠진다.
@@ -209,7 +232,7 @@ export function DataProvider({ children }) {
           fetchAllRows(() => supabase.from('qna_messages').select('*').order('created_at').order('id')),
           fetchAllRows(() => supabase.from('qna_reads').select('*').order('qna_id')),
           fetchAllRows(() => supabase.from('notices').select('*').order('created_at', { ascending: false }).order('id')),
-          fetchAllRows(() => supabase.from('reports').select('*').order('date', { ascending: false }).order('id')),
+          staffOnly(() => fetchAllRows(() => supabase.from('reports').select('*').order('date', { ascending: false }).order('id'))),
           fetchAllRows(() => supabase.from('profiles').select('id, name, role').in('role', ['admin', 'teacher']).order('id')),
           fetchAllRows(() => supabase.from('videos').select('*').order('created_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('video_comments').select('*').order('created_at').order('id')),
@@ -222,12 +245,12 @@ export function DataProvider({ children }) {
           fetchAllRows(() => supabase.from('submissions').select('*').order('submitted_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('homework_sets').select('*').order('week_start', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('homework_days').select('*').order('id')),
-          fetchAllRows(() => supabase.from('homework_questions').select('*').order('id')),
+          fetchHomeworkQuestions(),
           fetchAllRows(() => supabase.from('homework_submissions_v2').select('*').order('id')),
           fetchAllRows(() => supabase.from('homework_checks').select('*').order('id')),
           fetchAllRows(() => supabase.from('homework_reopens').select('*').order('id')),
-          fetchAllRows(() => supabase.from('weekly_report_notes').select('*').order('id')),
-          fetchAllRows(() => supabase.from('profiles').select('id, student_id, username').eq('role', 'student').order('id')),
+          staffOnly(() => fetchAllRows(() => supabase.from('weekly_report_notes').select('*').order('id'))),
+          staffOnly(() => fetchAllRows(() => supabase.from('profiles').select('id, student_id, username').eq('role', 'student').order('id'))),
         ])
 
       // rowsOrNull이 null을 주면 못 읽은 것이라 화면을 건드리지 않는다.
@@ -269,7 +292,9 @@ export function DataProvider({ children }) {
   //
   // AuthProvider는 세션 확인이 끝난 뒤에야 이 Provider를 그리므로, 로그인된 채로
   // 앱을 열면 처음부터 id가 있어 한 번만 부른다. 로그인 전에는 부를 이유가 없다.
-  const userId = useAuth()?.user?.id ?? null
+  const authUser = useAuth()?.user
+  const userId = authUser?.id ?? null
+  const isStaff = authUser?.role === 'admin' || authUser?.role === 'teacher'
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { if (userId) loadAll() }, [userId])
 
@@ -1107,11 +1132,16 @@ export function DataProvider({ children }) {
       const { data: existing } = await supabase
         .from('homework_submissions_v2')
         .select('*').eq('day_id', dayId).eq('student_id', studentId).single()
-      return existing ? toHomeworkSubmission(existing) : null
+      if (!existing) return null
+      await refreshDayQuestions(dayId)
+      return toHomeworkSubmission(existing)
     }
     // 실패 시 null을 돌려줘서 화면이 "제출됨"으로 잘못 넘어가지 않게 한다
     if (error) { console.error('과제 제출 실패:', error); return null }
     const record = toHomeworkSubmission(data)
+    // 제출하는 순간 이 요일의 정답·해설이 열린다. 문항을 다시 받아야 결과 화면에
+    // 정답이 뜬다 — 안 받으면 새로고침 전까지 0점·정답 칸 비어 있음으로 보인다.
+    await refreshDayQuestions(dayId)
     setHomeworkSubmissions((prev) => {
       const exists = prev.some((s) => s.dayId === dayId && s.studentId === studentId)
       return exists
@@ -1119,6 +1149,16 @@ export function DataProvider({ children }) {
         : [...prev, record]
     })
     return record
+  }
+
+  // 한 요일의 문항만 다시 받는다. 실패하면 있던 것을 그대로 둔다.
+  async function refreshDayQuestions(dayId) {
+    const rows = rowsOrNull(await fetchHomeworkQuestions(dayId))
+    if (!rows) return
+    setHomeworkQuestions((prev) => [
+      ...prev.filter((q) => q.dayId !== dayId),
+      ...rows.map(toHomeworkQuestion),
+    ])
   }
 
   // 기한이 지난 요일을 이 학생에게 열어 준다.

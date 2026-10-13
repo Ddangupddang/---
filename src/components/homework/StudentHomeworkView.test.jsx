@@ -422,6 +422,50 @@ describe('StudentHomeworkView (제출 전 확인)', () => {
   })
 })
 
+// ── 정답이 가려진 학생 폰 ─────────────────────────────────────
+// 학생은 제출 전에 정답이 null 인 문항을 받는다(homework_questions_visible).
+// 화면이 직접 채점하면 전부 오답이 된다 — 테스트 0점 사고와 같은 구조.
+// 확인 결과는 DB 가 채점해 기록에 적어 준 것을 그대로 보여줘야 한다.
+describe('StudentHomeworkView (정답 없는 폰)', () => {
+  beforeEach(() => {
+    state.data.homeworkQuestions = state.data.homeworkQuestions.map((q) => ({ ...q, answer: null }))
+  })
+
+  it('확인하기는 DB 가 매긴 결과를 보여준다', async () => {
+    const user = userEvent.setup()
+    state.data.addHomeworkCheck = vi.fn().mockImplementation(({ dayId, studentId, answers }) =>
+      Promise.resolve({
+        id: 800, dayId, studentId, answers, checkedAt: '2026-09-11T01:00:00Z',
+        result: { correctCount: 1, total: 2, wrongNumbers: [2] },
+      })
+    )
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+    await user.click(screen.getByTestId('cell-1-①'))
+    await user.click(screen.getByTestId('cell-2-⑤'))
+    await user.click(screen.getByRole('button', { name: '확인하기' }))
+
+    await waitFor(() => expect(screen.getByTestId('check-score')).toHaveTextContent('1'))
+    expect(screen.getByTestId('cell-1')).toHaveAttribute('data-wrong', 'false')
+    expect(screen.getByTestId('cell-2')).toHaveAttribute('data-wrong', 'true')
+  })
+
+  it('확인한 요일을 다시 열어도 DB 결과로 되살린다', async () => {
+    const user = userEvent.setup()
+    state.data.homeworkChecks = [{
+      id: 800, dayId: 10, studentId: 7, checkedAt: '2026-09-11T01:00:00Z',
+      answers: [{ number: 1, answer: '①' }, { number: 2, answer: '⑤' }],
+      result: { correctCount: 1, total: 2, wrongNumbers: [2] },
+    }]
+    render(<StudentHomeworkView category="naesin" />)
+    await user.click(screen.getByText('월요일 과제'))
+
+    expect(screen.getByTestId('check-score')).toHaveTextContent('1')
+    expect(screen.getByTestId('cell-1')).toHaveAttribute('data-wrong', 'false')
+    expect(screen.getByTestId('cell-2')).toHaveAttribute('data-wrong', 'true')
+  })
+})
+
 // ── 확인한 요일을 다시 열었을 때 ─────────────────────────────
 // 확인 기록은 DB에 남는데 화면 상태는 요일을 닫으면 사라진다. 되살리지 않으면
 // 뒤로 한 번 잘못 눌렀을 뿐인데 확인은 이미 써버렸고 답도 전부 날아간 상태가 된다.
