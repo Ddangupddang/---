@@ -14,22 +14,36 @@ import { todayKST } from '../utils/datetime'
 
 const DataContext = createContext(null)
 
-// 과제 문항은 원본 표가 아니라 창구(뷰)에서 읽는다.
-// homework_questions 에는 정답이 들어 있어서, 원본을 그대로 받으면 학생 브라우저로
-// 정답표가 내려간다. homework_questions_visible 은 교직원과 "그 요일을 제출한 학생"에게만
-// 정답·해설을 주고, 나머지에게는 번호만 준다(졸업전시회 seed/09_read_scope.sql).
+// 과제 문항·요일은 원본 표가 아니라 창구(뷰)에서 읽는다.
+// homework_questions 에는 정답이, homework_days 에는 요일 해설 링크가 들어 있어서
+// 원본을 그대로 받으면 학생 브라우저로 정답·해설이 내려간다. 창구는 교직원과
+// "그 요일을 제출한 학생"에게만 정답·해설을 준다(졸업전시회 seed/09·12_*.sql).
 //
 // 뷰가 아직 없는 DB(SQL 적용 전)에서는 원본 표로 읽는다 — 앱을 먼저 배포해도 안 깨진다.
 const MISSING_RELATION = ['PGRST205', '42P01']
-async function fetchHomeworkQuestions(dayId = null) {
+async function fetchVisible(view, table, filterColumn = null, filterValue = null) {
   const query = (from) => () => {
     const q = supabase.from(from).select('*')
-    return (dayId == null ? q : q.eq('day_id', dayId)).order('id')
+    return (filterColumn == null ? q : q.eq(filterColumn, filterValue)).order('id')
   }
-  const res = await fetchAllRows(query('homework_questions_visible'))
+  const res = await fetchAllRows(query(view))
   if (!MISSING_RELATION.includes(res.error?.code)) return res
-  return fetchAllRows(query('homework_questions'))
+  return fetchAllRows(query(table))
 }
+const fetchHomeworkQuestions = (dayId = null) =>
+  fetchVisible('homework_questions_visible', 'homework_questions', dayId == null ? null : 'day_id', dayId)
+const fetchHomeworkDays = (dayId = null) =>
+  fetchVisible('homework_days_visible', 'homework_days', dayId == null ? null : 'id', dayId)
+
+// 요일을 저장한 뒤 돌려받는 칸. 해설 링크 두 칸은 원본 표에서 읽을 수 없게 막았다
+// (교사도 원본에서는 못 읽고 창구로 읽는다). 그래서 저장 뒤에는 이 칸만 돌려받고
+// 해설 링크는 방금 보낸 값을 그대로 붙인다.
+const DAY_COLUMNS = 'id, set_id, weekday, date, question_count'
+const savedDay = (row, fields) => toHomeworkDay({
+  ...row,
+  day_solution_video_url: fields.day_solution_video_url,
+  day_solution_file_url:  fields.day_solution_file_url,
+})
 
 // 학생은 읽을 수 없는(그리고 화면에서 쓰지도 않는) 표는 아예 묻지 않는다.
 // DB 가 0건을 주더라도, 묻지 않으면 "학생이 읽는 것"이 코드에 그대로 드러난다.
@@ -244,7 +258,7 @@ export function DataProvider({ children }) {
           fetchAllRows(() => supabase.from('tests_visible').select('*').order('created_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('submissions').select('*').order('submitted_at', { ascending: false }).order('id')),
           fetchAllRows(() => supabase.from('homework_sets').select('*').order('week_start', { ascending: false }).order('id')),
-          fetchAllRows(() => supabase.from('homework_days').select('*').order('id')),
+          fetchHomeworkDays(),
           fetchHomeworkQuestions(),
           fetchAllRows(() => supabase.from('homework_submissions_v2').select('*').order('id')),
           fetchAllRows(() => supabase.from('homework_checks').select('*').order('id')),
@@ -951,21 +965,22 @@ export function DataProvider({ children }) {
     const newDays = []
     const newQuestions = []
     for (const day of payload.days) {
+      const dayFields = {
+        set_id:  setRow.id,
+        weekday: day.weekday,
+        date:    dateForWeekday(payload.weekStart, day.weekday),
+        question_count: day.questionCount,
+        day_solution_video_url: day.daySolutionVideoUrl || null,
+        day_solution_file_url:  day.daySolutionFileUrl || null,
+      }
       const { data: dayRow, error: dayErr } = await supabase
         .from('homework_days')
-        .insert([{
-          set_id:  setRow.id,
-          weekday: day.weekday,
-          date:    dateForWeekday(payload.weekStart, day.weekday),
-          question_count: day.questionCount,
-          day_solution_video_url: day.daySolutionVideoUrl || null,
-          day_solution_file_url:  day.daySolutionFileUrl || null,
-        }])
-        .select().single()
+        .insert([dayFields])
+        .select(DAY_COLUMNS).single()
       // 예전에는 여기서 continue였다. 요일이나 문항이 하나도 안 들어가도
       // 저장 성공으로 처리돼, 교사는 정상인 줄 알고 넘어갔다.
       if (dayErr) { console.error('과제 요일 생성 실패:', dayErr); return null }
-      newDays.push(toHomeworkDay(dayRow))
+      newDays.push(savedDay(dayRow, dayFields))
 
       if (day.questions?.length) {
         const rows = day.questions.map((q) => ({
@@ -1029,10 +1044,10 @@ export function DataProvider({ children }) {
         day_solution_file_url:  day.daySolutionFileUrl || null,
       }
       const { data: dayRow, error: dayErr } = prev
-        ? await supabase.from('homework_days').update(fields).eq('id', prev.id).select().single()
-        : await supabase.from('homework_days').insert([fields]).select().single()
+        ? await supabase.from('homework_days').update(fields).eq('id', prev.id).select(DAY_COLUMNS).single()
+        : await supabase.from('homework_days').insert([fields]).select(DAY_COLUMNS).single()
       if (dayErr) { console.error('과제 요일 저장 실패:', dayErr); return null }
-      nextDays.push(toHomeworkDay(dayRow))
+      nextDays.push(savedDay(dayRow, fields))
 
       const { error: delErr } = await supabase
         .from('homework_questions').delete().eq('day_id', dayRow.id)
@@ -1151,14 +1166,21 @@ export function DataProvider({ children }) {
     return record
   }
 
-  // 한 요일의 문항만 다시 받는다. 실패하면 있던 것을 그대로 둔다.
+  // 한 요일의 문항과 요일 해설을 다시 받는다. 실패하면 있던 것을 그대로 둔다.
   async function refreshDayQuestions(dayId) {
-    const rows = rowsOrNull(await fetchHomeworkQuestions(dayId))
-    if (!rows) return
-    setHomeworkQuestions((prev) => [
-      ...prev.filter((q) => q.dayId !== dayId),
-      ...rows.map(toHomeworkQuestion),
-    ])
+    const [qRes, dRes] = await Promise.all([fetchHomeworkQuestions(dayId), fetchHomeworkDays(dayId)])
+    const rows = rowsOrNull(qRes)
+    if (rows) {
+      setHomeworkQuestions((prev) => [
+        ...prev.filter((q) => q.dayId !== dayId),
+        ...rows.map(toHomeworkQuestion),
+      ])
+    }
+    const dayRows = rowsOrNull(dRes)
+    if (dayRows?.length) {
+      const fresh = toHomeworkDay(dayRows[0])
+      setHomeworkDays((prev) => prev.map((d) => (d.id === dayId ? fresh : d)))
+    }
   }
 
   // 기한이 지난 요일을 이 학생에게 열어 준다.
