@@ -8,6 +8,7 @@ import PageTitle from '../components/ui/PageTitle'
 import NoAssignedClass from '../components/NoAssignedClass'
 import { visibleClasses, visibleStudents, hasNoAssignedClass } from '../utils/classAccess'
 import { todayKST } from '../utils/datetime'
+import { dailyAverages, partStrengths } from '../utils/gradeStats'
 // ────────── SVG 꺾은선 그래프 ──────────
 // data: [{ label: 'MM-DD', value: 점수, max: 만점 }]
 // color는 SVG 속성이라 클래스가 아닌 CSS 변수(var(--color-*))로 토큰을 참조한다
@@ -153,26 +154,11 @@ function Grades() {
       .filter((g) => g.studentId === user.studentId && g.type === activeType)
       .sort((a, b) => a.date.localeCompare(b.date)) // 시간순 정렬 (차트용)
 
-    // 그래프용 데이터 — 날짜 중복 시 최신값 사용
-    const chartData = myGrades.map((g) => ({
-      label: g.date.slice(5), // MM-DD
-      value: g.score,
-      max:   g.total,
-    }))
+    // 그래프용 데이터 — 점 하나가 하루(그날 본 시험들의 평균)
+    const chartData = dailyAverages(myGrades)
 
-    // 강점/약점 파트 분석
-    const partMap = {}
-    myGrades.forEach((g) => {
-      if (!g.part) return
-      if (!partMap[g.part]) partMap[g.part] = { sum: 0, cnt: 0 }
-      partMap[g.part].sum += (g.score / g.total) * 100
-      partMap[g.part].cnt += 1
-    })
-    const partAvgs = Object.entries(partMap)
-      .map(([part, v]) => ({ part, avg: Math.round(v.sum / v.cnt) }))
-      .sort((a, b) => b.avg - a.avg)
-    const strong = partAvgs.slice(0, 2)
-    const weak   = partAvgs.slice(-2).reverse()
+    // 강점/보완 파트 — 내 전체 평균보다 높은 파트 / 낮은 파트
+    const { strong, weak, parts: partAvgs } = partStrengths(myGrades)
 
     return (
       <Layout>
@@ -270,19 +256,7 @@ function Grades() {
   const classGrades = displayGrades.filter((g) =>
     classStudents.some((s) => s.id === g.studentId)
   )
-  const dateMap = {}
-  classGrades.forEach((g) => {
-    if (!dateMap[g.date]) dateMap[g.date] = { sum: 0, cnt: 0, total: g.total }
-    dateMap[g.date].sum += (g.score / g.total) * 100
-    dateMap[g.date].cnt += 1
-  })
-  const avgChartData = Object.entries(dateMap)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, v]) => ({
-      label: date.slice(5),
-      value: Math.round(v.sum / v.cnt),
-      max:   100,
-    }))
+  const avgChartData = dailyAverages(classGrades)
 
   function getStudentLatestGrade(studentId) {
     return displayGrades
