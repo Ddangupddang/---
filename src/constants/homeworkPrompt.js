@@ -2,6 +2,7 @@
 // 시험지 PDF → 정답표 뽑기·오류 검토를 AI(Claude·ChatGPT)에게 시키는 프롬프트.
 // 과제 만들기 화면의 "AI 프롬프트 복사" 버튼이 이 글을 그대로 복사한다.
 // 정답표 형식("번호. 정답", 복수 정답은 +)은 utils/answerPaste.js가 읽는 모양과 맞춰야 한다.
+// Cowork 스킬(docs/cowork-skill/sumunjae-homework-answers/SKILL.md)도 같은 내용이다 — 함께 고친다.
 export const HOMEWORK_ANSWER_PROMPT = `첨부한 파일은 국어 시험지이고, 맨 뒤에 정답표가 있습니다. 모든 문항은 5지선다 객관식입니다.
 아래 두 가지를 해 주세요.
 
