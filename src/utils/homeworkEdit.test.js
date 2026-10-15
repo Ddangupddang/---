@@ -121,3 +121,14 @@ describe('homeworkEditImpact — 요일 삭제(되돌릴 수 없음)', () => {
     expect(r.destructive).toBe(true)
   })
 })
+
+describe('homeworkEditImpact — 시작 번호 변경', () => {
+  it('제출이 있는 요일의 시작 번호를 바꾸면 따로 알린다', () => {
+    const next = sameAsBase()
+    next[0].questions = [{ number: 8, answer: '①' }, { number: 9, answer: '②' }]
+    const r = homeworkEditImpact({ ...base(), nextDays: next })
+    expect(r.warnings).toEqual([
+      expect.objectContaining({ type: 'numbersShifted', weekday: 1, students: 2, from: 1, to: 8 }),
+    ])
+  })
+})

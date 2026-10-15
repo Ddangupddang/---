@@ -549,7 +549,9 @@ describe('TeacherHomeworkCreate (정답표 한 번에 넣기)', () => {
     await waitFor(() => expect(addHomeworkSet).toHaveBeenCalled())
     const days = addHomeworkSet.mock.calls[0][0].days
     expect(days.map((d) => [d.weekday, d.questionCount])).toEqual([[1, 2], [2, 2], [3, 1], [4, 1], [5, 1], [6, 1]])
-    expect(days[2].questions).toEqual([expect.objectContaining({ number: 1, answer: '④' })])
+    expect(days[2].questions).toEqual([expect.objectContaining({ number: 5, answer: '④' })])
+    // 화요일은 시험지 3·4번 그대로 나간다
+    expect(days[1].questions.map((q) => q.number)).toEqual([3, 4])
     expect(days[3].questions[0].answer).toBe('②④')
   })
 
@@ -578,5 +580,65 @@ describe('TeacherHomeworkCreate (정답표 한 번에 넣기)', () => {
     expect(screen.getByRole('spinbutton')).toHaveValue(1)
     expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-selected', 'true')
     confirm.mockRestore()
+  })
+})
+
+describe('TeacherHomeworkCreate (시작 번호)', () => {
+  it('시작 번호를 바꾸면 입력한 정답이 자리를 지킨 채 번호만 바뀌어 저장된다', async () => {
+    const user = userEvent.setup()
+    const addHomeworkSet = state.data.addHomeworkSet
+    render(<TeacherHomeworkCreate category="naesin" onDone={vi.fn()} />)
+    await user.type(screen.getByPlaceholderText(/세트 제목/), '10월 3주차')
+    await user.click(screen.getByRole('checkbox'))
+    await user.type(screen.getByRole('spinbutton'), '2')
+    await user.click(screen.getByTestId('cell-1-③'))
+    await user.click(screen.getByTestId('cell-2-①'))
+
+    const start = screen.getByLabelText('시작 번호')
+    await user.clear(start)
+    await user.type(start, '8')
+    expect(start).toHaveValue('8')
+    expect(screen.getByTestId('cell-8-③')).toHaveAttribute('data-selected', 'true')
+    expect(screen.getByTestId('cell-9-①')).toHaveAttribute('data-selected', 'true')
+
+    await user.click(screen.getByRole('button', { name: '주간 과제 저장' }))
+    await waitFor(() => expect(addHomeworkSet).toHaveBeenCalled())
+    expect(addHomeworkSet.mock.calls[0][0].days[0].questions.map((q) => [q.number, q.answer]))
+      .toEqual([[8, '③'], [9, '①']])
+  })
+
+  it('수정 화면은 저장된 문항 번호에서 시작 번호를 되살린다', () => {
+    state.data.homeworkDays = [
+      { id: 120, setId: 12, weekday: 2, date: WEEK, questionCount: 2, daySolutionVideoUrl: '', daySolutionFileUrl: '' },
+    ]
+    state.data.homeworkQuestions = [
+      { dayId: 120, number: 8, answer: '②' },
+      { dayId: 120, number: 9, answer: '④' },
+    ]
+    const set = { id: 12, category: 'naesin', classId: 7, target: null, weekStart: WEEK, title: '시험지 나눠 내기' }
+    render(<TeacherHomeworkCreate category="naesin" editSet={set} onDone={vi.fn()} />)
+    expect(screen.getByLabelText('시작 번호')).toHaveValue('8')
+    expect(screen.getByTestId('cell-9-④')).toHaveAttribute('data-selected', 'true')
+  })
+})
+
+describe('TeacherHomeworkCreate (AI 프롬프트 복사)', () => {
+  it('버튼을 누르면 프롬프트를 클립보드에 복사한다', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
+    render(<TeacherHomeworkCreate category="naesin" onDone={vi.fn()} />)
+    await user.click(screen.getByText(/정답표 한 번에 넣기/))
+    await user.click(screen.getByRole('button', { name: 'AI 프롬프트 복사' }))
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('[정답표]'))
+    expect(screen.getByText('복사했습니다')).toBeInTheDocument()
+  })
+
+  it('복사가 막히면 직접 복사할 수 있게 글을 펼쳐 보여준다', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'))
+    render(<TeacherHomeworkCreate category="naesin" onDone={vi.fn()} />)
+    await user.click(screen.getByText(/정답표 한 번에 넣기/))
+    await user.click(screen.getByRole('button', { name: 'AI 프롬프트 복사' }))
+    expect(screen.getByLabelText('AI 프롬프트').value).toContain('[검토]')
   })
 })

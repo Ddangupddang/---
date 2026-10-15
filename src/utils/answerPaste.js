@@ -77,8 +77,8 @@ export function splitEvenly(total, days = WEEKDAYS.length) {
   return Array.from({ length: days }, (_, i) => base + (i < extra ? 1 : 0))
 }
 
-// 정답 목록 → 요일별 { count, answers: {1: '③', …}, from, to }
-// 요일 안 번호는 1부터 다시 센다(지금 과제 구조). from/to는 시험지 원래 번호다.
+// 정답 목록 → 요일별 { count, answers: {8: '③', …}, from, to }
+// 번호는 시험지 번호 그대로다 — 화요일이 8번부터면 학생 화면에도 8번부터 보인다.
 export function distributeAnswers(answers) {
   const counts = splitEvenly(answers.length)
   const result = {}
@@ -86,7 +86,7 @@ export function distributeAnswers(answers) {
   WEEKDAYS.forEach((wd, i) => {
     const count = counts[i]
     const dayAnswers = {}
-    for (let k = 1; k <= count; k++) dayAnswers[k] = answers[offset + k - 1]
+    for (let k = 1; k <= count; k++) dayAnswers[offset + k] = answers[offset + k - 1]
     result[wd] = { count, answers: dayAnswers, from: offset + 1, to: offset + count }
     offset += count
   })

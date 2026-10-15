@@ -29,6 +29,19 @@ export function homeworkEditImpact({ days, questions, submissions, nextDays }) {
       continue
     }
 
+    // 시작 번호가 바뀌면 학생이 낸 답(번호로 저장됨)이 다른 문항에 맞춰진다.
+    // 정답이 몇 개 바뀌었다고 세면 무슨 일인지 모르므로 따로 알린다.
+    const dayQs = questions.filter((q) => q.dayId === day.id)
+    const prevStart = dayQs.length ? Math.min(...dayQs.map((q) => q.number)) : null
+    const nextStart = next.questions?.length ? Math.min(...next.questions.map((q) => q.number)) : null
+    if (prevStart != null && nextStart != null && prevStart !== nextStart) {
+      changed.push({
+        type: 'numbersShifted', weekday: day.weekday, students, from: prevStart, to: nextStart,
+        message: `${label}요일 시작 번호가 ${prevStart}번에서 ${nextStart}번으로 바뀌어, 이미 제출한 ${students}명의 답이 번호가 맞지 않아 다시 채점됩니다(대부분 오답이 됩니다).`,
+      })
+      continue
+    }
+
     // 문항 수가 바뀌면 만점 자체가 바뀌므로 정답 비교보다 먼저 알린다
     if (next.questionCount > day.questionCount) {
       changed.push({

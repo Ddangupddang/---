@@ -19,13 +19,21 @@ import { defaultCopyGroupKey, findConflictingSet, urlsSafeToDelete } from '../..
 import { mergePendingDays, firstPendingWeekday } from '../../utils/homeworkMerge'
 import { visibleClasses } from '../../utils/classAccess'
 import { parseAnswerList, distributeAnswers } from '../../utils/answerPaste'
+import { HOMEWORK_ANSWER_PROMPT } from '../../constants/homeworkPrompt'
 import {
   HW_CATEGORY, CATEGORY_LABELS, WEEKDAYS, WEEKDAY_LABELS,
 } from '../../constants/homework'
 import { todayKST } from '../../utils/datetime'
 
 // 요일 하나의 편집 상태 초기값
-const emptyDay = () => ({ enabled: false, count: 0, answers: {}, videoUrl: '', fileUrl: '', file: null })
+// start: 이 요일 첫 문항 번호. 시험지 한 장을 나눠 내면 화요일이 8번부터 시작하는 식이다.
+// answers는 실제 문항 번호를 키로 쓴다 ({8: '③', 9: '①', …}).
+const emptyDay = () => ({ enabled: false, start: 1, count: 0, answers: {}, videoUrl: '', fileUrl: '', file: null })
+
+// 요일의 문항 번호 목록 — start부터 count개
+// (예전 모양의 요일 상태 — "이어서 넣기"로 넘어온 것 등 — 에는 start가 없을 수 있어 1로 본다)
+const startOf = (dd) => dd.start ?? 1
+const dayNumbers = (dd) => Array.from({ length: dd.count }, (_, i) => startOf(dd) + i)
 
 // 선지를 다 끄면 값이 빈 문자열로 남는다 — 키가 있다고 입력된 것으로 세면 안 된다
 const answeredCount = (answers) => Object.values(answers).filter(Boolean).length
@@ -36,9 +44,12 @@ function daysFromSet(editSet, allDays, allQuestions) {
   if (!editSet) return state
   for (const day of allDays.filter((d) => d.setId === editSet.id)) {
     const answers = {}
-    for (const q of allQuestions.filter((q) => q.dayId === day.id)) answers[q.number] = q.answer
+    const qs = allQuestions.filter((q) => q.dayId === day.id)
+    for (const q of qs) answers[q.number] = q.answer
+    // 시작 번호는 따로 저장하지 않는다 — 문항 번호 중 가장 작은 것이다
+    const start = qs.length ? Math.min(...qs.map((q) => q.number)) : 1
     state[day.weekday] = {
-      enabled: true, count: day.questionCount, answers,
+      enabled: true, start, count: day.questionCount, answers,
       videoUrl: day.daySolutionVideoUrl ?? '', fileUrl: day.daySolutionFileUrl ?? '', file: null,
     }
   }
@@ -93,6 +104,8 @@ export default function TeacherHomeworkCreate({
 
   // 정답표 한 번에 넣기 — 붙여넣은 글과, 그걸 읽은 결과(입력할 때마다 다시 계산)
   const [pasteText, setPasteText] = useState('')
+  // AI 프롬프트 복사 결과 — 'done' | 'fail' | ''
+  const [promptCopied, setPromptCopied] = useState('')
   const pasted = parseAnswerList(pasteText)
   const pastedDays = pasted.answers.length > 0 ? distributeAnswers(pasted.answers) : null
 
@@ -102,8 +115,30 @@ export default function TeacherHomeworkCreate({
   function changeCount(val) {
     const n = Math.max(0, Math.min(300, Number(val) || 0))
     const next = {}
-    for (let i = 1; i <= n; i++) if (d.answers[i]) next[i] = d.answers[i]
+    for (const num of dayNumbers({ start: startOf(d), count: n })) if (d.answers[num]) next[num] = d.answers[num]
     setDay({ count: n, answers: next })
+  }
+
+  // 시작 번호를 바꾸면 입력한 정답은 자리를 지킨 채 번호만 바뀐다
+  // (1~7번에 넣던 정답이 8~14번이 된다 — 다시 찍지 않아도 된다)
+  // 입력칸을 비우는 중에도 1로 되돌아가면 "8"을 치려다 "18"이 된다 → 친 글자(startDraft)를 따로 들고 있는다
+  function changeStart(val) {
+    const draft = String(val).replace(/\D/g, '').slice(0, 3)
+    const start = Math.max(1, Number(draft) || startOf(d))
+    const next = {}
+    dayNumbers(d).forEach((num, i) => { if (d.answers[num]) next[start + i] = d.answers[num] })
+    setDay({ start, startDraft: draft, answers: next })
+  }
+
+  // 시험지를 AI에게 맡길 때 쓰는 프롬프트를 복사한다. 쌤이 따로 파일을 갖고 있지 않아도 된다.
+  // 복사가 막힌 브라우저(권한 거부 등)에서는 실패를 알려 아래 펼친 글을 직접 복사하게 한다.
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(HOMEWORK_ANSWER_PROMPT)
+      setPromptCopied('done')
+    } catch {
+      setPromptCopied('fail')
+    }
   }
 
   // 붙여넣은 정답을 월~토에 나눠 채운다. 해설 영상·파일은 요일에 그대로 둔다.
@@ -113,8 +148,8 @@ export default function TeacherHomeworkCreate({
     const filled = WEEKDAYS.some((wd) => days[wd].enabled && answeredCount(days[wd].answers) > 0)
     if (filled && !window.confirm('이미 입력한 문항 수와 정답을 지우고 붙여넣은 정답으로 바꿉니다. 계속할까요?')) return
     setDays((prev) => Object.fromEntries(WEEKDAYS.map((wd) => {
-      const { count, answers } = pastedDays[wd]
-      return [wd, { ...prev[wd], enabled: count > 0, count, answers }]
+      const { count, answers, from } = pastedDays[wd]
+      return [wd, { ...prev[wd], enabled: count > 0, start: count > 0 ? from : 1, count, answers }]
     })))
     setActiveWd(1)
     setPasteText('')
@@ -176,9 +211,9 @@ export default function TeacherHomeworkCreate({
       questionCount: dd.count,
       daySolutionVideoUrl: dd.videoUrl,
       daySolutionFileUrl: dd.fileUrl,
-      questions: Array.from({ length: dd.count }, (_, i) => ({
-        number: i + 1,
-        answer: dd.answers[i + 1],
+      questions: dayNumbers(dd).map((num) => ({
+        number: num,
+        answer: dd.answers[num],
         solutionVideoUrl: '',   // 문항별 해설은 후속 UI(열린 항목). MVP는 요일 해설 사용.
         solutionFileUrl: '',
       })),
@@ -284,6 +319,25 @@ export default function TeacherHomeworkCreate({
             시험지 정답을 순서대로 붙여넣으면 문항 수를 세서 월~토에 고르게 나눕니다.
             남는 문항은 월요일부터 하나씩 더 갑니다. 예) <span className="whitespace-nowrap">1. ③ 2. ① …</span> 또는 <span className="whitespace-nowrap">3 1 5 2 …</span> · 복수 정답은 2+4
           </p>
+          {/* 시험지 PDF를 AI에게 주고 정답표를 뽑게 하는 프롬프트 */}
+          <div className="border border-line rounded p-2 mb-2 bg-surface-alt">
+            <p className="text-xs text-ink-soft mb-2">
+              시험지 PDF를 Claude나 ChatGPT에 올리고 이 프롬프트를 붙여넣으면, 아래에 붙여넣을 정답표와
+              문제·정답 검토 결과가 나옵니다. 한글 파일은 먼저 PDF로 저장해 주세요.
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="ghost" onClick={copyPrompt} className="bg-surface">AI 프롬프트 복사</Button>
+              {promptCopied === 'done' && <span className="text-xs text-navy">복사했습니다</span>}
+            </div>
+            {promptCopied === 'fail' && (
+              <>
+                <p className="text-xs text-danger mt-2">복사가 막혀 있습니다. 아래 글을 길게 눌러 직접 복사해 주세요.</p>
+                <textarea readOnly value={HOMEWORK_ANSWER_PROMPT} rows={6} aria-label="AI 프롬프트"
+                  className="w-full border border-line rounded px-2 py-1 text-xs mt-1" />
+              </>
+            )}
+            <p className="text-xs text-ink-faint mt-2">AI가 &quot;정답이 다르다&quot;고 해도 정답을 자동으로 고치지 않습니다. 검토 목록은 직접 확인해 주세요.</p>
+          </div>
           <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)}
             rows={4} placeholder="정답표 붙여넣기"
             className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy" />
@@ -303,7 +357,7 @@ export default function TeacherHomeworkCreate({
                 })}
               </ul>
               <Button variant="primary" onClick={applyPasted} className="w-full">월~토에 나누어 채우기</Button>
-              <p className="text-xs text-ink-faint mt-1">요일마다 문항 번호는 1번부터 다시 셉니다.</p>
+              <p className="text-xs text-ink-faint mt-1">시험지 번호 그대로 나갑니다. 학생 화면에도 화요일은 8번부터 보입니다.</p>
             </div>
           )}
         </details>
@@ -336,15 +390,27 @@ export default function TeacherHomeworkCreate({
           </label>
           {d.enabled && (
             <>
-              <div className="flex items-center gap-2 mb-3">
-                <label className="text-sm text-ink-soft">문항 수</label>
-                <input type="number" min="0" max="300" value={d.count || ''} onChange={(e) => changeCount(e.target.value)}
-                  className="w-24 border border-line rounded px-2 py-1 text-sm" />
+              <div className="flex items-center gap-x-4 gap-y-2 mb-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-ink-soft">문항 수</label>
+                  <input type="number" min="0" max="300" value={d.count || ''} onChange={(e) => changeCount(e.target.value)}
+                    className="w-20 border border-line rounded px-2 py-1 text-sm" />
+                </div>
+                {/* 시험지 한 장을 나눠 낼 때 화요일은 8번부터 — 학생 화면에도 그 번호로 보인다 */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="hw-start" className="text-sm text-ink-soft">시작 번호</label>
+                  <input id="hw-start" type="text" inputMode="numeric"
+                    value={d.startDraft ?? startOf(d)}
+                    onChange={(e) => changeStart(e.target.value)}
+                    onBlur={() => setDay({ startDraft: undefined })}
+                    className="w-16 border border-line rounded px-2 py-1 text-sm" />
+                  {d.count > 1 && <span className="text-xs text-ink-faint whitespace-nowrap">{startOf(d)}~{startOf(d) + d.count - 1}번</span>}
+                </div>
               </div>
               {d.count > 0 && (
                 <div className="mb-3">
                   <p className="text-xs text-ink-faint mb-2">정답 입력 ({answeredCount(d.answers)}/{d.count})</p>
-                  <ChoiceGrid count={d.count} values={d.answers} mode="input"
+                  <ChoiceGrid numbers={dayNumbers(d)} values={d.answers} mode="input"
                     onChange={(number, choice) => setDay({ answers: { ...d.answers, [number]: choice } })} />
                 </div>
               )}

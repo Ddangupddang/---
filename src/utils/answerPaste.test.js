@@ -51,13 +51,13 @@ describe('parseAnswerList', () => {
 })
 
 describe('distributeAnswers', () => {
-  it('요일마다 1번부터 다시 세고, 시험지 원래 번호(from~to)를 함께 준다', () => {
+  it('시험지 번호를 그대로 키로 쓰고, 요일의 첫·끝 번호(from~to)를 함께 준다', () => {
     const answers = Array.from({ length: 8 }, (_, i) => ['①', '②', '③', '④', '⑤'][i % 5])
     const days = distributeAnswers(answers)
     // 8 → 2,2,1,1,1,1
     expect(days[1]).toEqual({ count: 2, answers: { 1: '①', 2: '②' }, from: 1, to: 2 })
-    expect(days[2]).toEqual({ count: 2, answers: { 1: '③', 2: '④' }, from: 3, to: 4 })
-    expect(days[3]).toEqual({ count: 1, answers: { 1: '⑤' }, from: 5, to: 5 })
-    expect(days[6]).toEqual({ count: 1, answers: { 1: '③' }, from: 8, to: 8 })
+    expect(days[2]).toEqual({ count: 2, answers: { 3: '③', 4: '④' }, from: 3, to: 4 })
+    expect(days[3]).toEqual({ count: 1, answers: { 5: '⑤' }, from: 5, to: 5 })
+    expect(days[6]).toEqual({ count: 1, answers: { 8: '③' }, from: 8, to: 8 })
   })
 })
