@@ -18,6 +18,7 @@ import { homeworkGroups, setInGroup } from '../../utils/homeworkGroup'
 import { defaultCopyGroupKey, findConflictingSet, urlsSafeToDelete } from '../../utils/homeworkCopy'
 import { mergePendingDays, firstPendingWeekday } from '../../utils/homeworkMerge'
 import { visibleClasses } from '../../utils/classAccess'
+import { parseAnswerList, distributeAnswers } from '../../utils/answerPaste'
 import {
   HW_CATEGORY, CATEGORY_LABELS, WEEKDAYS, WEEKDAY_LABELS,
 } from '../../constants/homework'
@@ -90,6 +91,11 @@ export default function TeacherHomeworkCreate({
   // 파일 선택창을 비우기 위한 값 — 삭제할 때마다 올려서 input을 새로 그린다
   const [fileInputKey, setFileInputKey] = useState(0)
 
+  // 정답표 한 번에 넣기 — 붙여넣은 글과, 그걸 읽은 결과(입력할 때마다 다시 계산)
+  const [pasteText, setPasteText] = useState('')
+  const pasted = parseAnswerList(pasteText)
+  const pastedDays = pasted.answers.length > 0 ? distributeAnswers(pasted.answers) : null
+
   const d = days[activeWd]
   const setDay = (patch) => setDays((prev) => ({ ...prev, [activeWd]: { ...prev[activeWd], ...patch } }))
 
@@ -98,6 +104,20 @@ export default function TeacherHomeworkCreate({
     const next = {}
     for (let i = 1; i <= n; i++) if (d.answers[i]) next[i] = d.answers[i]
     setDay({ count: n, answers: next })
+  }
+
+  // 붙여넣은 정답을 월~토에 나눠 채운다. 해설 영상·파일은 요일에 그대로 둔다.
+  function applyPasted() {
+    if (!pastedDays) return
+    // 이미 정답을 넣어 둔 요일이 있으면 덮어쓰기 전에 묻는다 — 되돌리기가 없다
+    const filled = WEEKDAYS.some((wd) => days[wd].enabled && answeredCount(days[wd].answers) > 0)
+    if (filled && !window.confirm('이미 입력한 문항 수와 정답을 지우고 붙여넣은 정답으로 바꿉니다. 계속할까요?')) return
+    setDays((prev) => Object.fromEntries(WEEKDAYS.map((wd) => {
+      const { count, answers } = pastedDays[wd]
+      return [wd, { ...prev[wd], enabled: count > 0, count, answers }]
+    })))
+    setActiveWd(1)
+    setPasteText('')
   }
 
   async function handleFile(e) {
@@ -256,6 +276,37 @@ export default function TeacherHomeworkCreate({
               className="w-full border border-line rounded px-3 py-2 text-sm" />
           </div>
         </div>
+
+        {/* 정답표 한 번에 넣기 — 시험지 한 장을 월~토로 나눠 낼 때 */}
+        <details className="border border-line rounded bg-surface p-3" data-testid="answer-paste">
+          <summary className="text-sm font-medium text-ink-soft cursor-pointer">정답표 한 번에 넣기 (월~토 자동 분배)</summary>
+          <p className="text-xs text-ink-faint mt-2 mb-2">
+            시험지 정답을 순서대로 붙여넣으면 문항 수를 세서 월~토에 고르게 나눕니다.
+            남는 문항은 월요일부터 하나씩 더 갑니다. 예) <span className="whitespace-nowrap">1. ③ 2. ① …</span> 또는 <span className="whitespace-nowrap">3 1 5 2 …</span> · 복수 정답은 2+4
+          </p>
+          <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)}
+            rows={4} placeholder="정답표 붙여넣기"
+            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy" />
+          {pasted.error && <p className="text-xs text-danger mt-1">{pasted.error}</p>}
+          {pastedDays && (
+            <div className="mt-2">
+              <p className="text-sm text-ink-soft mb-1">총 {pasted.answers.length}문항</p>
+              <ul className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-xs text-ink-soft mb-2" data-testid="paste-preview">
+                {WEEKDAYS.map((wd) => {
+                  const pd = pastedDays[wd]
+                  return (
+                    <li key={wd} className="border border-line rounded px-2 py-1 whitespace-nowrap">
+                      <span className="font-medium">{WEEKDAY_LABELS[wd]}</span>{' '}
+                      {pd.count > 0 ? `${pd.count}문항 · ${pd.from}~${pd.to}번` : '없음'}
+                    </li>
+                  )
+                })}
+              </ul>
+              <Button variant="primary" onClick={applyPasted} className="w-full">월~토에 나누어 채우기</Button>
+              <p className="text-xs text-ink-faint mt-1">요일마다 문항 번호는 1번부터 다시 셉니다.</p>
+            </div>
+          )}
+        </details>
 
         {/* 요일 탭 */}
         {/* py-1 — 가로 스크롤 영역이라 세로 여백이 없으면 탭 테두리(ring)가 위아래로 잘린다 */}

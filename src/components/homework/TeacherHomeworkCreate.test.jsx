@@ -527,3 +527,56 @@ describe('TeacherHomeworkCreate (이미 있는 주에 이어서 넣기)', () => 
     expect(screen.getByRole('button', { name: '수정 저장' })).toBeEnabled()
   })
 })
+
+describe('TeacherHomeworkCreate (정답표 한 번에 넣기)', () => {
+  it('정답 8개를 붙여넣으면 월~토에 2,2,1,1,1,1로 나눠 저장된다', async () => {
+    const user = userEvent.setup()
+    const addHomeworkSet = state.data.addHomeworkSet
+    render(<TeacherHomeworkCreate category="naesin" onDone={vi.fn()} />)
+
+    await user.type(screen.getByPlaceholderText(/세트 제목/), '10월 3주차')
+    await user.click(screen.getByText(/정답표 한 번에 넣기/))
+    await user.type(screen.getByPlaceholderText('정답표 붙여넣기'), '1.3 2.1 3.5 4.2 5.4 6.2+4 7.1 8.3')
+    expect(screen.getByTestId('paste-preview')).toHaveTextContent('월 2문항 · 1~2번')
+    expect(screen.getByTestId('paste-preview')).toHaveTextContent('토 1문항 · 8~8번')
+    await user.click(screen.getByRole('button', { name: '월~토에 나누어 채우기' }))
+
+    // 월요일 정답이 격자에 들어가 있다
+    expect(screen.getByRole('spinbutton')).toHaveValue(2)
+    expect(screen.getByTestId('cell-1-③')).toHaveAttribute('data-selected', 'true')
+
+    await user.click(screen.getByRole('button', { name: '주간 과제 저장' }))
+    await waitFor(() => expect(addHomeworkSet).toHaveBeenCalled())
+    const days = addHomeworkSet.mock.calls[0][0].days
+    expect(days.map((d) => [d.weekday, d.questionCount])).toEqual([[1, 2], [2, 2], [3, 1], [4, 1], [5, 1], [6, 1]])
+    expect(days[2].questions).toEqual([expect.objectContaining({ number: 1, answer: '④' })])
+    expect(days[3].questions[0].answer).toBe('②④')
+  })
+
+  it('번호가 빠지면 이유를 보여주고 채우기 버튼을 내지 않는다', async () => {
+    const user = userEvent.setup()
+    render(<TeacherHomeworkCreate category="naesin" onDone={vi.fn()} />)
+    await user.click(screen.getByText(/정답표 한 번에 넣기/))
+    await user.type(screen.getByPlaceholderText('정답표 붙여넣기'), '1.3 3.1')
+    expect(screen.getByText('2번 정답이 없습니다.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '월~토에 나누어 채우기' })).not.toBeInTheDocument()
+  })
+
+  it('이미 정답을 넣어 둔 요일이 있으면 덮어쓰기 전에 묻고, 취소하면 그대로 둔다', async () => {
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<TeacherHomeworkCreate category="naesin" onDone={vi.fn()} />)
+    await user.click(screen.getByRole('checkbox'))
+    await user.type(screen.getByRole('spinbutton'), '1')
+    await user.click(screen.getByTestId('cell-1-①'))
+
+    await user.click(screen.getByText(/정답표 한 번에 넣기/))
+    await user.type(screen.getByPlaceholderText('정답표 붙여넣기'), '3 3 3 3 3 3 3')
+    await user.click(screen.getByRole('button', { name: '월~토에 나누어 채우기' }))
+
+    expect(confirm).toHaveBeenCalled()
+    expect(screen.getByRole('spinbutton')).toHaveValue(1)
+    expect(screen.getByTestId('cell-1-①')).toHaveAttribute('data-selected', 'true')
+    confirm.mockRestore()
+  })
+})
