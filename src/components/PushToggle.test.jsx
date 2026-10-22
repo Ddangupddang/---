@@ -1,6 +1,7 @@
 // src/components/PushToggle.test.jsx
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import PushToggle from './PushToggle'
 
 const state = {}
@@ -65,5 +66,33 @@ describe('PushToggle', () => {
     state.user = null
     const { container } = render(<PushToggle />)
     expect(container).toBeEmptyDOMElement()
+  })
+
+  // 폰에서 "알림을 켜지 못했습니다"만 뜨면 어느 단계에서 왜 막혔는지 알 수 없다.
+  // 학생 폰의 콘솔은 볼 수 없으니 화면에 단계와 오류 이름을 같이 띄운다.
+  it('켜다가 실패하면 어느 단계에서 무슨 오류였는지 보여준다', async () => {
+    const reg = {
+      pushManager: {
+        getSubscription: vi.fn().mockResolvedValue(null),
+        subscribe: vi.fn().mockRejectedValue(
+          new DOMException('Registration failed - push service error', 'AbortError')),
+      },
+    }
+    vi.stubEnv('VITE_VAPID_PUBLIC_KEY', 'AAAA')
+    vi.stubGlobal('Notification', { requestPermission: vi.fn().mockResolvedValue('granted') })
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { register: vi.fn().mockResolvedValue(reg), ready: Promise.resolve(reg) },
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(<PushToggle />)
+    await userEvent.click(screen.getByRole('button', { name: /알림 받기/ }))
+
+    expect(await screen.findByText(/알림을 켜지 못했습니다/)).toHaveTextContent('구독 · AbortError')
+
+    delete navigator.serviceWorker
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 })

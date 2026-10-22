@@ -51,17 +51,23 @@ export default function PushToggle({ label }) {
   async function turnOn() {
     setBusy(true)
     setError('')
+    // 어느 단계에서 막혔는지 화면에 남긴다. 학생 폰의 콘솔은 볼 수 없어서,
+    // 이게 없으면 "켜지 못했습니다"만 보고 원인을 짐작할 수밖에 없다.
+    let step = '권한'
     try {
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') { setError('알림 권한이 허용되지 않았습니다.'); return }
 
+      step = '서비스 워커'
       const reg = await navigator.serviceWorker.register('/sw.js')
       await navigator.serviceWorker.ready
+      step = '구독'
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY),
       })
 
+      step = '저장'
       const ok = await savePushSubscription(sub, user.id)
       // 브라우저에만 등록되고 서버에 저장이 안 되면 켜진 것처럼 보이지만
       // 알림은 오지 않는다. 그 상태로 두지 않는다.
@@ -69,7 +75,7 @@ export default function PushToggle({ label }) {
       setSubscribed(true)
     } catch (e) {
       console.error('알림 켜기 실패:', e)
-      setError('알림을 켜지 못했습니다.')
+      setError(`알림을 켜지 못했습니다. (${step} · ${e?.name ?? '알 수 없음'})`)
     } finally {
       setBusy(false)
     }
