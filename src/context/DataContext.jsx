@@ -183,6 +183,21 @@ function toQnaMessage(m) {
     createdAt:  m.created_at,
   }
 }
+// 보강 클리닉 신청 (docs/clinic-requests.sql)
+function toClinicRequest(r) {
+  return {
+    id:           r.id,
+    studentId:    r.student_id,
+    content:      r.content,
+    status:       r.status,
+    scheduleText: r.schedule_text ?? '',
+    rejectReason: r.reject_reason ?? '',
+    handledBy:    r.handled_by ?? null,
+    handledAt:    r.handled_at ?? null,
+    createdAt:    r.created_at,
+  }
+}
+
 export function DataProvider({ children }) {
   const [classes,       setClasses]       = useState([])
   const [students,      setStudents]      = useState([])
@@ -206,6 +221,7 @@ export function DataProvider({ children }) {
   const [homeworkChecks,      setHomeworkChecks]      = useState([])
   const [homeworkReopens,     setHomeworkReopens]     = useState([])
   const [weeklyNotes, setWeeklyNotes] = useState([])
+  const [clinicRequests, setClinicRequests] = useState([])
   const [dataLoading,   setDataLoading]   = useState(true)
   const [refreshing,    setRefreshing]    = useState(false)
   const [studentAccountIds, setStudentAccountIds] = useState([])
@@ -236,7 +252,7 @@ export function DataProvider({ children }) {
       // 여럿이면 쪽 경계에서 순서가 흔들려 어떤 행은 두 번 오고 어떤 행은 빠진다.
       // 과제 문항이 빠지면 학생 답안이 엉뚱한 번호에 붙는다. id는 겹치지 않으므로
       // 마지막 기준으로 두면 순서가 항상 같아진다.
-      const [cRes, sRes, aRes, gRes, qRes, qmRes, qrRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, hwChkRes, hwReoRes, wnRes, saRes] =
+      const [cRes, sRes, aRes, gRes, qRes, qmRes, qrRes, nRes, rRes, pRes, vRes, vcRes, tRes, subRes, hwSetsRes, hwDaysRes, hwQRes, hwSubRes, hwChkRes, hwReoRes, wnRes, saRes, clRes] =
         await Promise.all([
           fetchAllRows(() => supabase.from('classes').select('*').order('sort_order').order('id')),
           fetchAllRows(() => supabase.from('students').select('*').order('sort_order').order('id')),
@@ -265,6 +281,8 @@ export function DataProvider({ children }) {
           fetchAllRows(() => supabase.from('homework_reopens').select('*').order('id')),
           staffOnly(() => fetchAllRows(() => supabase.from('weekly_report_notes').select('*').order('id'))),
           staffOnly(() => fetchAllRows(() => supabase.from('profiles').select('id, student_id, username').eq('role', 'student').order('id'))),
+          // 표가 아직 없으면(SQL 실행 전) 에러가 오고 rowsOrNull이 걸러 낸다 — 다른 화면은 멀쩡하다
+          fetchAllRows(() => supabase.from('clinic_requests').select('*').order('created_at', { ascending: false }).order('id')),
         ])
 
       // rowsOrNull이 null을 주면 못 읽은 것이라 화면을 건드리지 않는다.
@@ -292,6 +310,7 @@ export function DataProvider({ children }) {
       const hwReoRows = rowsOrNull(hwReoRes); if (hwReoRows) setHomeworkReopens(hwReoRows.map(toHomeworkReopen))
       if (!wnRes.error && wnRes.data) setWeeklyNotes(wnRes.data.map(toWeeklyNote))
       if (!saRes.error && saRes.data) applyStudentAccounts(saRes.data)
+      const clRows = rowsOrNull(clRes); if (clRows) setClinicRequests(clRows.map(toClinicRequest))
 
       setDataLoading(false)
   }
@@ -503,6 +522,63 @@ export function DataProvider({ children }) {
     const newQ = toQna(inserted)
     setQnaList((prev) => [newQ, ...prev])
     return { question: newQ }
+  }
+
+  // ── 보강 클리닉 ───────────────────────────────────────
+
+  // 학생이 신청한다. 상태는 DB 기본값(대기)에 맡긴다.
+  async function requestClinic({ studentId, content }) {
+    const { data: inserted, error } = await supabase
+      .from('clinic_requests')
+      .insert([{ student_id: studentId, content }])
+      .select()
+      .single()
+    if (error) { console.error('클리닉 신청 실패:', error); return { error: error.message } }
+    const req = toClinicRequest(inserted)
+    setClinicRequests((prev) => [req, ...prev])
+    return { request: req }
+  }
+
+  // 수락·거절. 대기 중인 신청만 고친다(.eq('status', 'pending')).
+  // 담당 교사와 관리자가 같은 신청을 동시에 열어 둘 수 있다 — 먼저 처리한 쪽만
+  // 남고, 늦은 쪽은 0행이 돌아와 "이미 처리됨"을 알려 준다. 이걸 안 막으면
+  // 나중 사람이 앞사람의 일정을 덮어써 학생에게 확정 알림이 두 번 간다.
+  async function handleClinic(id, fields) {
+    const { data: updated, error } = await supabase
+      .from('clinic_requests')
+      // 처리 시각(handled_at)은 DB 트리거가 적는다
+      .update(fields)
+      .eq('id', id)
+      .eq('status', 'pending')
+      .select()
+    if (error) { console.error('클리닉 처리 실패:', error); return { error: error.message } }
+    if (!updated?.length) {
+      // 다른 사람이 먼저 처리했을 수 있다. 최신 상태를 다시 받아 화면을 맞춘다.
+      const { data: fresh } = await supabase.from('clinic_requests').select('*').eq('id', id).maybeSingle()
+      if (fresh) setClinicRequests((prev) => prev.map((r) => r.id === id ? toClinicRequest(fresh) : r))
+      return { error: '이미 처리된 신청입니다.' }
+    }
+    const req = toClinicRequest(updated[0])
+    setClinicRequests((prev) => prev.map((r) => r.id === id ? req : r))
+    return { request: req }
+  }
+
+  function acceptClinic(id, { scheduleText, handledBy }) {
+    return handleClinic(id, { status: 'accepted', schedule_text: scheduleText, handled_by: handledBy })
+  }
+
+  function rejectClinic(id, { rejectReason, handledBy }) {
+    return handleClinic(id, { status: 'rejected', reject_reason: rejectReason, handled_by: handledBy })
+  }
+
+  // 학생이 대기 중인 본인 신청을 취소한다
+  async function cancelClinic(id) {
+    const { data: deleted, error } = await supabase
+      .from('clinic_requests').delete().eq('id', id).eq('status', 'pending').select()
+    if (error) { console.error('클리닉 취소 실패:', error); return { error: error.message } }
+    if (!deleted?.length) return { error: '이미 처리된 신청이라 취소할 수 없습니다.' }
+    setClinicRequests((prev) => prev.filter((r) => r.id !== id))
+    return {}
   }
 
   // 질문에 붙일 사진 하나를 올리고 스토리지 경로를 돌려준다.
@@ -1427,6 +1503,7 @@ export function DataProvider({ children }) {
       deleteHomeworkSubmission,
       uploadSolutionFile, deleteSolutionFile,
       weeklyNotes, upsertWeeklyNote,
+      clinicRequests, requestClinic, acceptClinic, rejectClinic, cancelClinic,
     }}>
       {children}
     </DataContext.Provider>

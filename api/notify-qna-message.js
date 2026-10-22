@@ -4,12 +4,16 @@
 // 첫 질문은 api/notify-qna.js가 맡는다(qna 표의 INSERT). 이 파일은
 // 그 뒤에 오가는 글(qna_messages 표의 INSERT)을 맡는다.
 // 표가 다르니 Supabase 웹훅도 두 개다.
+//
+// 보강 클리닉 알림(clinic_requests 표)도 이 주소로 받는다. 함수 개수 상한(12개)
+// 때문에 파일을 새로 만들지 않았다 — 자세한 건 src/utils/clinicNotify.js.
 import { createClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
 import {
   notifyTargets, isDeadSubscription, endpointsToRemove, isAuthorizedWebhook,
 } from './notify-qna.js'
 import { qnaCategoryLabel } from '../src/constants/qna.js'
+import { handleClinicWebhook } from '../src/utils/clinicNotify.js'
 
 // 이 글의 알림을 누가 받아야 하는가.
 // 학생이 물으면 교사가, 교사가 답하면 학생이 받는다.
@@ -44,9 +48,10 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
+  const isClinic = req.body?.table === 'clinic_requests'
   const record   = req.body?.record
   const audience = messageAudience(record)
-  if (!audience) {
+  if (!isClinic && !audience) {
     return res.status(200).json({ sent: 0, removed: 0, reason: '보낼 대상 아님' })
   }
 
@@ -65,6 +70,10 @@ export default async function handler(req, res) {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  if (isClinic) {
+    return res.status(200).json(await handleClinicWebhook({ admin, webpush, body: req.body }))
+  }
 
   // 글에는 qna_id만 있다. 누구의 질문인지는 부모를 봐야 안다.
   const { data: question } = await admin

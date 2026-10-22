@@ -12,6 +12,7 @@ const pageTitles = {
   '/videos':          '영상 관리',
   '/tests':           '테스트',
   '/qna':             'Q&A',
+  '/clinic':          '클리닉',
   '/notices':         '공지사항',
   '/reports':         '진도 리포트',
   '/change-password': '비밀번호 변경',

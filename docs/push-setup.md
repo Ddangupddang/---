@@ -10,6 +10,8 @@
 | 새 질문 | 담당 교사 + 관리자 전원 | 학생이 질문을 올릴 때 | 웹훅 (`qna`) |
 | 추가 질문·답변 | 교사 / 학생 | 대화에 글이 올라올 때 | 웹훅 (`qna_messages`) |
 | 과제 제출 | 출제한 교사 | 학생이 과제를 낼 때마다 | 웹훅 (`homework_submissions_v2`) |
+| 클리닉 신청 | 담당 교사 + 관리자 전원 | 학생이 보강 클리닉을 신청할 때 | 웹훅 (`clinic_requests`) |
+| 클리닉 확정·거절 | 신청한 학생 | 교사가 수락하거나 거절할 때 | 웹훅 (`clinic_requests`) |
 | 새 과제 | 그 과제를 받는 학생들 | 교사가 과제를 다 만들고 저장할 때 | 앱이 직접 호출 (웹훅 없음) |
 
 > **새 과제 알림에 웹훅이 없는 이유**
@@ -99,6 +101,24 @@ Supabase → Database → Webhooks → Create a new hook
 
 > 제출은 **건건이** 알립니다. 반 인원이 많으면 마감 무렵에 알림이 몰립니다.
 > 부담스러우면 이 웹훅만 Supabase에서 꺼두면 됩니다 — 다른 알림은 그대로 옵니다.
+
+### 보강 클리닉 알림 웹훅 (하나 더)
+
+먼저 `docs/clinic-requests.sql`을 실행해 표를 만들어야 Table 목록에 나옵니다.
+
+| 항목 | 값 |
+|------|-----|
+| Name | `notify-clinic` |
+| Table | `clinic_requests` |
+| Events | `Insert` **와** `Update` 둘 다 체크 |
+| Type | HTTP Request |
+| Method | `POST` |
+| URL | `https://www.sumunjae.com/api/notify-qna-message` ← 주소가 Q&A용과 **같습니다** |
+| HTTP Headers | `x-webhook-secret` : 위와 **같은 값** |
+
+> 주소를 새로 만들지 않은 이유: `api/` 파일 하나가 서버리스 함수 하나이고 상한이 12개라,
+> 마지막 자리를 남겨 두려고 Q&A 알림 주소가 표 이름(`clinic_requests`)을 보고 갈라 받습니다.
+> Insert = 신청 → 교사·관리자, Update = 수락·거절 → 학생에게 갑니다.
 
 ## 5. 교사 폰에서 알림 켜기
 

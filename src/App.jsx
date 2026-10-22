@@ -12,6 +12,7 @@ import Videos from './pages/Videos'
 import Tests from './pages/Tests'
 import Homework from './pages/Homework'
 import QnA from './pages/QnA'
+import Clinic from './pages/Clinic'
 import Notices from './pages/Notices'
 import Reports from './pages/Reports'
 import WeeklyReport from './pages/WeeklyReport'
@@ -106,6 +107,16 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
                 <QnA />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 보강 클리닉 신청 (전체 역할) */}
+          <Route
+            path="/clinic"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
+                <Clinic />
               </ProtectedRoute>
             }
           />
