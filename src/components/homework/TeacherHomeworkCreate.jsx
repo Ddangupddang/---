@@ -263,6 +263,10 @@ export default function TeacherHomeworkCreate({
       const notified = await notifyNewHomework(saved.id)
       if (!notified) {
         window.alert('과제는 저장되었습니다.\n다만 학생 알림을 보내지 못했습니다 — 직접 알려 주세요.')
+      } else if (notified.deferredTo) {
+        // 다음 주 과제는 학생 화면에 그 주 월요일부터 보인다. 알림도 그때 간다.
+        // 교사가 "알림이 왜 안 갔지?" 하지 않도록 언제 가는지 알려 둔다.
+        window.alert(`과제는 저장되었습니다.\n학생 화면에는 ${notified.deferredTo}(월)부터 보이고, 알림도 그날 아침 7시쯤 갑니다.`)
       }
     }
 

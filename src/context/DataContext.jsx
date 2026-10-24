@@ -1333,6 +1333,9 @@ export function DataProvider({ children }) {
   // 표 하나의 INSERT를 웹훅으로 잡으면 문항이 아직 없는 시점에 알림이 나간다.
   //
   // 알림이 실패해도 과제는 이미 저장됐다. 저장을 되돌리지 않고 실패만 알린다.
+  //
+  // 성공하면 서버 응답을 그대로 돌려준다. 다음 주 과제면 deferredTo(그 주 월요일)가
+  // 들어 있다 — 서버가 지금 보내지 않고 월요일 아침에 보낸다는 뜻이다.
   async function notifyNewHomework(setId) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -1348,7 +1351,7 @@ export function DataProvider({ children }) {
         console.error('과제 알림 실패:', res.status, await res.text())
         return false
       }
-      return true
+      return await res.json().catch(() => ({}))
     } catch (e) {
       console.error('과제 알림 실패:', e)
       return false

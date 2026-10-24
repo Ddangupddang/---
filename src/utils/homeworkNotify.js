@@ -9,6 +9,8 @@
 // 딸려 들어가는 파일까지 .js를 붙여 둔다 — 빼면 배포한 뒤에야 터진다.
 import { matchesStudent } from './homeworkSelect.js'
 import { CATEGORY_LABELS, WEEKDAY_LABELS } from '../constants/homework.js'
+import { mondayOf } from './homeworkWeek.js'
+import { todayKST } from './datetime.js'
 
 // 누가 이 과제를 받는지 정하는 규칙(반/정시레벨/예전 학년)은 학생 화면과 같아야 한다.
 // 규칙을 여기 다시 쓰면 언젠가 어긋나므로 homeworkSelect의 판정을 그대로 쓰고,
@@ -29,6 +31,23 @@ export function newHomeworkNotification(setRow) {
     title: '새 과제',
     body: `${CATEGORY_LABELS[setRow?.category] ?? '과제'} · ${setRow?.title ?? ''}`.trim(),
   }
+}
+
+// 새 과제 알림을 지금 보낼까, 그 주 월요일 아침에 보낼까.
+//
+// 학생 화면은 "오늘이 속한 주" 과제만 보여준다(일요일은 지난주로 친다).
+// 다음 주 과제를 토요일에 내고 바로 알리면, 학생은 알림을 눌러도 과제가 없는
+// 화면을 보게 된다. 그래서 주가 아직 안 왔으면 미뤄 두고 월요일 아침 정기 발송에 맡긴다.
+export function isFutureWeek(weekStart, today = todayKST()) {
+  return weekStart > mondayOf(today)
+}
+
+// 월요일 아침 정기 발송이 이 세트를 보내야 하나.
+// 이번 주 세트 중 지난주 이전에 만들어 둔 것만 — 그게 "미뤄 둔" 것이다.
+// 월요일 0시 이후에 만든 세트는 만들 때 이미 알렸으므로 다시 보내지 않는다.
+export function isDeferredForWeek(setRow, monday) {
+  if (!setRow?.created_at || setRow.week_start !== monday) return false
+  return todayKST(new Date(setRow.created_at)) < monday
 }
 
 // 교사에게 가는 제출 알림. 점수는 넣지 않는다 —

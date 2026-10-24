@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   homeworkStudentIds, newHomeworkNotification, submissionNotification, submissionTargets,
+  isFutureWeek, isDeferredForWeek,
 } from './homeworkNotify'
 
 const students = [
@@ -70,5 +71,43 @@ describe('submissionTargets', () => {
   it('출제자·담당 교사를 몰라도 관리자에게는 간다', () => {
     expect(submissionTargets({ teacher_id: null }, admins, null)).toEqual(['admin-1', 'admin-2'])
     expect(submissionTargets(null, admins)).toEqual(['admin-1', 'admin-2'])
+  })
+})
+
+// 2026-10-24는 토요일, 10-25는 일요일, 10-26은 다음 주 월요일
+describe('isFutureWeek — 다음 주 과제는 알림을 미룬다', () => {
+  it('토요일에 다음 주 과제를 내면 미룬다', () => {
+    expect(isFutureWeek('2026-10-26', '2026-10-24')).toBe(true)
+  })
+  it('일요일도 아직 지난주라 미룬다 — 학생 화면이 일요일을 지난주로 친다', () => {
+    expect(isFutureWeek('2026-10-26', '2026-10-25')).toBe(true)
+  })
+  it('그 주 월요일이 되면 바로 보낸다', () => {
+    expect(isFutureWeek('2026-10-26', '2026-10-26')).toBe(false)
+  })
+  it('이번 주·지난 주 과제는 바로 보낸다', () => {
+    expect(isFutureWeek('2026-10-19', '2026-10-24')).toBe(false)
+    expect(isFutureWeek('2026-10-12', '2026-10-24')).toBe(false)
+  })
+})
+
+describe('isDeferredForWeek — 월요일 아침에 보낼 세트', () => {
+  const MON = '2026-10-26'
+  it('지난주에 만들어 둔 이번 주 세트는 보낸다', () => {
+    expect(isDeferredForWeek({ week_start: MON, created_at: '2026-10-24T05:00:00.123456+00:00' }, MON)).toBe(true)
+  })
+  it('일요일 밤 11시(한국)에 만든 것도 보낸다 — UTC로는 일요일 오후다', () => {
+    expect(isDeferredForWeek({ week_start: MON, created_at: '2026-10-25T14:00:00+00:00' }, MON)).toBe(true)
+  })
+  it('월요일 0시 이후(한국)에 만든 것은 이미 알렸으니 다시 보내지 않는다', () => {
+    // 한국 월요일 00:30 = UTC 일요일 15:30
+    expect(isDeferredForWeek({ week_start: MON, created_at: '2026-10-25T15:30:00+00:00' }, MON)).toBe(false)
+  })
+  it('다른 주 세트는 보내지 않는다', () => {
+    expect(isDeferredForWeek({ week_start: '2026-11-02', created_at: '2026-10-24T05:00:00+00:00' }, MON)).toBe(false)
+  })
+  it('만든 시각을 모르면 보내지 않는다', () => {
+    expect(isDeferredForWeek({ week_start: MON }, MON)).toBe(false)
+    expect(isDeferredForWeek(undefined, MON)).toBe(false)
   })
 })
